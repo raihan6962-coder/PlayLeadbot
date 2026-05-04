@@ -325,6 +325,52 @@ SEARCH_COMBOS = [
     ("en", "us"), ("en", "gb"), ("en", "in"), ("en", "au"), ("en", "ca"),
 ]
 
+# ── [RATING FIX] Country priority list for fetching app details ───────────────
+# Problem: when the server runs from Bangladesh (or any restricted region),
+# gp_app(..., country="bd") often returns score=None / ratings=0 for apps
+# that clearly have ratings visible in major markets.  Google Play only
+# surfaces aggregated review data for countries where the app has meaningful
+# traction.
+#
+# Solution: try each country below in order and stop at the first response
+# that returns a real score (> 0).  The first country is "us" (largest
+# dataset); the rest are fallbacks.  If no country returns a score the
+# original "us" response is used so nothing is lost.
+# ─────────────────────────────────────────────────────────────────────────────
+RATING_FETCH_COUNTRIES = ["us", "gb", "in", "au", "ca"]
+
+def fetch_app_details_with_rating(app_id: str) -> dict:
+    """Fetch app details trying multiple countries until a real score is found.
+
+    Returns the details dict from the first country that yields score > 0.
+    Falls back to the 'us' result if no country resolves a score, so callers
+    always receive a valid dict.
+    """
+    first_result = None
+    for country in RATING_FETCH_COUNTRIES:
+        try:
+            details = gp_app(app_id, lang="en", country=country)
+        except Exception:
+            continue  # network / not-available in this country — try next
+
+        if first_result is None:
+            first_result = details  # remember the very first successful fetch
+
+        score = details.get("score")
+        if score and score > 0:
+            # Found a real rating — log which country unlocked it and return
+            if country != RATING_FETCH_COUNTRIES[0]:
+                # Only log when it differed from the default country (us)
+                log.info(
+                    f"  🌍 Rating resolved via country='{country}' "
+                    f"for {app_id}: {score:.1f}★"
+                )
+            return details
+
+    # No country returned a score — return whatever we got first (us), or {}
+    return first_result or {}
+# ── End rating fix helper ─────────────────────────────────────────────────────
+
 def extract_email(text):
     if not text:
         return ""
@@ -373,11 +419,18 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
             app_id = item.get("appId", "")
             if not app_id or app_id in global_seen_ids:
                 continue
+            # ── [RATING FIX] Use multi-country fetch instead of hardcoded "us" ──
+            # fetch_app_details_with_rating() tries us → gb → in → au → ca and
+            # returns the first response that carries a real score, so ratings
+            # hidden from Bangladesh are always resolved correctly.
             try:
-                details = gp_app(app_id, lang="en", country="us")
+                details = fetch_app_details_with_rating(app_id)
+                if not details:
+                    raise ValueError("empty details")
             except Exception:
                 global_seen_ids.add(app_id)
                 continue
+            # ── End rating fix ────────────────────────────────────────────────
 
             installs = details.get("minInstalls") or 0
             score    = details.get("score")
@@ -420,6 +473,12 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
 
         push_log(f"  [{country}] done. Leads so far: {len(leads)}")
         time.sleep(0.5)
+
+    # ── [RATING FIX] Prioritise leads that have a confirmed rating ────────────
+    # Apps where we successfully resolved a score go to the front of the list
+    # so they are processed (emailed) first in Phase 2.  Unrated apps follow.
+    leads.sort(key=lambda l: (l["score"] is None or l["score"] == 0, 0))
+    # ── End prioritisation ────────────────────────────────────────────────────
 
     push_log(f"  📦 {len(leads)} new leads from '{keyword}'")
     sheet_log_keyword(keyword, len(leads))
