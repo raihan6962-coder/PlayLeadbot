@@ -52,25 +52,11 @@ def sheet_post(payload: dict):
         push_log(f"  Sheet error: {e}")
 
 def sheet_append_lead(lead: dict):
-    # ── [CHANGE 1] Duplicate Filter ───────────────────────────────────────────
-    # Ask the Apps Script to check whether this app_id already exists in the
-    # "All Leads" tab BEFORE inserting.  If the script returns {"exists": true}
-    # we skip the insert so the same lead is never stored twice.
-    check_url = get_cfg("APPS_SCRIPT_WEB_URL")
-    if check_url:
-        try:
-            resp = requests.post(
-                check_url,
-                json={"action": "check_duplicate", "tab": "All Leads", "app_id": lead["app_id"]},
-                timeout=10,
-            )
-            result = resp.json() if resp.text else {}
-            if result.get("exists"):
-                push_log(f"  ⚠️  Duplicate skipped (All Leads): {lead['app_id']}")
-                return  # Lead already in sheet — do NOT insert again
-        except Exception as e:
-            push_log(f"  Duplicate-check error (All Leads): {e}")
-    # ── End duplicate filter ──────────────────────────────────────────────────
+    # Duplicate guard is now handled entirely by the pre-run sheet pre-load
+    # (load_sheet_existing_ids_and_emails) which seeds global_seen_ids and
+    # global_seen_emails before scraping begins.  By the time this function is
+    # called the lead is already guaranteed to be unique — no extra round-trip
+    # to Apps Script is needed here.
     sheet_post({"action": "append", "tab": "All Leads", "row": {
         "App Name": lead["app_name"], "Developer": lead["developer"],
         "Email": lead["email"], "Category": lead["category"],
@@ -81,23 +67,7 @@ def sheet_append_lead(lead: dict):
     }})
 
 def sheet_append_qualified(lead: dict):
-    # ── [CHANGE 1] Duplicate Filter ───────────────────────────────────────────
-    # Same guard as above but for the "Qualified Leads" tab.
-    check_url = get_cfg("APPS_SCRIPT_WEB_URL")
-    if check_url:
-        try:
-            resp = requests.post(
-                check_url,
-                json={"action": "check_duplicate", "tab": "Qualified Leads", "app_id": lead["app_id"]},
-                timeout=10,
-            )
-            result = resp.json() if resp.text else {}
-            if result.get("exists"):
-                push_log(f"  ⚠️  Duplicate skipped (Qualified Leads): {lead['app_id']}")
-                return  # Lead already in sheet — do NOT insert again
-        except Exception as e:
-            push_log(f"  Duplicate-check error (Qualified Leads): {e}")
-    # ── End duplicate filter ──────────────────────────────────────────────────
+    # Same as sheet_append_lead — uniqueness is guaranteed by the pre-load.
     sheet_post({"action": "append", "tab": "Qualified Leads", "row": {
         "App Name": lead["app_name"], "Developer": lead["developer"],
         "Email": lead["email"], "Category": lead["category"],
@@ -119,6 +89,68 @@ def sheet_log_keyword(keyword: str, count: int):
         "Keyword": keyword, "Leads Found": count,
         "Logged At": time.strftime("%Y-%m-%d %H:%M:%S"),
     }})
+
+# ── [DEDUP FIX] Pre-run sheet loader ─────────────────────────────────────────
+# Fetches every App ID and Email already stored in the "All Leads" tab and
+# loads them into global_seen_ids / global_seen_emails BEFORE scraping starts.
+#
+# Why this is better than the old per-insert check_duplicate approach:
+#   • Old way  → 2 HTTP round-trips to Apps Script for every single lead found,
+#                blocking the scrape loop each time, and only catching duplicates
+#                at insert time (after wasting time scraping & fetching details).
+#   • New way  → 1 HTTP round-trip at startup loads everything into memory.
+#                scrape_keyword's existing  `if app_id in global_seen_ids`  and
+#                `if email in global_seen_emails` guards then reject duplicates
+#                instantly, in-process, with zero network overhead per lead.
+#
+# Apps Script side — you must handle action="get_all_ids" and return:
+#   { "app_ids": ["com.x.y", ...], "emails": ["a@b.com", ...] }
+# pointing at the "All Leads" tab.  Example Apps Script snippet:
+#
+#   case "get_all_ids": {
+#     const sheet = SpreadsheetApp.getActiveSpreadsheet()
+#                     .getSheetByName("All Leads");
+#     const data  = sheet.getDataRange().getValues();
+#     const hdrs  = data[0];
+#     const idCol  = hdrs.indexOf("App ID");
+#     const emlCol = hdrs.indexOf("Email");
+#     const app_ids = [], emails = [];
+#     for (let i = 1; i < data.length; i++) {
+#       if (data[i][idCol])  app_ids.push(String(data[i][idCol]).trim());
+#       if (data[i][emlCol]) emails.push(String(data[i][emlCol]).trim().toLowerCase());
+#     }
+#     return ContentService
+#       .createTextOutput(JSON.stringify({ app_ids, emails }))
+#       .setMimeType(ContentService.MimeType.JSON);
+#   }
+# ─────────────────────────────────────────────────────────────────────────────
+def load_sheet_existing_ids_and_emails() -> tuple[set, set]:
+    """One-shot fetch of all App IDs and Emails already in the sheet.
+
+    Returns (seen_ids, seen_emails) — both are plain Python sets ready to be
+    merged into global_seen_ids / global_seen_emails.
+    If the sheet URL is not configured, or the call fails for any reason, empty
+    sets are returned so scraping proceeds normally (fail-open).
+    """
+    url = get_cfg("APPS_SCRIPT_WEB_URL")
+    if not url:
+        return set(), set()
+    try:
+        resp = requests.post(url, json={"action": "get_all_ids"}, timeout=30)
+        data = resp.json() if resp.text else {}
+        raw_ids    = data.get("app_ids") or []
+        raw_emails = data.get("emails")  or []
+        seen_ids    = {str(i).strip()          for i in raw_ids    if i}
+        seen_emails = {str(e).strip().lower()  for e in raw_emails if e}
+        push_log(
+            f"📋 Sheet pre-load: {len(seen_ids)} existing app IDs, "
+            f"{len(seen_emails)} existing emails loaded into memory."
+        )
+        return seen_ids, seen_emails
+    except Exception as e:
+        push_log(f"⚠️  Sheet pre-load failed (proceeding without it): {e}")
+        return set(), set()
+# ── End pre-run sheet loader ──────────────────────────────────────────────────
 
 # ── AI keyword generation ─────────────────────────────────────────────────────
 def ai_gen_keywords(original: str, used: list) -> list:
@@ -513,6 +545,19 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
     stop_event.clear()
     mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
     push_log(f"🚀 Started | kw='{initial_kw}' | target={target} | mode={mode}")
+
+    # ── [DEDUP FIX] Pre-load existing sheet data into memory ─────────────────
+    # Fetch every App ID and Email already stored in the sheet in a single HTTP
+    # call, then merge them into the global seen-sets BEFORE any scraping starts.
+    # scrape_keyword's existing duplicate guards (`if app_id in global_seen_ids`
+    # and `if email in global_seen_emails`) will then automatically reject any
+    # lead that was collected in a previous run — no per-lead network calls needed.
+    push_log("📋 Pre-loading existing leads from sheet …")
+    sheet_ids, sheet_emails = load_sheet_existing_ids_and_emails()
+    global global_seen_ids, global_seen_emails
+    global_seen_ids    |= sheet_ids    # merge: keep anything seen this session too
+    global_seen_emails |= sheet_emails
+    # ── End pre-load ──────────────────────────────────────────────────────────
 
     base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
     base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
