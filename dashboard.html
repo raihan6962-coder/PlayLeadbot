@@ -735,8 +735,10 @@ tbody tr:hover td { background: #13131c; }
         </div>
 
         <div class="card">
-          <div class="card-head">Email Template (AI Base)</div>
+          <div class="card-head">Email Template (AI Base) — <span style="color:var(--gold)">Old App</span></div>
           <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:1.7;">
+            <!-- [CHANGE 2] Renamed heading to clarify this is the OLD APP template -->
+            Apps that already have <strong style="color:var(--gold)">ratings or reviews</strong> (established apps) will use this template.
             AI এই template এর <strong style="color:var(--gold)">value proposition</strong> রেখে প্রতিটা lead এর জন্য unique subject + body লিখবে।
             Template টা যত ভালো হবে, AI output তত ভালো হবে।
           </div>
@@ -759,6 +761,33 @@ tbody tr:hover td { background: #13131c; }
           </div>
           <button class="btn-ghost" onclick="resetTemplate()">↺ Reset to default</button>
         </div>
+
+        <!-- [CHANGE 2] NEW APP Email Template card ─────────────────────────── -->
+        <div class="card" style="border-color:var(--gold);border-width:1px;">
+          <div class="card-head">📱 Email Template — <span style="color:var(--gold)">New App</span></div>
+          <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:1.7;">
+            Apps with <strong style="color:var(--gold)">NO ratings AND low installs (&lt;1 000)</strong> are classified as new apps and will receive this template instead.
+            Edit this template to craft the perfect first-touch message for brand-new apps.
+          </div>
+          <div class="form-group">
+            <label class="form-label">New App — Subject Line Template</label>
+            <input class="form-input" id="cfg-new-app-subject" type="text" placeholder="Congrats on launching {{app_name}} 🚀"/>
+          </div>
+          <div style="font-size:10px;color:var(--slate2);margin-bottom:8px;">
+            Same variables available: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{app_name}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{developer}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{installs}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{url}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_name}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_company}}</code>
+          </div>
+          <div class="form-group">
+            <label class="form-label">New App — Email Body Template</label>
+            <textarea class="form-input" id="cfg-new-app-body" rows="10" style="resize:vertical;line-height:1.7;font-size:11.5px;"></textarea>
+          </div>
+          <button class="btn-ghost" onclick="resetNewAppTemplate()">↺ Reset new-app template to default</button>
+        </div>
+        <!-- [END CHANGE 2] ───────────────────────────────────────────────────-->
 
       </div>
 
@@ -977,6 +1006,25 @@ Best regards,
 
 App: {{url}}`;
 
+// [CHANGE 2] Default NEW APP email template constants.
+// Edit these strings directly if you want to change the built-in new-app defaults.
+const DEFAULT_NEW_APP_SUBJECT = `Congrats on launching {{app_name}} 🚀`;
+const DEFAULT_NEW_APP_BODY =
+`Hi {{developer}} team,
+
+I just discovered {{app_name}} on Google Play — looks like you've recently launched and are still building your first audience. Exciting stage!
+
+I help new app developers like you get their first wave of real, organic reviews and ratings so they can gain trust quickly and climb the Play Store rankings.
+
+Would you be interested in a quick chat to see if I can help {{app_name}} get off the ground faster?
+
+Best regards,
+{{sender_name}}
+{{sender_company}}
+
+App: {{url}}`;
+// [END CHANGE 2 constants]
+
 function loadCfg() {
   try { cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) { cfg={}; }
   setVal('cfg-groq',              cfg.groq||'');
@@ -985,6 +1033,9 @@ function loadCfg() {
   setVal('cfg-sender-company',    cfg.sender_company||'');
   setVal('cfg-email-subject',     cfg.email_subject||DEFAULT_SUBJECT);
   setVal('cfg-email-body',        cfg.email_body||DEFAULT_BODY);
+  // [CHANGE 2] Load new-app template from saved config (or fall back to defaults)
+  setVal('cfg-new-app-subject',   cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT);
+  setVal('cfg-new-app-body',      cfg.new_app_email_body||DEFAULT_NEW_APP_BODY);
   setVal('cfg-sheeturl',          cfg.sheeturl||'');
   setVal('cfg-appsscript',        cfg.appsscript||'');
   setVal('cfg-emailscript',       cfg.emailscript||'');
@@ -996,17 +1047,20 @@ function loadCfg() {
 
 function saveConfig() {
   cfg = {
-    groq:               getVal('cfg-groq'),
-    target:             parseInt(getVal('cfg-target'))||300,
-    sender_name:        getVal('cfg-sender-name'),
-    sender_company:     getVal('cfg-sender-company'),
-    email_subject:      getVal('cfg-email-subject'),
-    email_body:         getVal('cfg-email-body'),
-    sheeturl:           getVal('cfg-sheeturl'),
-    appsscript:         getVal('cfg-appsscript'),
-    emailscript:        getVal('cfg-emailscript'),
-    keepalive_url:      getVal('cfg-keepalive-url'),
-    keepalive_interval: parseInt(getVal('cfg-keepalive-interval'))||25,
+    groq:                  getVal('cfg-groq'),
+    target:                parseInt(getVal('cfg-target'))||300,
+    sender_name:           getVal('cfg-sender-name'),
+    sender_company:        getVal('cfg-sender-company'),
+    email_subject:         getVal('cfg-email-subject'),
+    email_body:            getVal('cfg-email-body'),
+    // [CHANGE 2] Persist new-app template to localStorage
+    new_app_email_subject: getVal('cfg-new-app-subject'),
+    new_app_email_body:    getVal('cfg-new-app-body'),
+    sheeturl:              getVal('cfg-sheeturl'),
+    appsscript:            getVal('cfg-appsscript'),
+    emailscript:           getVal('cfg-emailscript'),
+    keepalive_url:         getVal('cfg-keepalive-url'),
+    keepalive_interval:    parseInt(getVal('cfg-keepalive-interval'))||25,
   };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   const m = document.getElementById('savedMsg');
@@ -1034,6 +1088,13 @@ function resetTemplate() {
   setVal('cfg-email-subject', DEFAULT_SUBJECT);
   setVal('cfg-email-body', DEFAULT_BODY);
   updateLivePreview();
+}
+
+// [CHANGE 2] Reset new-app template to built-in defaults
+function resetNewAppTemplate() {
+  if(!confirm('New App template default-এ reset করবে?')) return;
+  setVal('cfg-new-app-subject', DEFAULT_NEW_APP_SUBJECT);
+  setVal('cfg-new-app-body',    DEFAULT_NEW_APP_BODY);
 }
 
 function togglePass(id, btn) {
@@ -1191,16 +1252,19 @@ async function startAuto() {
 
   try {
     const body = {
-      keyword:          kw,
-      groq_key:         cfg.groq,
-      sheet_url:        cfg.appsscript,
-      email_script_url: cfg.emailscript,
-      target:           cfg.target||300,
-      sender_name:      cfg.sender_name||'',
-      sender_company:   cfg.sender_company||'',
-      email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-      email_body:       cfg.email_body||DEFAULT_BODY,
-      hunter:           hunter,
+      keyword:               kw,
+      groq_key:              cfg.groq,
+      sheet_url:             cfg.appsscript,
+      email_script_url:      cfg.emailscript,
+      target:                cfg.target||300,
+      sender_name:           cfg.sender_name||'',
+      sender_company:        cfg.sender_company||'',
+      email_subject:         cfg.email_subject||DEFAULT_SUBJECT,
+      email_body:            cfg.email_body||DEFAULT_BODY,
+      // [CHANGE 2] Send new-app templates to backend
+      new_app_email_subject: cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT,
+      new_app_email_body:    cfg.new_app_email_body||DEFAULT_NEW_APP_BODY,
+      hunter:                hunter,
     };
     const r = await fetch('/api/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     const d = await r.json();
@@ -1240,14 +1304,17 @@ async function sendPending() {
     const r = await fetch('/api/send_pending', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        leads:            pending,
-        groq_key:         cfg.groq,
-        email_script_url: cfg.emailscript,
-        sheet_url:        cfg.appsscript,
-        sender_name:      cfg.sender_name||'',
-        sender_company:   cfg.sender_company||'',
-        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-        email_body:       cfg.email_body||DEFAULT_BODY,
+        leads:                 pending,
+        groq_key:              cfg.groq,
+        email_script_url:      cfg.emailscript,
+        sheet_url:             cfg.appsscript,
+        sender_name:           cfg.sender_name||'',
+        sender_company:        cfg.sender_company||'',
+        email_subject:         cfg.email_subject||DEFAULT_SUBJECT,
+        email_body:            cfg.email_body||DEFAULT_BODY,
+        // [CHANGE 2] Send new-app templates to backend
+        new_app_email_subject: cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT,
+        new_app_email_body:    cfg.new_app_email_body||DEFAULT_NEW_APP_BODY,
       })
     });
     const d = await r.json();
