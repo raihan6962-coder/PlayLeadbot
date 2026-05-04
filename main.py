@@ -52,6 +52,25 @@ def sheet_post(payload: dict):
         push_log(f"  Sheet error: {e}")
 
 def sheet_append_lead(lead: dict):
+    # ── [CHANGE 1] Duplicate Filter ───────────────────────────────────────────
+    # Ask the Apps Script to check whether this app_id already exists in the
+    # "All Leads" tab BEFORE inserting.  If the script returns {"exists": true}
+    # we skip the insert so the same lead is never stored twice.
+    check_url = get_cfg("APPS_SCRIPT_WEB_URL")
+    if check_url:
+        try:
+            resp = requests.post(
+                check_url,
+                json={"action": "check_duplicate", "tab": "All Leads", "app_id": lead["app_id"]},
+                timeout=10,
+            )
+            result = resp.json() if resp.text else {}
+            if result.get("exists"):
+                push_log(f"  ⚠️  Duplicate skipped (All Leads): {lead['app_id']}")
+                return  # Lead already in sheet — do NOT insert again
+        except Exception as e:
+            push_log(f"  Duplicate-check error (All Leads): {e}")
+    # ── End duplicate filter ──────────────────────────────────────────────────
     sheet_post({"action": "append", "tab": "All Leads", "row": {
         "App Name": lead["app_name"], "Developer": lead["developer"],
         "Email": lead["email"], "Category": lead["category"],
@@ -62,6 +81,23 @@ def sheet_append_lead(lead: dict):
     }})
 
 def sheet_append_qualified(lead: dict):
+    # ── [CHANGE 1] Duplicate Filter ───────────────────────────────────────────
+    # Same guard as above but for the "Qualified Leads" tab.
+    check_url = get_cfg("APPS_SCRIPT_WEB_URL")
+    if check_url:
+        try:
+            resp = requests.post(
+                check_url,
+                json={"action": "check_duplicate", "tab": "Qualified Leads", "app_id": lead["app_id"]},
+                timeout=10,
+            )
+            result = resp.json() if resp.text else {}
+            if result.get("exists"):
+                push_log(f"  ⚠️  Duplicate skipped (Qualified Leads): {lead['app_id']}")
+                return  # Lead already in sheet — do NOT insert again
+        except Exception as e:
+            push_log(f"  Duplicate-check error (Qualified Leads): {e}")
+    # ── End duplicate filter ──────────────────────────────────────────────────
     sheet_post({"action": "append", "tab": "Qualified Leads", "row": {
         "App Name": lead["app_name"], "Developer": lead["developer"],
         "Email": lead["email"], "Category": lead["category"],
@@ -115,8 +151,33 @@ def ai_gen_keywords(original: str, used: list) -> list:
         return []
 
 # ── AI email generation per lead ──────────────────────────────────────────────
-def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, str]:
-    """Generate a personalized email keeping the template structure intact."""
+# [CHANGE 2] The function now accepts optional new-app template parameters.
+# When new_app_subject / new_app_body are provided (from run_automation),
+# is_new_app() decides which pair to use.  If the extra params are absent the
+# function behaves exactly as before — full backward compatibility.
+def ai_gen_email(
+    lead: dict,
+    base_subject: str,
+    base_body: str,
+    new_app_subject: str = "",   # [CHANGE 2] new-app subject template
+    new_app_body: str    = "",   # [CHANGE 2] new-app body template
+) -> tuple[str, str]:
+    """Generate a personalized email keeping the template structure intact.
+
+    Template selection (CHANGE 2 + CHANGE 3):
+      • If new_app_subject/body are supplied AND is_new_app(lead) returns True
+        → use the new-app template pair.
+      • Otherwise → use the original (old-app) base_subject/base_body pair.
+    """
+    # ── [CHANGE 2 + 3] Auto-select template ──────────────────────────────────
+    if new_app_subject and new_app_body and is_new_app(lead):
+        push_log(f"  📧 Using NEW APP template for {lead.get('app_name','')}")
+        base_subject = new_app_subject
+        base_body    = new_app_body
+    else:
+        push_log(f"  📧 Using OLD APP template for {lead.get('app_name','')}")
+    # ── End template selection ────────────────────────────────────────────────
+
     key = get_cfg("GROQ_API_KEY")
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
     sender_company = get_cfg("SENDER_COMPANY", "Your Company")
@@ -193,6 +254,56 @@ Best regards,
 
 App: {{url}}"""
 
+# ── [CHANGE 2] NEW APP email template ─────────────────────────────────────────
+# Used when the lead has NO ratings AND NO reviews (truly brand-new app).
+# Edit these two strings to customise the "new app" outreach message.
+# ─────────────────────────────────────────────────────────────────────────────
+DEFAULT_NEW_APP_SUBJECT = "Congrats on launching {{app_name}} 🚀"
+DEFAULT_NEW_APP_BODY = """Hi {{developer}} team,
+
+I just discovered {{app_name}} on Google Play — looks like you've recently launched and are still building your first audience. Exciting stage!
+
+I help new app developers like you get their first wave of real, organic reviews and ratings so they can gain trust quickly and climb the Play Store rankings.
+
+Would you be interested in a quick chat to see if I can help {{app_name}} get off the ground faster?
+
+Best regards,
+{{sender_name}}
+{{sender_company}}
+
+App: {{url}}"""
+# ── End new-app template ───────────────────────────────────────────────────────
+
+# ── [CHANGE 3] is_new_app classifier ─────────────────────────────────────────
+# Determines whether a lead should receive the "new app" or the "old app" email
+# template.
+#
+# FIX applied here:
+#   Previously, any app with score=None was treated as "new" — even apps with
+#   10K+ downloads, which are clearly NOT brand-new.  We now also require
+#   installs to be below the NEW_APP_MAX_INSTALLS threshold before calling an
+#   app "new".  This prevents established high-download apps with missing
+#   ratings from being mis-classified.
+#
+NEW_APP_MAX_INSTALLS = 1_000   # apps with ≥ 1 000 installs are NOT "new apps"
+                                # even if their score/reviews are absent.
+                                # Adjust this constant to tune the boundary.
+
+def is_new_app(lead: dict) -> bool:
+    """Return True only when the app genuinely looks brand-new:
+       - no Play Store rating (score is None / 0), AND
+       - no meaningful download traction (installs < NEW_APP_MAX_INSTALLS).
+    An app with 10K+ downloads must have SOME user base, so it is treated as
+    an 'old' app regardless of whether its score field is populated."""
+    score    = lead.get("score")
+    installs = lead.get("installs") or 0
+    has_rating = score is not None and score > 0
+    # [CHANGE 3] High download count → definitely NOT a new app, even if no rating
+    if installs >= NEW_APP_MAX_INSTALLS:
+        return False
+    return not has_rating   # new only when: low installs AND no rating
+# ── End classifier ────────────────────────────────────────────────────────────
+
 def fill_template(tpl: str, lead: dict) -> str:
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
     sender_company = get_cfg("SENDER_COMPANY", "Your Company")
@@ -230,6 +341,11 @@ def passes_filter(installs: int, score, hunter: dict) -> bool:
             return False
         return True
     # Normal mode: <=10 000 installs, rating absent OR <=3.5
+    # [CHANGE 3] NOTE: Even when score is None (no rating), apps with
+    # installs > 10 000 are already rejected here, so they cannot be
+    # mis-classified as "new apps" by is_new_app() later.
+    # is_new_app() adds a SECOND, stricter install check (NEW_APP_MAX_INSTALLS)
+    # to make the new-vs-old email classification even more accurate.
     if installs > 10_000:
         return False
     if score is not None and score > 3.5:
@@ -341,6 +457,11 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
 
     base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
     base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
+    # [CHANGE 2] Load new-app template from config (falls back to built-in defaults).
+    # Set NEW_APP_EMAIL_SUBJECT and NEW_APP_EMAIL_BODY env vars (or pass via API)
+    # to override these defaults without changing the code.
+    new_app_subject = get_cfg("NEW_APP_EMAIL_SUBJECT") or DEFAULT_NEW_APP_SUBJECT
+    new_app_body    = get_cfg("NEW_APP_EMAIL_BODY")    or DEFAULT_NEW_APP_BODY
 
     all_leads = []
     kws_used  = [initial_kw]
@@ -387,7 +508,8 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
             break
 
         push_log(f"  🤖 AI writing email for {lead['app_name']} …")
-        subject, body = ai_gen_email(lead, base_subject, base_body)
+        # [CHANGE 2] Pass both template pairs; ai_gen_email uses is_new_app() to pick the right one
+        subject, body = ai_gen_email(lead, base_subject, base_body, new_app_subject, new_app_body)
 
         ok = send_email(lead, subject, body)
         lead["email_sent"] = ok
@@ -420,13 +542,17 @@ def run_send_pending(leads: list):
     push_log(f"📬 Sending pending: {len(leads)} leads")
     base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
     base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
+    # [CHANGE 2] Also load new-app templates for the pending-send flow
+    new_app_subject = get_cfg("NEW_APP_EMAIL_SUBJECT") or DEFAULT_NEW_APP_SUBJECT
+    new_app_body    = get_cfg("NEW_APP_EMAIL_BODY")    or DEFAULT_NEW_APP_BODY
     sent = 0
     for i, lead in enumerate(leads):
         if stop_event.is_set():
             push_log("🛑 Stopped.")
             break
         push_log(f"  🤖 AI writing email for {lead.get('app_name','')} …")
-        subject, body = ai_gen_email(lead, base_subject, base_body)
+        # [CHANGE 2] Pass both template pairs; ai_gen_email selects the right one
+        subject, body = ai_gen_email(lead, base_subject, base_body, new_app_subject, new_app_body)
         ok = send_email(lead, subject, body)
         if ok:
             sent += 1
@@ -459,13 +585,16 @@ def api_start():
             return jsonify({"error": "Already running"}), 409
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
-        "APPS_SCRIPT_WEB_URL": data.get("sheet_url")        or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
-        "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
-        "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
+        "GROQ_API_KEY":           data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
+        "APPS_SCRIPT_WEB_URL":    data.get("sheet_url")             or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "EMAIL_SCRIPT_URL":       data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":            data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":         data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":          data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":             data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
+        # [CHANGE 2] new-app template — sent from dashboard or set as env vars
+        "NEW_APP_EMAIL_SUBJECT":  data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
+        "NEW_APP_EMAIL_BODY":     data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
     }
     target = int(data.get("target") or os.environ.get("TARGET_LEADS", 300))
     hunter = data.get("hunter") or {}
@@ -515,13 +644,16 @@ def api_send_pending():
         return jsonify({"error": "No leads provided"}), 400
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
-        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
-        "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
-        "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
-        "APPS_SCRIPT_WEB_URL": data.get("sheet_url")        or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "GROQ_API_KEY":           data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
+        "EMAIL_SCRIPT_URL":       data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":            data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":         data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":          data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":             data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
+        "APPS_SCRIPT_WEB_URL":    data.get("sheet_url")             or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        # [CHANGE 2] new-app template
+        "NEW_APP_EMAIL_SUBJECT":  data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
+        "NEW_APP_EMAIL_BODY":     data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
     }
     threading.Thread(target=run_send_pending, args=(leads,), daemon=True).start()
     return jsonify({"ok": True, "count": len(leads)})
