@@ -22,7 +22,8 @@ state = {
 }
 
 # ── Global duplicate tracker — persists across runs until clear ───────────────
-global_seen_ids: set = set()
+# app_id এবং email lowercase — দুটোই এখানে track হয়
+global_seen_ids:    set = set()
 global_seen_emails: set = set()
 
 run_cfg = {}
@@ -84,71 +85,69 @@ def sheet_log_keyword(keyword: str, count: int):
         "Logged At": time.strftime("%Y-%m-%d %H:%M:%S"),
     }})
 
-# ── [FIX 1] Pre-run sheet loader ──────────────────────────────────────────────
-# Fetches every App ID and Email already stored in the "All Leads" tab and
-# loads them into global_seen_ids / global_seen_emails BEFORE scraping starts.
-#
-# FIX: The original version only tried POST. Many Apps Script deployments only
-# handle doGet(), so a POST silently fails and returns an empty/error response,
-# causing the pre-load to return empty sets — making the duplicate guard useless.
-#
-# This version:
-#   1. Tries POST with JSON body first (works if Apps Script has doPost).
-#   2. If POST returns empty sets, falls back to GET with ?action=get_all_ids
-#      (works if Apps Script only has doGet).
-#   3. Logs the raw response so you can see exactly what the sheet is returning.
-# ─────────────────────────────────────────────────────────────────────────────
-def load_sheet_existing_ids_and_emails() -> tuple[set, set]:
-    """One-shot fetch of all App IDs and Emails already in the sheet.
-
-    Returns (seen_ids, seen_emails). Falls back to empty sets on any failure
-    so scraping proceeds normally (fail-open). Tries POST then GET.
+# ── Sheet-based duplicate loader ──────────────────────────────────────────────
+def load_sheet_duplicates():
     """
+    প্রতিটা automation run শুরুর আগে একবার call হয়।
+    Sheet এর 'All Leads' tab থেকে সব existing App ID + Email
+    global_seen_ids / global_seen_emails এ load করে।
+
+    এরপর scrape_keyword() এ কোনো নতুন app এই দুই set এর বিরুদ্ধে
+    check হয় — match হলে সেটা duplicate হিসেবে skip হয়।
+
+    IMPORTANT:
+      - App ID: exact match (case-sensitive, Play Store format)
+      - Email: lowercase করে store ও compare — case mismatch এ duplicate miss হতো
+      - Sheet এ App ID নেই এমন row email দিয়েও catch হবে
+    """
+    global global_seen_ids, global_seen_emails
     url = get_cfg("APPS_SCRIPT_WEB_URL")
     if not url:
-        push_log("⚠️  Sheet pre-load skipped: APPS_SCRIPT_WEB_URL not set.")
-        return set(), set()
+        push_log("  ⚠ No sheet URL configured — duplicate check is in-memory only.")
+        return
 
-    def _parse(resp) -> tuple[set, set]:
-        """Parse a requests.Response into (seen_ids, seen_emails)."""
-        push_log(f"  Sheet pre-load raw response [{resp.status_code}]: {resp.text[:400]}")
-        try:
-            data = resp.json() if resp.text.strip() else {}
-        except Exception:
-            data = {}
-        raw_ids    = data.get("app_ids") or []
-        raw_emails = data.get("emails")  or []
-        seen_ids    = {str(i).strip()         for i in raw_ids    if i}
-        seen_emails = {str(e).strip().lower() for e in raw_emails if e}
-        return seen_ids, seen_emails
-
-    # ── Attempt 1: POST with JSON body ────────────────────────────────────────
+    push_log("  📋 Loading sheet leads for duplicate prevention...")
     try:
-        resp = requests.post(url, json={"action": "get_all_ids"}, timeout=30)
-        seen_ids, seen_emails = _parse(resp)
-        if seen_ids or seen_emails:
-            push_log(
-                f"📋 Sheet pre-load (POST): {len(seen_ids)} app IDs, "
-                f"{len(seen_emails)} emails loaded into memory."
-            )
-            return seen_ids, seen_emails
-        push_log("  POST returned empty sets — trying GET fallback …")
-    except Exception as e:
-        push_log(f"  POST attempt failed: {e} — trying GET fallback …")
+        r = requests.post(url, json={"action": "get_all_leads"}, timeout=35)
+        if not r.text:
+            push_log("  ⚠ Sheet returned empty response — skipping dedup load.")
+            return
+        result = r.json()
+        leads  = result.get("leads", [])
+        if not leads:
+            push_log("  Sheet has 0 existing leads — starting fresh.")
+            return
 
-    # ── Attempt 2: GET with query string ──────────────────────────────────────
-    try:
-        resp = requests.get(url, params={"action": "get_all_ids"}, timeout=30)
-        seen_ids, seen_emails = _parse(resp)
+        added_ids    = 0
+        added_emails = 0
+        for lead in leads:
+            # App ID — try both key formats (sheet returns app_id or App ID)
+            aid = (
+                lead.get("app_id") or
+                lead.get("App ID") or ""
+            ).strip()
+
+            # Email — always lowercase for consistent comparison
+            em = (
+                lead.get("email") or
+                lead.get("Email") or ""
+            ).strip().lower()
+
+            if aid and aid not in global_seen_ids:
+                global_seen_ids.add(aid)
+                added_ids += 1
+
+            if em and em not in global_seen_emails:
+                global_seen_emails.add(em)
+                added_emails += 1
+
         push_log(
-            f"📋 Sheet pre-load (GET): {len(seen_ids)} app IDs, "
-            f"{len(seen_emails)} emails loaded into memory."
+            f"  ✅ Sheet dedup loaded: {added_ids} app IDs + "
+            f"{added_emails} emails blocked from re-scraping."
         )
-        return seen_ids, seen_emails
+
     except Exception as e:
-        push_log(f"⚠️  Sheet pre-load GET also failed: {e}. Proceeding without pre-load.")
-        return set(), set()
-# ── End pre-run sheet loader ──────────────────────────────────────────────────
+        push_log(f"  ❌ Sheet dedup load failed: {e} — in-memory dedup only.")
 
 # ── AI keyword generation ─────────────────────────────────────────────────────
 def ai_gen_keywords(original: str, used: list) -> list:
@@ -180,40 +179,115 @@ def ai_gen_keywords(original: str, used: list) -> list:
         push_log(f"AI keyword error: {e}")
         return []
 
-# ── AI email generation per lead ──────────────────────────────────────────────
-def ai_gen_email(
-    lead: dict,
-    base_subject: str,
-    base_body: str,
-    new_app_subject: str = "",
-    new_app_body: str    = "",
-) -> tuple[str, str]:
-    if new_app_subject and new_app_body and is_new_app(lead):
-        push_log(f"  📧 Using NEW APP template for {lead.get('app_name','')}")
-        base_subject = new_app_subject
-        base_body    = new_app_body
-    else:
-        push_log(f"  📧 Using OLD APP template for {lead.get('app_name','')}")
+# ── Dual template defaults ────────────────────────────────────────────────────
+DEFAULT_NEW_APP_SUBJECT = "Quick question about {{app_name}}"
+DEFAULT_NEW_APP_BODY = """Hi {{developer}} team,
 
-    key = get_cfg("GROQ_API_KEY")
+I came across {{app_name}} on Google Play — a {{category}} app that's still in its early growth phase with {{installs}} installs.
+
+As a new app, building a strong reputation from day one is critical. I run a Play Store growth service that helps developers like you boost visibility, gather early positive reviews, and establish credibility before the competition catches on.
+
+Would you be open to a quick 15-minute chat this week?
+
+Best regards,
+{{sender_name}}
+{{sender_company}}
+
+App: {{url}}"""
+
+DEFAULT_OLD_APP_SUBJECT = "Noticed {{app_name}}'s {{score}}★ rating — quick idea"
+DEFAULT_OLD_APP_BODY = """Hi {{developer}} team,
+
+I came across {{app_name}} on Google Play and noticed it currently holds a {{score}}★ rating in the {{category}} category with {{installs}} installs.
+
+A rating in this range often means there are fixable issues hurting your reputation. I run a Play Store review recovery service that helps developers like you quickly clean up rating problems, respond to bad reviews professionally, and turn things around before it impacts downloads.
+
+Would you be open to a quick 15-minute chat this week?
+
+Best regards,
+{{sender_name}}
+{{sender_company}}
+
+App: {{url}}"""
+
+# Legacy alias (backward compat)
+DEFAULT_EMAIL_SUBJECT = DEFAULT_NEW_APP_SUBJECT
+DEFAULT_EMAIL_BODY    = DEFAULT_NEW_APP_BODY
+
+# ── Template helpers ──────────────────────────────────────────────────────────
+def format_score(score) -> str:
+    """Return formatted score string, or empty string if no valid score."""
+    if score is None or score == "" or score == 0:
+        return ""
+    try:
+        val = float(score)
+        return f"{val:.1f}" if val > 0 else ""
+    except:
+        return ""
+
+def select_template(lead: dict) -> tuple[str, str]:
+    """
+    Lead এর score দেখে সঠিক template বেছে দেয়।
+    Score আছে (> 0)  → OLD APP template (struggling/rated app)
+    Score নেই / 0    → NEW APP template (brand new, no reviews)
+    """
+    has_rating = bool(format_score(lead.get("score")))
+    if has_rating:
+        subject = get_cfg("OLD_APP_EMAIL_SUBJECT") or DEFAULT_OLD_APP_SUBJECT
+        body    = get_cfg("OLD_APP_EMAIL_BODY")    or DEFAULT_OLD_APP_BODY
+    else:
+        subject = get_cfg("NEW_APP_EMAIL_SUBJECT") or DEFAULT_NEW_APP_SUBJECT
+        body    = get_cfg("NEW_APP_EMAIL_BODY")    or DEFAULT_NEW_APP_BODY
+    return subject, body
+
+def fill_template(tpl: str, lead: dict) -> str:
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
     sender_company = get_cfg("SENDER_COMPANY", "Your Company")
+    score_str      = format_score(lead.get("score")) or "N/A"
+    try:
+        installs_str = f"{int(lead.get('installs', 0)):,}"
+    except:
+        installs_str = str(lead.get("installs", ""))
+    filled = (tpl
+        .replace("{{app_name}}",       lead.get("app_name", ""))
+        .replace("{{developer}}",      lead.get("developer", ""))
+        .replace("{{category}}",       lead.get("category", ""))
+        .replace("{{installs}}",       installs_str)
+        .replace("{{score}}",          score_str)
+        .replace("{{url}}",            lead.get("url", ""))
+        .replace("{{sender_name}}",    sender_name)
+        .replace("{{sender_company}}", sender_company)
+    )
+    # Remove any leftover placeholders
+    return re.sub(r"\{\{[a-zA-Z_]+\}\}", "", filled)
+
+# ── AI email generation (dual-template aware) ─────────────────────────────────
+def ai_gen_email(lead: dict, base_subject: str = "", base_body: str = "") -> tuple[str, str]:
+    """
+    Dual-mode: automatically picks NEW APP or OLD APP template based on score.
+    base_subject / base_body params are ignored — template is chosen by select_template().
+    Falls back to plain fill_template() if no Groq key or AI fails.
+    """
+    tpl_subject, tpl_body = select_template(lead)
+    key = get_cfg("GROQ_API_KEY")
 
     if not key:
-        subject = fill_template(base_subject, lead)
-        body    = fill_template(base_body, lead)
-        return subject, body
+        return fill_template(tpl_subject, lead), fill_template(tpl_body, lead)
 
-    client = Groq(api_key=key)
-    score_info   = f"{lead['score']:.1f} stars" if lead.get("score") else "no ratings yet (brand new)"
+    client       = Groq(api_key=key)
+    score_fmt    = format_score(lead.get("score"))
+    score_info   = f"{score_fmt} stars" if score_fmt else "no ratings yet (brand new)"
     install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
+    ttype        = "OLD APP (has rating)" if score_fmt else "NEW APP (no rating)"
 
     prompt = f"""You are a cold email personalizer. Your only job is to fill in the base template with the real app details — keeping the structure and wording almost identical.
 
+TEMPLATE TYPE: {ttype}
+
 BASE TEMPLATE (follow this EXACTLY):
-Subject: {base_subject}
+Subject: {tpl_subject}
 Body:
-{base_body}
+{tpl_body}
 
 APP DETAILS:
 - App Name: {lead.get('app_name', '')}
@@ -224,90 +298,36 @@ APP DETAILS:
 - Play Store URL: {lead.get('url', '')}
 
 SENDER:
-- Name: {sender_name}
-- Company: {sender_company}
+- Name: {get_cfg("SENDER_NAME", "Your Name")}
+- Company: {get_cfg("SENDER_COMPANY", "Your Company")}
 
 STRICT RULES:
 1. Copy the template EXACTLY — same structure, same sentences, same flow
-2. Only replace placeholder values (app name, developer name, installs, rating, url) with the real app details above
-3. You may change at most 2-3 words in the entire body to naturally fit this specific app — nothing more
-4. Do NOT rewrite sentences, do NOT add new sentences, do NOT remove any sentences
+2. Only replace placeholder values with real app details above
+3. You may change at most 2-3 words in the entire body to naturally fit this specific app
+4. Do NOT rewrite, add, or remove any sentences
 5. Do NOT change the greeting format, CTA, or sign-off
-6. CRITICAL: Preserve every line break and blank line from the template exactly as-is. Each paragraph must stay as a separate paragraph. Use \\n for newlines inside the JSON string.
-7. Return ONLY valid JSON: {{"subject": "...", "body": "..."}}
-No markdown, no explanation, just the JSON object."""
+6. NEVER leave any {{{{variable}}}} placeholder in the output — replace them all
+7. Preserve every line break and blank line from the template exactly
+8. Return ONLY valid JSON: {{"subject":"...","body":"..."}} — no markdown, no explanation"""
 
     try:
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=500
+            temperature=0.3, max_tokens=600
         )
-        raw = resp.choices[0].message.content.strip()
-        raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
+        raw  = re.sub(r"```[a-z]*", "", resp.choices[0].message.content.strip())
+        raw  = raw.replace("```", "").strip()
         data = json.loads(raw)
-        subject = data.get("subject") or fill_template(base_subject, lead)
-        body    = data.get("body")    or fill_template(base_body, lead)
-        body = body.replace("\\n", "\n")
+        subject = re.sub(r"\{\{[a-zA-Z_]+\}\}", "",
+                         data.get("subject") or fill_template(tpl_subject, lead))
+        body    = re.sub(r"\{\{[a-zA-Z_]+\}\}", "",
+                         (data.get("body") or fill_template(tpl_body, lead)).replace("\\n", "\n"))
         return subject, body
     except Exception as e:
         push_log(f"  AI email error (using template fallback): {e}")
-        return fill_template(base_subject, lead), fill_template(base_body, lead)
-
-# ── Template fill ─────────────────────────────────────────────────────────────
-DEFAULT_EMAIL_SUBJECT = "Quick question about {{app_name}}"
-DEFAULT_EMAIL_BODY = """Hi {{developer}} team,
-
-I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
-
-I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
-
-Would you be open to a quick 15-minute chat this week?
-
-Best regards,
-{{sender_name}}
-{{sender_company}}
-
-App: {{url}}"""
-
-DEFAULT_NEW_APP_SUBJECT = "Congrats on launching {{app_name}} 🚀"
-DEFAULT_NEW_APP_BODY = """Hi {{developer}} team,
-
-I just discovered {{app_name}} on Google Play — looks like you've recently launched and are still building your first audience. Exciting stage!
-
-I help new app developers like you get their first wave of real, organic reviews and ratings so they can gain trust quickly and climb the Play Store rankings.
-
-Would you be interested in a quick chat to see if I can help {{app_name}} get off the ground faster?
-
-Best regards,
-{{sender_name}}
-{{sender_company}}
-
-App: {{url}}"""
-
-NEW_APP_MAX_INSTALLS = 1_000
-
-def is_new_app(lead: dict) -> bool:
-    score    = lead.get("score")
-    installs = lead.get("installs") or 0
-    has_rating = score is not None and score > 0
-    if installs >= NEW_APP_MAX_INSTALLS:
-        return False
-    return not has_rating
-
-def fill_template(tpl: str, lead: dict) -> str:
-    sender_name    = get_cfg("SENDER_NAME", "Your Name")
-    sender_company = get_cfg("SENDER_COMPANY", "Your Company")
-    return (tpl
-        .replace("{{app_name}}",       lead.get("app_name", ""))
-        .replace("{{developer}}",      lead.get("developer", ""))
-        .replace("{{category}}",       lead.get("category", ""))
-        .replace("{{installs}}",       str(lead.get("installs", "")))
-        .replace("{{score}}",          str(lead.get("score", "") or "N/A"))
-        .replace("{{url}}",            lead.get("url", ""))
-        .replace("{{sender_name}}",    sender_name)
-        .replace("{{sender_company}}", sender_company)
-    )
+        return fill_template(tpl_subject, lead), fill_template(tpl_body, lead)
 
 # ── Play Store scraper ────────────────────────────────────────────────────────
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
@@ -316,53 +336,83 @@ SEARCH_COMBOS = [
     ("en", "us"), ("en", "gb"), ("en", "in"), ("en", "au"), ("en", "ca"),
 ]
 
-RATING_FETCH_COUNTRIES = ["us", "gb", "in", "au", "ca"]
-
-def fetch_app_details_with_rating(app_id: str) -> dict:
-    first_result = None
-    for country in RATING_FETCH_COUNTRIES:
-        try:
-            details = gp_app(app_id, lang="en", country=country)
-        except Exception:
-            continue
-
-        if first_result is None:
-            first_result = details
-
-        score = details.get("score")
-        if score and score > 0:
-            if country != RATING_FETCH_COUNTRIES[0]:
-                log.info(
-                    f"  🌍 Rating resolved via country='{country}' "
-                    f"for {app_id}: {score:.1f}★"
-                )
-            return details
-
-    return first_result or {}
-
 def extract_email(text):
     if not text:
         return ""
     m = EMAIL_RE.search(str(text))
     return m.group(0) if m else ""
 
-def passes_filter(installs: int, score, hunter: dict) -> bool:
-    if hunter and hunter.get("active"):
-        max_inst  = int(hunter.get("max_installs") or 5000)
-        max_score = float(hunter.get("max_score") or 2.5)
-        if installs > max_inst:
+def passes_filter(installs: int, score, ratings_count: int, hunter: dict) -> bool:
+    """
+    ─────────────────────────────────────────────────────────────
+    NORMAL MODE  (hunter inactive)
+      Target: Brand-new apps with ZERO rating and ZERO reviews.
+      ✅ score must be None OR exactly 0  (no published rating)
+      ✅ ratings_count must be 0          (no reviews at all)
+      ✅ installs: 500 – 5,000
+      ❌ Any published rating → reject
+      ❌ Any review → reject (confirms app is not brand-new)
+
+    HUNTER MODE  (hunter active)
+      Target: Struggling apps with a LOW published rating.
+      ✅ score must be > 0                (has a real published rating)
+      ✅ score ≤ max_score                (rating is low)
+      ✅ ratings_count ≥ 1               (confirms rating is real)
+      ✅ installs: 50 – max_installs
+      ❌ No rating → reject (those go to normal mode)
+    ─────────────────────────────────────────────────────────────
+    The two modes never overlap:
+      Unrated apps  → normal mode only
+      Rated apps    → hunter mode only
+    """
+    is_hunter = bool(hunter and hunter.get("active"))
+
+    if is_hunter:
+        # ── HUNTER: must have a real, low rating ──────────────────────────────
+        if score is None:
+            return False                        # no rating → normal mode territory
+        try:
+            s = float(score)
+        except (TypeError, ValueError):
             return False
-        if score is not None and score > max_score:
+        if s <= 0:
+            return False                        # treat 0 as unrated
+        if int(ratings_count or 0) < 1:
+            return False                        # rating with 0 reviews is bogus
+
+        max_inst  = int(hunter.get("max_installs") or 5000)
+        max_score = float(hunter.get("max_score")  or 2.5)
+        if s > max_score:
+            return False                        # rating too high — not struggling
+        inst = int(installs or 0)
+        if inst < 50 or inst > max_inst:
             return False
         return True
-    if installs > 10_000:
-        return False
-    if score is not None and score > 3.5:
-        return False
-    return True
+
+    else:
+        # ── NORMAL: must have NO rating and NO reviews ─────────────────────────
+        if score is not None:
+            try:
+                if float(score) > 0:
+                    return False                # has a real rating → hunter mode
+            except (TypeError, ValueError):
+                pass
+        if int(ratings_count or 0) > 0:
+            return False                        # has reviews → not brand-new
+        inst = int(installs or 0)
+        if inst < 500 or inst > 5_000:
+            return False
+        return True
 
 def scrape_keyword(keyword: str, hunter: dict = None) -> list:
-    """Scrape across multiple country combos; deduplicate globally."""
+    """
+    একটা keyword এ সব SEARCH_COMBOS country তে search করে leads collect করে।
+
+    Duplicate prevention (3 layer):
+      1. global_seen_ids   — এই run + sheet এর সব existing app IDs
+      2. global_seen_emails — এই run + sheet এর সব existing emails (lowercase)
+      3. passes_filter()   — mode-specific install/rating/review filter
+    """
     global global_seen_ids, global_seen_emails
     push_log(f"🔍 Scraping: '{keyword}'")
     leads = []
@@ -379,38 +429,59 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
         for item in results:
             if stop_event.is_set():
                 break
-            app_id = item.get("appId", "")
-            if not app_id or app_id in global_seen_ids:
+
+            app_id = (item.get("appId") or "").strip()
+            if not app_id:
                 continue
+
+            # ── Layer 1: App ID duplicate check (before fetching detail) ──────
+            if app_id in global_seen_ids:
+                continue
+
+            # ── Fetch full detail ─────────────────────────────────────────────
             try:
-                details = fetch_app_details_with_rating(app_id)
-                if not details:
-                    raise ValueError("empty details")
+                details = gp_app(app_id, lang="en", country="us")
             except Exception:
+                # Can't fetch → mark seen so we don't retry this run
                 global_seen_ids.add(app_id)
                 continue
 
-            installs = details.get("minInstalls") or 0
-            score    = details.get("score")
+            installs      = int(details.get("minInstalls") or 0)
+            score         = details.get("score")           # float | None
+            ratings_count = int(details.get("ratings") or 0)
 
-            if not passes_filter(installs, score, hunter):
+            # ── Layer 2: Mode filter (normal vs hunter) ───────────────────────
+            if not passes_filter(installs, score, ratings_count, hunter):
+                # Mark seen so same app isn't rechecked in this run
                 global_seen_ids.add(app_id)
                 continue
 
+            # ── Email extraction ──────────────────────────────────────────────
             email = (
                 extract_email(details.get("developerEmail", ""))
                 or extract_email(details.get("privacyPolicy", ""))
                 or extract_email(details.get("description", ""))
                 or extract_email(details.get("recentChanges", ""))
             )
-            if not email or email in global_seen_emails:
+            if not email:
                 global_seen_ids.add(app_id)
                 continue
+
+            email_lc = email.strip().lower()
+
+            # ── Layer 3: Email duplicate check ────────────────────────────────
+            if email_lc in global_seen_emails:
+                global_seen_ids.add(app_id)
+                continue
+
+            # ── All checks passed → qualified lead ────────────────────────────
+            global_seen_ids.add(app_id)
+            global_seen_emails.add(email_lc)
 
             lead = {
                 "app_id":      app_id,
                 "app_name":    details.get("title", ""),
-                "developer":   details.get("developer", ""),
+                "developer":   (details.get("developer") or "").strip(),
                 "email":       email,
                 "category":    details.get("genre", ""),
                 "installs":    installs,
@@ -423,16 +494,19 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                 "email_sent":  False,
             }
             leads.append(lead)
-            global_seen_ids.add(app_id)
-            global_seen_emails.add(email)
-            score_str = f"{score:.1f}★" if score else "new"
-            push_log(f"  ✅ {lead['app_name']} | {installs:,} installs | {score_str} | {email}")
+
+            mode_tag  = "HUNTER" if (hunter and hunter.get("active")) else "NORMAL"
+            score_str = f"{score:.1f}★" if score else "no-rating"
+            push_log(
+                f"  ✅ [{mode_tag}] {lead['app_name']} "
+                f"| {installs:,} inst | {score_str} "
+                f"| {ratings_count} reviews | {email}"
+            )
             time.sleep(0.25)
 
         push_log(f"  [{country}] done. Leads so far: {len(leads)}")
         time.sleep(0.5)
 
-    leads.sort(key=lambda l: (l["score"] is None or l["score"] == 0, 0))
     push_log(f"  📦 {len(leads)} new leads from '{keyword}'")
     sheet_log_keyword(keyword, len(leads))
     return leads
@@ -459,64 +533,6 @@ def send_email(lead: dict, subject: str, body: str) -> bool:
         push_log(f"  ❌ Email error: {e}")
         return False
 
-# ── [FIX 2] Sheet leads loader for /api/status ────────────────────────────────
-# The dashboard was showing 0 leads because state["leads"] only contains leads
-# found in the CURRENT run. Leads from previous runs exist only in the sheet.
-# This helper fetches all leads from the sheet so the dashboard can display them
-# even when the automation is idle (phase="idle" or phase="done").
-# Called by api_status() when state["leads"] is empty and automation is not running.
-# ─────────────────────────────────────────────────────────────────────────────
-def fetch_leads_from_sheet() -> list:
-    """Fetch all leads from the sheet's 'All Leads' tab for display.
-
-    Returns a list of lead dicts, or [] on any failure.
-    Apps Script must handle action="get_all_leads" and return:
-      { "leads": [ { "App ID": ..., "App Name": ..., "Email": ..., ... }, ... ] }
-
-    Tries POST then GET (same fallback logic as load_sheet_existing_ids_and_emails).
-    """
-    url = get_cfg("APPS_SCRIPT_WEB_URL")
-    if not url:
-        return []
-
-    def _do_request(method: str) -> list:
-        if method == "POST":
-            resp = requests.post(url, json={"action": "get_all_leads"}, timeout=30)
-        else:
-            resp = requests.get(url, params={"action": "get_all_leads"}, timeout=30)
-        data = resp.json() if resp.text.strip() else {}
-        raw = data.get("leads") or []
-        # Normalise sheet column names → internal lead dict keys
-        leads = []
-        for r in raw:
-            leads.append({
-                "app_id":     r.get("App ID", ""),
-                "app_name":   r.get("App Name", ""),
-                "developer":  r.get("Developer", ""),
-                "email":      r.get("Email", ""),
-                "category":   r.get("Category", ""),
-                "installs":   r.get("Installs", 0),
-                "score":      r.get("Score") or None,
-                "url":        r.get("URL", ""),
-                "keyword":    r.get("Keyword", ""),
-                "scraped_at": r.get("Scraped At", ""),
-                "email_sent": r.get("Email Sent", "No") not in ("No", "", None),
-                "icon":       "",
-                "description": "",
-            })
-        return leads
-
-    for method in ("POST", "GET"):
-        try:
-            leads = _do_request(method)
-            if leads:
-                return leads
-        except Exception as e:
-            push_log(f"  fetch_leads_from_sheet {method} failed: {e}")
-
-    return []
-# ── End sheet leads loader ────────────────────────────────────────────────────
-
 # ── Master automation ─────────────────────────────────────────────────────────
 def run_automation(initial_kw: str, target: int, hunter: dict = None):
     upd(running=True, phase="scraping", keyword=initial_kw,
@@ -525,16 +541,8 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
     mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
     push_log(f"🚀 Started | kw='{initial_kw}' | target={target} | mode={mode}")
 
-    push_log("📋 Pre-loading existing leads from sheet …")
-    sheet_ids, sheet_emails = load_sheet_existing_ids_and_emails()
-    global global_seen_ids, global_seen_emails
-    global_seen_ids    |= sheet_ids
-    global_seen_emails |= sheet_emails
-
-    base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
-    base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
-    new_app_subject = get_cfg("NEW_APP_EMAIL_SUBJECT") or DEFAULT_NEW_APP_SUBJECT
-    new_app_body    = get_cfg("NEW_APP_EMAIL_BODY")    or DEFAULT_NEW_APP_BODY
+    # ── Sheet থেকে existing leads load → duplicate prevention ─────────────────
+    load_sheet_duplicates()
 
     all_leads = []
     kws_used  = [initial_kw]
@@ -580,8 +588,9 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
             push_log("🛑 Stopped during email phase.")
             break
 
-        push_log(f"  🤖 AI writing email for {lead['app_name']} …")
-        subject, body = ai_gen_email(lead, base_subject, base_body, new_app_subject, new_app_body)
+        ttype = "OLD APP" if format_score(lead.get("score")) else "NEW APP"
+        push_log(f"  🤖 AI writing email for {lead['app_name']} [{ttype}] …")
+        subject, body = ai_gen_email(lead)
 
         ok = send_email(lead, subject, body)
         lead["email_sent"] = ok
@@ -612,17 +621,14 @@ def run_send_pending(leads: list):
     upd(running=True, phase="emailing")
     stop_event.clear()
     push_log(f"📬 Sending pending: {len(leads)} leads")
-    base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
-    base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
-    new_app_subject = get_cfg("NEW_APP_EMAIL_SUBJECT") or DEFAULT_NEW_APP_SUBJECT
-    new_app_body    = get_cfg("NEW_APP_EMAIL_BODY")    or DEFAULT_NEW_APP_BODY
     sent = 0
     for i, lead in enumerate(leads):
         if stop_event.is_set():
             push_log("🛑 Stopped.")
             break
-        push_log(f"  🤖 AI writing email for {lead.get('app_name','')} …")
-        subject, body = ai_gen_email(lead, base_subject, base_body, new_app_subject, new_app_body)
+        ttype = "OLD APP" if format_score(lead.get("score")) else "NEW APP"
+        push_log(f"  🤖 AI writing email for {lead.get('app_name','')} [{ttype}] …")
+        subject, body = ai_gen_email(lead)
         ok = send_email(lead, subject, body)
         if ok:
             sent += 1
@@ -655,15 +661,18 @@ def api_start():
             return jsonify({"error": "Already running"}), 409
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":           data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
-        "APPS_SCRIPT_WEB_URL":    data.get("sheet_url")             or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "EMAIL_SCRIPT_URL":       data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":            data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
-        "SENDER_COMPANY":         data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
-        "EMAIL_SUBJECT":          data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":             data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
-        "NEW_APP_EMAIL_SUBJECT":  data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
-        "NEW_APP_EMAIL_BODY":     data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
+        "GROQ_API_KEY":          data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
+        "APPS_SCRIPT_WEB_URL":   data.get("sheet_url")             or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "EMAIL_SCRIPT_URL":      data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":           data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":        data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":         data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":            data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
+        # Dual-template
+        "NEW_APP_EMAIL_SUBJECT": data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
+        "NEW_APP_EMAIL_BODY":    data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
+        "OLD_APP_EMAIL_SUBJECT": data.get("old_app_email_subject") or os.environ.get("OLD_APP_EMAIL_SUBJECT", ""),
+        "OLD_APP_EMAIL_BODY":    data.get("old_app_email_body")    or os.environ.get("OLD_APP_EMAIL_BODY", ""),
     }
     target = int(data.get("target") or os.environ.get("TARGET_LEADS", 300))
     hunter = data.get("hunter") or {}
@@ -676,36 +685,10 @@ def api_stop():
     push_log("🛑 Stop requested.")
     return jsonify({"ok": True})
 
-# ── [FIX 2] /api/status — load sheet leads when idle ─────────────────────────
-# Previously, state["leads"] was always empty when the automation wasn't running
-# (idle/done/stopped), making the dashboard show 0 leads even when the sheet
-# had hundreds of existing entries.
-#
-# Fix: when not running AND state["leads"] is empty, fetch leads from the sheet
-# and populate state["leads"] so the dashboard can display them.
-# The sheet_url is read from the request query param or from the environment.
-# ─────────────────────────────────────────────────────────────────────────────
 @application.route("/api/status")
 def api_status():
     with state_lock:
-        snap = dict(state)
-
-    # If idle and no in-memory leads, try fetching from sheet for display
-    if not snap["running"] and not snap["leads"]:
-        sheet_url = request.args.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
-        if sheet_url:
-            # Temporarily set run_cfg so get_cfg("APPS_SCRIPT_WEB_URL") resolves
-            global run_cfg
-            original_cfg = dict(run_cfg)
-            run_cfg = {**run_cfg, "APPS_SCRIPT_WEB_URL": sheet_url}
-            sheet_leads = fetch_leads_from_sheet()
-            run_cfg = original_cfg
-            if sheet_leads:
-                snap["leads"] = sheet_leads
-                snap["leads_found"] = len(sheet_leads)
-
-    return jsonify(snap)
-# ── End status fix ────────────────────────────────────────────────────────────
+        return jsonify(dict(state))
 
 @application.route("/api/clear", methods=["POST"])
 def api_clear():
@@ -739,15 +722,18 @@ def api_send_pending():
         return jsonify({"error": "No leads provided"}), 400
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":           data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
-        "EMAIL_SCRIPT_URL":       data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":            data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
-        "SENDER_COMPANY":         data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
-        "EMAIL_SUBJECT":          data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":             data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
-        "APPS_SCRIPT_WEB_URL":    data.get("sheet_url")             or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "NEW_APP_EMAIL_SUBJECT":  data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
-        "NEW_APP_EMAIL_BODY":     data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
+        "GROQ_API_KEY":          data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
+        "EMAIL_SCRIPT_URL":      data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":           data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":        data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":         data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":            data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
+        "APPS_SCRIPT_WEB_URL":   data.get("sheet_url")             or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        # Dual-template
+        "NEW_APP_EMAIL_SUBJECT": data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
+        "NEW_APP_EMAIL_BODY":    data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
+        "OLD_APP_EMAIL_SUBJECT": data.get("old_app_email_subject") or os.environ.get("OLD_APP_EMAIL_SUBJECT", ""),
+        "OLD_APP_EMAIL_BODY":    data.get("old_app_email_body")    or os.environ.get("OLD_APP_EMAIL_BODY", ""),
     }
     threading.Thread(target=run_send_pending, args=(leads,), daemon=True).start()
     return jsonify({"ok": True, "count": len(leads)})
@@ -760,33 +746,43 @@ def api_spam_test():
         return jsonify({"error": "test_email required"}), 400
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":     data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
-        "EMAIL_SCRIPT_URL": data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":      data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
-        "SENDER_COMPANY":   data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
-        "EMAIL_SUBJECT":    data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":       data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
+        "GROQ_API_KEY":          data.get("groq_key")              or os.environ.get("GROQ_API_KEY", ""),
+        "EMAIL_SCRIPT_URL":      data.get("email_script_url")      or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":           data.get("sender_name")           or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":        data.get("sender_company")        or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":         data.get("email_subject")         or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":            data.get("email_body")            or os.environ.get("EMAIL_BODY", ""),
+        # Dual-template
+        "NEW_APP_EMAIL_SUBJECT": data.get("new_app_email_subject") or os.environ.get("NEW_APP_EMAIL_SUBJECT", ""),
+        "NEW_APP_EMAIL_BODY":    data.get("new_app_email_body")    or os.environ.get("NEW_APP_EMAIL_BODY", ""),
+        "OLD_APP_EMAIL_SUBJECT": data.get("old_app_email_subject") or os.environ.get("OLD_APP_EMAIL_SUBJECT", ""),
+        "OLD_APP_EMAIL_BODY":    data.get("old_app_email_body")    or os.environ.get("OLD_APP_EMAIL_BODY", ""),
     }
+    raw_score    = data.get("sample_score")
+    sample_score = float(raw_score) if raw_score is not None and raw_score != "" else None
     sample = {
-        "app_name":   data.get("sample_app_name", "MyApp Pro"),
-        "developer":  data.get("sample_developer", "John Dev"),
-        "category":   "Productivity",
-        "installs":   1500,
-        "score":      data.get("sample_score", 2.1),
-        "email":      test_to,
-        "url":        "https://play.google.com/store/apps/details?id=com.example",
+        "app_name":  data.get("sample_app_name", "MyApp Pro"),
+        "developer": data.get("sample_developer", "John Dev"),
+        "category":  "Productivity",
+        "installs":  1500,
+        "score":     sample_score,
+        "email":     test_to,
+        "url":       "https://play.google.com/store/apps/details?id=com.example",
     }
     url = get_cfg("EMAIL_SCRIPT_URL")
     if not url:
         return jsonify({"error": "EMAIL_SCRIPT_URL not set"}), 400
-    base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
-    base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
-    subject, body = ai_gen_email(sample, base_subject, base_body)
+    ttype = "OLD APP" if format_score(sample_score) else "NEW APP"
+    push_log(f"  Spam test: {ttype} template (score={sample_score})")
+    subject, body = ai_gen_email(sample)
     try:
-        r = requests.post(url, json={"to": test_to, "subject": subject, "body": body}, timeout=30)
+        r      = requests.post(url, json={"to": test_to, "subject": subject, "body": body}, timeout=30)
         result = r.json() if r.text else {}
         if result.get("status") == "ok":
-            return jsonify({"ok": True, "msg": f"Test sent to {test_to}", "subject": subject, "body": body})
+            return jsonify({
+                "ok": True, "msg": f"Test sent to {test_to}",
+                "template_type": ttype, "subject": subject, "body": body,
+            })
         return jsonify({"error": result.get("msg", "Failed")}), 500
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -804,6 +800,20 @@ def api_sheet_pending():
         result = r.json() if r.text else {}
         leads = result.get("leads", [])
         return jsonify({"ok": True, "count": len(leads), "leads": leads})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ── Sheet all leads fetch (for DB tab sync) ───────────────────────────────────
+@application.route("/api/sheet_all", methods=["POST"])
+def api_sheet_all():
+    data      = request.get_json(silent=True) or {}
+    sheet_url = data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
+    if not sheet_url:
+        return jsonify({"error": "sheet_url not set"}), 400
+    try:
+        r      = requests.post(sheet_url, json={"action": "get_all_leads"}, timeout=25)
+        result = r.json() if r.text else {}
+        return jsonify({"ok": True, "leads": result.get("leads", [])})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
