@@ -95,19 +95,6 @@ body {
 }
 .btn-send-pending:hover { background: linear-gradient(135deg,#1e180d,#2a2410); border-color: var(--gold); }
 .btn-send-pending:disabled { opacity: .35; cursor: not-allowed; }
-.btn-send-row {
-  background: transparent;
-  border: 1px solid var(--gold);
-  color: var(--gold);
-  border-radius: 5px;
-  font-size: 10px;
-  padding: 3px 8px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .15s, opacity .15s;
-}
-.btn-send-row:hover { background: rgba(212,175,55,.12); }
-.btn-send-row:disabled { opacity: .35; cursor: not-allowed; }
 .pending-badge {
   background: var(--gold); color: #0a0808;
   font-size: 10px; font-weight: 700; font-family: var(--mono);
@@ -546,7 +533,7 @@ tbody tr:hover td { background: #13131c; }
       <div class="card-head">
         Launch Automation
         <span style="margin-left:auto;">
-          <button class="btn-clear" id="btnClear" onclick="clearHistory()" style="font-size:10px;padding:5px 12px;">🗑 Clear Local History</button>
+          <button class="btn-clear" id="btnClear" onclick="clearHistory()" style="font-size:10px;padding:5px 12px;">🗑 Clear All History</button>
         </span>
       </div>
       <div class="runner-row">
@@ -654,7 +641,7 @@ tbody tr:hover td { background: #13131c; }
         <span>All Leads &nbsp;<span id="dbCnt" style="color:var(--gold2);font-family:var(--serif);font-size:18px;letter-spacing:0;font-weight:700">0</span></span>
         <div style="display:flex;gap:8px;align-items:center;">
           <span id="sheetLinkWrap"></span>
-          <button class="btn-ghost" id="btnSyncDb" onclick="syncSheetDatabase()">🔄 Sync with Sheet</button>
+          <button class="btn-clear" onclick="clearHistory()">🗑 Clear History</button>
           <button class="btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
         </div>
       </div>
@@ -663,9 +650,9 @@ tbody tr:hover td { background: #13131c; }
           <thead><tr>
             <th>#</th><th>App Name</th><th>Developer</th><th>Email</th>
             <th>Category</th><th>Installs</th><th>Score</th>
-            <th>Keyword</th><th>Status</th><th>Link</th><th>Action</th>
+            <th>Keyword</th><th>Status</th><th>Link</th>
           </tr></thead>
-          <tbody id="dbBody"><tr><td colspan="11"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr></tbody>
+          <tbody id="dbBody"><tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr></tbody>
         </table>
       </div>
     </div>
@@ -705,23 +692,9 @@ tbody tr:hover td { background: #13131c; }
     <div class="card">
       <div class="card-head">Email Template Preview (sample data)</div>
       <div style="font-size:11px;color:var(--slate2);margin-bottom:12px;">AI will rewrite this uniquely per lead — this is just the base structure:</div>
-
-      <!-- NEW APP preview -->
-      <div style="margin-bottom:14px;">
-        <div style="font-size:10px;font-weight:700;color:#4ade80;margin-bottom:6px;letter-spacing:.05em;">🆕 NEW APP (no rating)</div>
-        <div style="background:#0d0d14;border:1px solid #1a3a1a;border-radius:7px;padding:14px;">
-          <div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-bottom:8px;">Subject: <span id="liveSubjectNew" style="color:var(--slate);">—</span></div>
-          <pre id="liveBodyNew" style="font-size:11px;color:var(--slate);white-space:pre-wrap;font-family:var(--mono);line-height:1.7;">—</pre>
-        </div>
-      </div>
-
-      <!-- OLD APP preview -->
-      <div>
-        <div style="font-size:10px;font-weight:700;color:var(--gold);margin-bottom:6px;letter-spacing:.05em;">⭐ OLD APP (has rating)</div>
-        <div style="background:#0d0d14;border:1px solid #3a2e00;border-radius:7px;padding:14px;">
-          <div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-bottom:8px;">Subject: <span id="liveSubjectOld" style="color:var(--slate);">—</span></div>
-          <pre id="liveBodyOld" style="font-size:11px;color:var(--slate);white-space:pre-wrap;font-family:var(--mono);line-height:1.7;">—</pre>
-        </div>
+      <div style="background:#0d0d14;border:1px solid var(--border);border-radius:7px;padding:16px;">
+        <div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-bottom:8px;">Subject: <span id="liveSubject" style="color:var(--slate);">—</span></div>
+        <pre id="liveBody" style="font-size:11.5px;color:var(--slate);white-space:pre-wrap;font-family:var(--mono);line-height:1.7;">—</pre>
       </div>
     </div>
   </section>
@@ -762,77 +735,29 @@ tbody tr:hover td { background: #13131c; }
         </div>
 
         <div class="card">
-          <div class="card-head">Email Templates (Dual-Mode AI Base)</div>
-          <div style="font-size:10px;color:var(--slate2);margin-bottom:12px;line-height:1.8;">
-            সিস্টেম স্বয়ংক্রিয়ভাবে প্রতিটা lead এর জন্য সঠিক template বেছে নেয়।
-            <strong style="color:#4ade80">New App</strong> = rating নেই → NEW APP template।
-            <strong style="color:var(--gold)">Old App</strong> = rating আছে → OLD APP template।
+          <div class="card-head">Email Template (AI Base)</div>
+          <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:1.7;">
+            AI এই template এর <strong style="color:var(--gold)">value proposition</strong> রেখে প্রতিটা lead এর জন্য unique subject + body লিখবে।
+            Template টা যত ভালো হবে, AI output তত ভালো হবে।
           </div>
-
-          <!-- Template type tabs -->
-          <div style="display:flex;gap:0;margin-bottom:16px;border:1px solid var(--border);border-radius:7px;overflow:hidden;">
-            <button id="tplTabNew" onclick="switchTplTab('new')"
-              style="flex:1;padding:9px 0;font-size:11.5px;font-weight:600;background:#1a2a1a;color:#4ade80;border:none;cursor:pointer;border-right:1px solid var(--border);">
-              🆕 NEW APP Template
-            </button>
-            <button id="tplTabOld" onclick="switchTplTab('old')"
-              style="flex:1;padding:9px 0;font-size:11.5px;font-weight:600;background:#0d0d14;color:var(--slate2);border:none;cursor:pointer;">
-              ⭐ OLD APP Template
-            </button>
+          <div class="form-group">
+            <label class="form-label">Subject Line Template</label>
+            <input class="form-input" id="cfg-email-subject" type="text" placeholder="Quick question about {{app_name}}"/>
           </div>
-
-          <!-- Variable reference -->
-          <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:2;">
-            Variables:
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{app_name}}</code>
+          <div style="font-size:10px;color:var(--slate2);margin-bottom:8px;">
+            Variables: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{app_name}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{developer}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{category}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:#4ade80" title="OLD APP only">{{score}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{score}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{installs}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_name}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_company}}</code>
-            <span style="color:#4ade80;margin-left:4px;" title="{{score}} is only safe in OLD APP template">← {{score}} = OLD APP only</span>
           </div>
-
-          <!-- NEW APP template panel -->
-          <div id="tplPanelNew">
-            <div style="background:#0a1a0a;border:1px solid #1a3a1a;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:10px;color:#4ade80;line-height:1.8;">
-              🆕 <strong>NEW APP</strong> — Used when lead has <strong>no rating/score</strong>. Do NOT include <code>{{score}}</code> here.
-            </div>
-            <div class="form-group">
-              <label class="form-label">Subject Line (New App)</label>
-              <input class="form-input" id="cfg-new-app-subject" type="text"
-                placeholder="Quick question about {{app_name}}"
-                oninput="updateLivePreview()"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email Body (New App)</label>
-              <textarea class="form-input" id="cfg-new-app-body" rows="10"
-                style="resize:vertical;line-height:1.7;font-size:11.5px;"
-                oninput="updateLivePreview()"></textarea>
-            </div>
-            <button class="btn-ghost" onclick="resetTemplate('new')" style="margin-right:8px;">↺ Reset New App Default</button>
+          <div class="form-group">
+            <label class="form-label">Email Body Template</label>
+            <textarea class="form-input" id="cfg-email-body" rows="10" style="resize:vertical;line-height:1.7;font-size:11.5px;" oninput="updateLivePreview()"></textarea>
           </div>
-
-          <!-- OLD APP template panel -->
-          <div id="tplPanelOld" style="display:none;">
-            <div style="background:#1a1500;border:1px solid #3a2e00;border-radius:6px;padding:10px 12px;margin-bottom:12px;font-size:10px;color:var(--gold);line-height:1.8;">
-              ⭐ <strong>OLD APP</strong> — Used when lead <strong>has a rating/score</strong>. You can use <code>{{score}}</code> here — it will be formatted to 1 decimal (e.g. 2.3★).
-            </div>
-            <div class="form-group">
-              <label class="form-label">Subject Line (Old App)</label>
-              <input class="form-input" id="cfg-old-app-subject" type="text"
-                placeholder="Noticed {{app_name}}'s {{score}}★ rating — quick idea"
-                oninput="updateLivePreview()"/>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Email Body (Old App)</label>
-              <textarea class="form-input" id="cfg-old-app-body" rows="10"
-                style="resize:vertical;line-height:1.7;font-size:11.5px;"
-                oninput="updateLivePreview()"></textarea>
-            </div>
-            <button class="btn-ghost" onclick="resetTemplate('old')" style="margin-right:8px;">↺ Reset Old App Default</button>
-          </div>
+          <button class="btn-ghost" onclick="resetTemplate()">↺ Reset to default</button>
         </div>
 
       </div>
@@ -875,7 +800,7 @@ tbody tr:hover td { background: #13131c; }
             <div class="form-hint">Leads sheet এ data লেখার জন্য</div>
           </div>
           <div class="as-box">
-            <h4>📋 Lead Sheet Apps Script (Update this in Apps Script)</h4>
+            <h4>📋 Lead Sheet Apps Script (4 tabs auto-created)</h4>
             <div style="font-size:10px;color:var(--slate2);line-height:1.9;margin-bottom:10px;">
               Tabs: <strong style="color:var(--gold)">All Leads</strong> | <strong style="color:var(--gold)">Qualified Leads</strong> | <strong style="color:var(--gold)">Email Sent</strong> | <strong style="color:var(--gold)">Keyword Log</strong>
             </div>
@@ -896,43 +821,33 @@ tbody tr:hover td { background: #13131c; }
       sheet.appendRow(Object.values(row));
 
     } else if (action === "mark_sent") {
-      var appId   = String(data.app_id   || "").trim();
-      var email   = String(data.email    || "").trim().toLowerCase();
-      var appName = String(data.app_name || "").trim();
-
-      // Helper: update "Email Sent" = "Yes" in any sheet tab
-      // Matches by App ID column first; falls back to Email column.
-      // Both are tried so the row is always found regardless of column order.
-      function markSentInSheet(sheet) {
-        if (!sheet) return;
-        var vals    = sheet.getDataRange().getValues();
-        var headers = vals[0];
-        var appIdCol  = headers.indexOf("App ID");
-        var emailCol  = headers.indexOf("Email");
-        var sentColIdx = headers.indexOf("Email Sent");
-        if (sentColIdx < 0) return;           // no "Email Sent" column — skip
-        var sentCol = sentColIdx + 1;         // 1-based for getRange
-
+      // Mark in All Leads tab
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet) {
+        var appId = data.app_id;
+        var vals = allSheet.getDataRange().getValues();
         for (var i = 1; i < vals.length; i++) {
-          var rowAppId = appIdCol >= 0 ? String(vals[i][appIdCol]).trim() : "";
-          var rowEmail = emailCol  >= 0 ? String(vals[i][emailCol]).trim().toLowerCase() : "";
-          var currentStatus = String(vals[i][sentColIdx]).trim().toLowerCase();
-
-          // Skip rows already marked Yes — no double-write
-          if (currentStatus === "yes") continue;
-
-          // Match by App ID (preferred) OR by Email (fallback)
-          var matched = (appId && rowAppId && rowAppId === appId) ||
-                        (email && rowEmail && rowEmail === email);
-          if (matched) {
-            sheet.getRange(i+1, sentCol).setValue("Yes");
+          if (String(vals[i][vals[i].length - 1]) === appId) {
+            var sentCol = vals[0].indexOf("Email Sent") + 1;
+            if (sentCol > 0) allSheet.getRange(i+1, sentCol).setValue("Yes");
             break;
           }
         }
       }
-
-      markSentInSheet(ss.getSheetByName("All Leads"));
-      markSentInSheet(ss.getSheetByName("Qualified Leads"));
+      // Mark in Qualified Leads tab
+      var qSheet = ss.getSheetByName("Qualified Leads");
+      if (qSheet) {
+        var appId = data.app_id;
+        var vals = qSheet.getDataRange().getValues();
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][vals[i].length - 1]) === appId) {
+            var sentCol = vals[0].indexOf("Email Sent") + 1;
+            if (sentCol > 0) qSheet.getRange(i+1, sentCol).setValue("Yes");
+            break;
+          }
+        }
+      }
+      // Append to Email Sent tab
       var sentSheet = ss.getSheetByName("Email Sent");
       if (!sentSheet) sentSheet = ss.insertSheet("Email Sent");
       if (sentSheet.getLastRow() === 0) {
@@ -941,10 +856,19 @@ tbody tr:hover td { background: #13131c; }
       sentSheet.appendRow([data.app_id, data.app_name||"", data.email||"", new Date().toLocaleString()]);
 
     } else if (action === "get_pending") {
+      // Return all rows from All Leads where Email Sent = No
       var allSheet = ss.getSheetByName("All Leads");
-      if (!allSheet) return ContentService.createTextOutput(JSON.stringify({status:"ok", leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      if (!allSheet) {
+        return ContentService
+          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
       var vals = allSheet.getDataRange().getValues();
-      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok", leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      if (vals.length < 2) {
+        return ContentService
+          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
       var headers = vals[0];
       var colIdx = {};
       headers.forEach(function(h, i) { colIdx[h] = i; });
@@ -952,7 +876,7 @@ tbody tr:hover td { background: #13131c; }
       for (var i = 1; i < vals.length; i++) {
         var row = vals[i];
         var emailSent = String(row[colIdx["Email Sent"]] || "").trim().toLowerCase();
-        if (emailSent === "no" || emailSent === "" || emailSent === "pending") {
+        if (emailSent === "no" || emailSent === "") {
           leads.push({
             app_id:    String(row[colIdx["App ID"]]    || ""),
             app_name:  String(row[colIdx["App Name"]]  || ""),
@@ -966,39 +890,18 @@ tbody tr:hover td { background: #13131c; }
           });
         }
       }
-      return ContentService.createTextOutput(JSON.stringify({status:"ok", leads:leads})).setMimeType(ContentService.MimeType.JSON);
-
-    } else if (action === "get_all_leads") {
-      var allSheet = ss.getSheetByName("All Leads");
-      if (!allSheet) return ContentService.createTextOutput(JSON.stringify({status:"ok", leads:[]})).setMimeType(ContentService.MimeType.JSON);
-      var vals = allSheet.getDataRange().getValues();
-      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok", leads:[]})).setMimeType(ContentService.MimeType.JSON);
-      var headers = vals[0];
-      var colIdx = {};
-      headers.forEach(function(h, i) { colIdx[h] = i; });
-      var leads = [];
-      for (var i = 1; i < vals.length; i++) {
-        var row = vals[i];
-        var emailSent = String(row[colIdx["Email Sent"]] || "").trim().toLowerCase();
-        leads.push({
-          app_id:    String(row[colIdx["App ID"]]    || ""),
-          app_name:  String(row[colIdx["App Name"]]  || ""),
-          developer: String(row[colIdx["Developer"]] || ""),
-          email:     String(row[colIdx["Email"]]     || ""),
-          category:  String(row[colIdx["Category"]]  || ""),
-          installs:  Number(row[colIdx["Installs"]]  || 0),
-          score:     row[colIdx["Score"]] ? Number(row[colIdx["Score"]]) : null,
-          url:       String(row[colIdx["URL"]]       || ""),
-          keyword:   String(row[colIdx["Keyword"]]   || ""),
-          email_sent: (emailSent === "yes" || emailSent === "sent")
-        });
-      }
-      return ContentService.createTextOutput(JSON.stringify({status:"ok", leads:leads})).setMimeType(ContentService.MimeType.JSON);
+      return ContentService
+        .createTextOutput(JSON.stringify({status:"ok", leads:leads}))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
-    return ContentService.createTextOutput(JSON.stringify({status:"ok"})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"ok"}))
+      .setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({status:"error",msg:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"error",msg:err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }</div>
             <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('asCode')">📋 Copy Lead Script</button>
@@ -1006,11 +909,11 @@ tbody tr:hover td { background: #13131c; }
         </div>
 
         <div class="card">
-          <div class="card-head">Email Apps Script (Multiple Gmail Support)</div>
+          <div class="card-head">Email Apps Script</div>
           <div class="form-group">
-            <label class="form-label">Email Apps Script URLs</label>
-            <textarea class="form-input" id="cfg-emailscript" rows="3" placeholder="https://script.google.com/macros/s/…/exec&#10;https://script.google.com/macros/s/…/exec" style="resize:vertical;"></textarea>
-            <div class="form-hint">একাধিক জিমেইল ব্যবহার করতে চাইলে প্রতি লাইনে একটি করে URL দিন। একটার লিমিট শেষ হলে অটোমেটিক পরেরটা দিয়ে সেন্ড হবে।</div>
+            <label class="form-label">Email Apps Script URL</label>
+            <input class="form-input" id="cfg-emailscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
+            <div class="form-hint">Gmail দিয়ে email পাঠানোর জন্য — আলাদা Script deploy করো</div>
           </div>
           <div class="as-box">
             <h4>📧 Email Apps Script Code</h4>
@@ -1058,13 +961,13 @@ TARGET_LEADS=300</div>
 const CFG_KEY = 'playlead_v5';
 let cfg = {};
 
-const DEFAULT_NEW_APP_SUBJECT = 'Quick question about {{app_name}}';
-const DEFAULT_NEW_APP_BODY =
+const DEFAULT_SUBJECT = 'Quick question about {{app_name}}';
+const DEFAULT_BODY =
 `Hi {{developer}} team,
 
-I came across {{app_name}} on Google Play — a {{category}} app that's still in its early growth phase with {{installs}} installs.
+I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
 
-As a new app, building a strong reputation from day one is critical. I run a Play Store growth service that helps developers like you boost visibility, gather early positive reviews, and establish credibility before the competition catches on.
+I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
 
 Would you be open to a quick 15-minute chat this week?
 
@@ -1073,26 +976,6 @@ Best regards,
 {{sender_company}}
 
 App: {{url}}`;
-
-const DEFAULT_OLD_APP_SUBJECT = "Noticed {{app_name}}'s {{score}}★ rating — quick idea";
-const DEFAULT_OLD_APP_BODY =
-`Hi {{developer}} team,
-
-I came across {{app_name}} on Google Play and noticed it currently holds a {{score}}★ rating in the {{category}} category with {{installs}} installs.
-
-A rating in this range often means there are fixable issues hurting your reputation. I run a Play Store review recovery service that helps developers like you quickly clean up rating problems, respond to bad reviews professionally, and turn things around before it impacts downloads.
-
-Would you be open to a quick 15-minute chat this week?
-
-Best regards,
-{{sender_name}}
-{{sender_company}}
-
-App: {{url}}`;
-
-// Legacy aliases (kept for any backward-compat references)
-const DEFAULT_SUBJECT = DEFAULT_NEW_APP_SUBJECT;
-const DEFAULT_BODY    = DEFAULT_NEW_APP_BODY;
 
 function loadCfg() {
   try { cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) { cfg={}; }
@@ -1100,12 +983,8 @@ function loadCfg() {
   setVal('cfg-target',            cfg.target||300);
   setVal('cfg-sender-name',       cfg.sender_name||'');
   setVal('cfg-sender-company',    cfg.sender_company||'');
-  setVal('cfg-email-subject',     cfg.email_subject||DEFAULT_NEW_APP_SUBJECT);
-  setVal('cfg-email-body',        cfg.email_body||DEFAULT_NEW_APP_BODY);
-  setVal('cfg-new-app-subject',   cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT);
-  setVal('cfg-new-app-body',      cfg.new_app_email_body||DEFAULT_NEW_APP_BODY);
-  setVal('cfg-old-app-subject',   cfg.old_app_email_subject||DEFAULT_OLD_APP_SUBJECT);
-  setVal('cfg-old-app-body',      cfg.old_app_email_body||DEFAULT_OLD_APP_BODY);
+  setVal('cfg-email-subject',     cfg.email_subject||DEFAULT_SUBJECT);
+  setVal('cfg-email-body',        cfg.email_body||DEFAULT_BODY);
   setVal('cfg-sheeturl',          cfg.sheeturl||'');
   setVal('cfg-appsscript',        cfg.appsscript||'');
   setVal('cfg-emailscript',       cfg.emailscript||'');
@@ -1113,32 +992,21 @@ function loadCfg() {
   setVal('cfg-keepalive-interval',cfg.keepalive_interval||25);
   refreshDerived();
   updateLivePreview();
-  
-  if(cfg.keepalive_active) {
-    startKeepAlive(true);
-  }
 }
 
 function saveConfig() {
   cfg = {
-    ...cfg,
-    groq:                   getVal('cfg-groq'),
-    target:                 parseInt(getVal('cfg-target'))||300,
-    sender_name:            getVal('cfg-sender-name'),
-    sender_company:         getVal('cfg-sender-company'),
-    // Legacy single-template (backward compat)
-    email_subject:          getVal('cfg-email-subject'),
-    email_body:             getVal('cfg-email-body'),
-    // Dual-template fields
-    new_app_email_subject:  getVal('cfg-new-app-subject'),
-    new_app_email_body:     getVal('cfg-new-app-body'),
-    old_app_email_subject:  getVal('cfg-old-app-subject'),
-    old_app_email_body:     getVal('cfg-old-app-body'),
-    sheeturl:               getVal('cfg-sheeturl'),
-    appsscript:             getVal('cfg-appsscript'),
-    emailscript:            getVal('cfg-emailscript'),
-    keepalive_url:          getVal('cfg-keepalive-url'),
-    keepalive_interval:     parseInt(getVal('cfg-keepalive-interval'))||25,
+    groq:               getVal('cfg-groq'),
+    target:             parseInt(getVal('cfg-target'))||300,
+    sender_name:        getVal('cfg-sender-name'),
+    sender_company:     getVal('cfg-sender-company'),
+    email_subject:      getVal('cfg-email-subject'),
+    email_body:         getVal('cfg-email-body'),
+    sheeturl:           getVal('cfg-sheeturl'),
+    appsscript:         getVal('cfg-appsscript'),
+    emailscript:        getVal('cfg-emailscript'),
+    keepalive_url:      getVal('cfg-keepalive-url'),
+    keepalive_interval: parseInt(getVal('cfg-keepalive-interval'))||25,
   };
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   const m = document.getElementById('savedMsg');
@@ -1161,34 +1029,10 @@ function checkWarn() {
   document.getElementById('cfgWarn').classList.toggle('show', bad);
 }
 
-function switchTplTab(type) {
-  const isNew = type === 'new';
-  document.getElementById('tplPanelNew').style.display = isNew ? '' : 'none';
-  document.getElementById('tplPanelOld').style.display = isNew ? 'none' : '';
-  document.getElementById('tplTabNew').style.background = isNew ? '#1a2a1a' : '#0d0d14';
-  document.getElementById('tplTabNew').style.color = isNew ? '#4ade80' : 'var(--slate2)';
-  document.getElementById('tplTabOld').style.background = isNew ? '#0d0d14' : '#1a1500';
-  document.getElementById('tplTabOld').style.color = isNew ? 'var(--slate2)' : 'var(--gold)';
-  updateLivePreview();
-}
-
-function resetTemplate(type) {
-  if (type === 'new') {
-    if(!confirm('NEW APP template কে default-এ reset করবে?')) return;
-    setVal('cfg-new-app-subject', DEFAULT_NEW_APP_SUBJECT);
-    setVal('cfg-new-app-body', DEFAULT_NEW_APP_BODY);
-  } else if (type === 'old') {
-    if(!confirm('OLD APP template কে default-এ reset করবে?')) return;
-    setVal('cfg-old-app-subject', DEFAULT_OLD_APP_SUBJECT);
-    setVal('cfg-old-app-body', DEFAULT_OLD_APP_BODY);
-  } else {
-    // Legacy fallback
-    if(!confirm('Default template-এ reset করবে?')) return;
-    setVal('cfg-new-app-subject', DEFAULT_NEW_APP_SUBJECT);
-    setVal('cfg-new-app-body', DEFAULT_NEW_APP_BODY);
-    setVal('cfg-old-app-subject', DEFAULT_OLD_APP_SUBJECT);
-    setVal('cfg-old-app-body', DEFAULT_OLD_APP_BODY);
-  }
+function resetTemplate() {
+  if(!confirm('Default template-এ reset করবে?')) return;
+  setVal('cfg-email-subject', DEFAULT_SUBJECT);
+  setVal('cfg-email-body', DEFAULT_BODY);
   updateLivePreview();
 }
 
@@ -1201,12 +1045,9 @@ function togglePass(id, btn) {
 // ════ KEEP-ALIVE ════
 let kaTmr = null;
 
-function startKeepAlive(auto = false) {
+function startKeepAlive() {
   const url = getVal('cfg-keepalive-url') || cfg.keepalive_url;
-  if(!url) { 
-    if(!auto) alert('Enter your App URL first!'); 
-    return; 
-  }
+  if(!url) { alert('Enter your App URL first!'); return; }
   const interval = (parseInt(getVal('cfg-keepalive-interval')) || 25) * 1000;
   if(kaTmr) clearInterval(kaTmr);
   kaTmr = setInterval(()=>doPing(url), interval);
@@ -1214,9 +1055,6 @@ function startKeepAlive(auto = false) {
   document.getElementById('btnKaStart').style.display = 'none';
   document.getElementById('btnKaStop').style.display  = 'inline-block';
   setKaStatus('Pinging…', null);
-  
-  cfg.keepalive_active = true;
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
 }
 
 function stopKeepAlive() {
@@ -1226,9 +1064,6 @@ function stopKeepAlive() {
   setKaStatus('OFF — server may sleep after 15 minutes', false);
   document.getElementById('pingBadge').className = 'ping-badge off';
   document.getElementById('pingBadge').textContent = '⚡ Keep-Alive: OFF';
-  
-  cfg.keepalive_active = false;
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
 }
 
 async function doPing(url) {
@@ -1274,8 +1109,7 @@ function showSec(name, el) {
   document.getElementById('sec-'+name).classList.add('active');
   el.classList.add('active');
   document.getElementById('pgTitle').innerHTML = pgTitles[name];
-  
-  if(name==='database' || name==='analytics') syncSheetDatabase();
+  if(name==='analytics') renderAnalytics();
   if(name==='spamtest')  updateLivePreview();
 }
 
@@ -1287,7 +1121,7 @@ function toggleHunter() {
   document.getElementById('hunterFields').classList.toggle('show', hunterActive);
 }
 
-// ════ UPDATE PENDING BADGE ════
+// ════ UPDATE PENDING BADGE — fetches from Sheet ════
 async function refreshSheetPending() {
   const sheetUrl = cfg.appsscript;
   if (!sheetUrl) {
@@ -1320,7 +1154,7 @@ function updatePendingBadge(count, running) {
 
 // ════ CLEAR HISTORY ════
 async function clearHistory() {
-  if(!confirm('⚠️ Dashboard local history clear hobe. Sheet e kono change hobe na. Continue?')) return;
+  if(!confirm('⚠️ Dashboard history tamam clear hobe — leads, logs, sob kisu. Sheet e kono change hobe na. Continue?')) return;
   try {
     const r = await fetch('/api/clear', {method:'POST'});
     const d = await r.json();
@@ -1338,7 +1172,7 @@ async function clearHistory() {
     ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'].forEach(id=>{
       const e=document.getElementById(id); if(e) e.className='pipe-step';
     });
-    alert('✅ Local History cleared!');
+    alert('✅ History cleared!');
   } catch(e) { alert('Error: '+e.message); }
 }
 
@@ -1357,19 +1191,16 @@ async function startAuto() {
 
   try {
     const body = {
-      keyword:               kw,
-      groq_key:              cfg.groq,
-      sheet_url:             cfg.appsscript,
-      email_script_url:      cfg.emailscript,
-      target:                cfg.target||300,
-      sender_name:           cfg.sender_name||'',
-      sender_company:        cfg.sender_company||'',
-      // Dual-template fields (NEW APP + OLD APP)
-      new_app_email_subject: cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT,
-      new_app_email_body:    cfg.new_app_email_body||DEFAULT_NEW_APP_BODY,
-      old_app_email_subject: cfg.old_app_email_subject||DEFAULT_OLD_APP_SUBJECT,
-      old_app_email_body:    cfg.old_app_email_body||DEFAULT_OLD_APP_BODY,
-      hunter:                hunter,
+      keyword:          kw,
+      groq_key:         cfg.groq,
+      sheet_url:        cfg.appsscript,
+      email_script_url: cfg.emailscript,
+      target:           cfg.target||300,
+      sender_name:      cfg.sender_name||'',
+      sender_company:   cfg.sender_company||'',
+      email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
+      email_body:       cfg.email_body||DEFAULT_BODY,
+      hunter:           hunter,
     };
     const r = await fetch('/api/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     const d = await r.json();
@@ -1383,116 +1214,13 @@ async function startAuto() {
 
 async function stopAuto() {
   await fetch('/api/stop', {method:'POST'}).catch(()=>{});
-  document.getElementById('btnStop').classList.remove('show');
-  document.getElementById('btnStart').disabled = false;
-}
-
-// ════ SEND FROM HERE (per-row "Send" button) ════
-// "Send" বাটন ক্লিক করলে:
-//   1. Live Sheet থেকে FRESH pending list নেয় (top-to-bottom order)
-//   2. ক্লিক করা app_id টা সেই list এ খোঁজে
-//   3. সেখান থেকে শুরু করে বাকি সব pending গুলো একটা একটা করে send করে
-//   4. Already "Yes" status এর কোনো lead কে কখনো include করে না
-async function sendSingleEmail(clickedAppId) {
-  const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) { alert('Sheet URL not set in Setup & Config!'); return; }
-
-  // Step 1: Live Sheet থেকে ONLY pending leads নাও (top-to-bottom, "Yes" বাদ)
-  // /api/sheet_pending → Apps Script "get_pending" action use করে
-  // এটা শুধু emailSent === "" / "no" / "pending" গুলো return করে — "Yes" কখনো না
-  let allPending = [];
-  try {
-    const r = await fetch('/api/sheet_pending', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
-    const d = await r.json();
-    if (!r.ok || !d.ok) { alert('Sheet থেকে pending list নিতে পারছি না: ' + (d.error||'unknown')); return; }
-    allPending = d.leads || [];
-  } catch(e) { alert('Network error: ' + e.message); return; }
-
-  if (!allPending.length) { alert('✅ Sheet এ কোনো pending lead নেই — সব sent!'); return; }
-
-  // Step 2: ক্লিক করা app_id টা pending list এ খোঁজো
-  const startIdx = allPending.findIndex(l => l.app_id === clickedAppId);
-
-  let pendingToSend = [];
-  if (startIdx === -1) {
-    // এই lead টা আর pending নেই (already sent বা removed) — সব pending পাঠাও
-    pendingToSend = allPending;
-  } else {
-    // এই lead থেকে শুরু করে বাকি সব pending
-    pendingToSend = allPending.slice(startIdx);
-  }
-
-  if (!pendingToSend.length) { alert('এই position থেকে কোনো pending lead নেই।'); return; }
-
-  const firstName = pendingToSend[0].app_name || pendingToSend[0].email;
-  if (!confirm('📬 "' + firstName + '" থেকে শুরু করে মোট ' + pendingToSend.length + 'টা pending lead এ email পাঠাবো?\n\n(Already sent "Yes" leads skip হবে)')) return;
-
-  // Step 3: Table refresh করো live data দিয়ে (UI sync)
-  try {
-    const r2 = await fetch('/api/sheet_all', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
-    const d2 = await r2.json();
-    if (d2.ok && d2.leads) { allLeads = d2.leads; renderDB(allLeads); renderAnalytics(); }
-  } catch(e) { /* UI refresh optional, continue anyway */ }
-
-  // Step 4: Send বাটনগুলো disable করো
-  pendingToSend.forEach(l => {
-    const btn = document.getElementById('send-btn-' + l.app_id);
-    if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
-  });
-  document.getElementById('btnSendPending').disabled = true;
-
-  // Step 5: Backend এ পাঠাও — /api/send_pending একটা একটা করে order মেনে send করবে
-  // Backend নিজেই প্রতিটা lead send হলে sheet_mark_sent() call করে status "Yes" করে
-  try {
-    const r = await fetch('/api/send_pending', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        leads:                 pendingToSend,
-        groq_key:              cfg.groq,
-        email_script_url:      cfg.emailscript,
-        sheet_url:             cfg.appsscript,
-        sender_name:           cfg.sender_name || '',
-        sender_company:        cfg.sender_company || '',
-        new_app_email_subject: cfg.new_app_email_subject || DEFAULT_NEW_APP_SUBJECT,
-        new_app_email_body:    cfg.new_app_email_body    || DEFAULT_NEW_APP_BODY,
-        old_app_email_subject: cfg.old_app_email_subject || DEFAULT_OLD_APP_SUBJECT,
-        old_app_email_body:    cfg.old_app_email_body    || DEFAULT_OLD_APP_BODY,
-      })
-    });
-    const d = await r.json();
-    if (!r.ok || !d.ok) {
-      alert('Error: ' + (d.error || 'Unknown error'));
-      pendingToSend.forEach(l => {
-        const btn = document.getElementById('send-btn-' + l.app_id);
-        if (btn) { btn.disabled = false; btn.textContent = '📤 Send'; }
-      });
-      document.getElementById('btnSendPending').disabled = false;
-      return;
-    }
-    // Polling শুরু — backend প্রতিটা email send করলে status update হয়
-    // renderSt() call হলে latest state দেখাবে
-    startPoll();
-  } catch(e) {
-    alert('Network error: ' + e.message);
-    pendingToSend.forEach(l => {
-      const btn = document.getElementById('send-btn-' + l.app_id);
-      if (btn) { btn.disabled = false; btn.textContent = '📤 Send'; }
-    });
-    document.getElementById('btnSendPending').disabled = false;
-  }
 }
 
 async function sendPending() {
   const sheetUrl = cfg.appsscript;
   if (!sheetUrl) { alert('Sheet URL not set in Setup & Config!'); return; }
 
+  // Step 1: fetch pending leads from Sheet
   let pending = [];
   try {
     const r = await fetch('/api/sheet_pending', {
@@ -1507,21 +1235,19 @@ async function sendPending() {
   if (!pending.length) { alert('✅ No pending leads in sheet — all already sent!'); return; }
   if (!confirm(`📬 Sheet এ ${pending.length}টা pending lead আছে। সবগুলোতে email পাঠাবো?`)) return;
 
+  // Step 2: send
   try {
     const r = await fetch('/api/send_pending', {
       method:'POST', headers:{'Content-Type':'application/json'},
       body: JSON.stringify({
-        leads:                 pending,
-        groq_key:              cfg.groq,
-        email_script_url:      cfg.emailscript,
-        sheet_url:             cfg.appsscript,
-        sender_name:           cfg.sender_name||'',
-        sender_company:        cfg.sender_company||'',
-        // Dual-template fields
-        new_app_email_subject: cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT,
-        new_app_email_body:    cfg.new_app_email_body||DEFAULT_NEW_APP_BODY,
-        old_app_email_subject: cfg.old_app_email_subject||DEFAULT_OLD_APP_SUBJECT,
-        old_app_email_body:    cfg.old_app_email_body||DEFAULT_OLD_APP_BODY,
+        leads:            pending,
+        groq_key:         cfg.groq,
+        email_script_url: cfg.emailscript,
+        sheet_url:        cfg.appsscript,
+        sender_name:      cfg.sender_name||'',
+        sender_company:   cfg.sender_company||'',
+        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
+        email_body:       cfg.email_body||DEFAULT_BODY,
       })
     });
     const d = await r.json();
@@ -1545,10 +1271,7 @@ function renderSt(d) {
   const leads = d.leads_found||0, emails = d.emails_sent||0;
   const target = cfg.target||300;
   const kws = d.keywords_used||[];
-  
-  if(running || phase==='done') {
-    if(d.leads && d.leads.length > 0) allLeads = d.leads;
-  }
+  allLeads = d.leads||[];
 
   const dot = document.getElementById('sbDot'), sl = document.getElementById('sbStatus');
   if(running)              { dot.className='dot live';     sl.textContent='Running'; }
@@ -1558,6 +1281,8 @@ function renderSt(d) {
 
   document.getElementById('btnStart').disabled = running;
   document.getElementById('btnStop').classList.toggle('show', running);
+
+  // Badge: disable during run, but count comes from refreshSheetPending
   document.getElementById('btnSendPending').disabled = running;
 
   setText('stLeads', leads);
@@ -1583,6 +1308,12 @@ function renderSt(d) {
   const logs = d.logs||[];
   if(logs.length!==lastLogLen) { lastLogLen=logs.length; renderFeed(logs); }
 
+  setText('an-l', leads); setText('an-e', emails);
+  const cats = [...new Set(allLeads.map(l=>l.category).filter(Boolean))];
+  document.getElementById('an-c').textContent = cats.length||'—';
+  const sc = allLeads.map(l=>l.score).filter(x=>x!==null&&x!==undefined);
+  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
+
   if(startTime) {
     document.getElementById('ss-start').textContent = startTime.toLocaleTimeString();
     document.getElementById('ss-dur').textContent = fmtDur(Math.floor((Date.now()-startTime)/1000));
@@ -1591,14 +1322,12 @@ function renderSt(d) {
   document.getElementById('ss-ai').textContent = Math.max(0,kws.length-1)*5;
   document.getElementById('ss-st').textContent = running?'Running':phase==='done'?'Done ✓':'Stopped';
 
+  renderDB(allLeads);
+
   if(!running && (phase==='done'||phase==='stopped'||phase==='idle')) {
     document.getElementById('btnStart').disabled = false;
     document.getElementById('btnStop').classList.remove('show');
     if(pollTmr) { clearInterval(pollTmr); pollTmr=null; }
-    if(phase==='done' || phase==='stopped') {
-      syncSheetDatabase();
-      refreshSheetPending();
-    }
   }
 }
 
@@ -1627,39 +1356,14 @@ function renderFeed(logs) {
     </div>`).join('');
 }
 
-// ════ DATABASE SYNC FROM SHEET ════
-async function syncSheetDatabase() {
-  const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) return;
-  
-  const btn = document.getElementById('btnSyncDb');
-  if(btn) { btn.textContent = '⏳ Syncing...'; btn.disabled = true; }
-  
-  try {
-    const r = await fetch('/api/sheet_all', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      allLeads = d.leads || [];
-      renderDB(allLeads);
-      renderAnalytics();
-    }
-  } catch(e) {
-    console.error("Sync failed", e);
-  }
-  
-  if(btn) { btn.textContent = '🔄 Sync with Sheet'; btn.disabled = false; }
-}
-
+// ════ DATABASE ════
 function renderDB(leads) {
   document.getElementById('dbCnt').textContent = leads.length;
   refreshDerived();
   const tbody = document.getElementById('dbBody');
-  if(!leads.length) { tbody.innerHTML=`<tr><td colspan="11"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr>`; return; }
+  if(!leads.length) { tbody.innerHTML=`<tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr>`; return; }
   tbody.innerHTML = leads.map((l,i)=>`
-    <tr id="lead-row-${esc(l.app_id)}">
+    <tr>
       <td style="color:var(--slate2);font-family:var(--mono);font-size:10px">${i+1}</td>
       <td><div style="font-weight:600;color:var(--cream);max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</div></td>
       <td style="color:var(--slate);font-size:10.5px;max-width:110px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
@@ -1668,12 +1372,8 @@ function renderDB(leads) {
       <td style="font-family:var(--mono);font-size:10.5px">${(l.installs||0).toLocaleString()}</td>
       <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null?Number(l.score).toFixed(1):'new'}</td>
       <td style="color:var(--gold);font-size:10.5px">${esc(l.keyword||'')}</td>
-      <td id="lead-status-${esc(l.app_id)}">${l.email_sent?'<span class="bdg bdg-sent">✓ Sent</span>':'<span class="bdg bdg-pend">Pending</span>'}</td>
+      <td>${l.email_sent?'<span class="bdg bdg-sent">✓ Sent</span>':'<span class="bdg bdg-pend">Pending</span>'}</td>
       <td><a class="ext-a" href="${esc(l.url)}" target="_blank">↗</a></td>
-      <td>${l.email_sent
-        ? '<span style="color:var(--slate2);font-size:10px;">—</span>'
-        : `<button class="btn-send-row" id="send-btn-${esc(l.app_id)}" onclick="sendSingleEmail('${esc(l.app_id)}')" title="Send from here — এই lead থেকে সব pending পাঠাবে">📤 Send</button>`
-      }</td>
     </tr>`).join('');
 }
 
@@ -1681,22 +1381,12 @@ function renderDB(leads) {
 function renderAnalytics() {
   const leads = allLeads;
   if(!leads.length) return;
-  
   const total=leads.length, withEmail=leads.filter(l=>l.email).length, sent=leads.filter(l=>l.email_sent).length;
-  
-  setText('an-l', total); 
-  setText('an-e', sent);
-  const cats = [...new Set(leads.map(l=>l.category).filter(Boolean))];
-  document.getElementById('an-c').textContent = cats.length||'—';
-  const sc = leads.map(l=>l.score).filter(x=>x!==null&&x!==undefined);
-  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
-
   setText('fn1',total); setText('fn1c',total);
   const p2=total>0?Math.round((withEmail/total)*100):0;
   document.getElementById('fn2').style.width=p2+'%'; setText('fn2',withEmail); setText('fn2c',withEmail);
   const p3=withEmail>0?Math.round((sent/withEmail)*100):0;
   document.getElementById('fn3').style.width=p3+'%'; setText('fn3',sent); setText('fn3c',sent);
-  
   const catMap={};
   leads.forEach(l=>{ if(l.category) catMap[l.category]=(catMap[l.category]||0)+1; });
   const catS=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
@@ -1707,7 +1397,6 @@ function renderAnalytics() {
       <div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div>
       <div class="prog-pct">${n}</div>
     </div>`).join('')||'<div class="empty-st" style="padding:12px">No data</div>';
-    
   const ir={'0–1K':0,'1K–5K':0,'5K+':0};
   leads.forEach(l=>{ const i=l.installs||0; if(i<1000)ir['0–1K']++; else if(i<=5000)ir['1K–5K']++; else ir['5K+']++; });
   document.getElementById('installBreak').innerHTML=Object.entries(ir).map(([k,v])=>`
@@ -1716,7 +1405,6 @@ function renderAnalytics() {
       <div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div>
       <div class="prog-pct">${v}</div>
     </div>`).join('');
-    
   const kwM={};
   leads.forEach(l=>{ if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1; });
   const kwS=Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
@@ -1738,31 +1426,25 @@ async function runSpamTest() {
   const result = document.getElementById('spamResult');
   result.className = 'spam-result'; result.style.display = 'none';
   try {
-    const rawScore = document.getElementById('spamSampleScore').value;
-    const sampleScore = rawScore === '' ? null : parseFloat(rawScore);
     const r = await fetch('/api/spam_test', {
       method: 'POST', headers: {'Content-Type':'application/json'},
       body: JSON.stringify({
-        test_email:            testEmail,
-        sample_app_name:       document.getElementById('spamSampleApp').value || 'MyApp Pro',
-        sample_developer:      document.getElementById('spamSampleDev').value || 'John Dev',
-        sample_score:          sampleScore,
-        groq_key:              cfg.groq,
-        email_script_url:      cfg.emailscript,
-        sender_name:           cfg.sender_name||'',
-        sender_company:        cfg.sender_company||'',
-        // Dual-template fields
-        new_app_email_subject: cfg.new_app_email_subject||DEFAULT_NEW_APP_SUBJECT,
-        new_app_email_body:    cfg.new_app_email_body||DEFAULT_NEW_APP_BODY,
-        old_app_email_subject: cfg.old_app_email_subject||DEFAULT_OLD_APP_SUBJECT,
-        old_app_email_body:    cfg.old_app_email_body||DEFAULT_OLD_APP_BODY,
+        test_email:       testEmail,
+        sample_app_name:  document.getElementById('spamSampleApp').value || 'MyApp Pro',
+        sample_developer: document.getElementById('spamSampleDev').value || 'John Dev',
+        sample_score:     parseFloat(document.getElementById('spamSampleScore').value)||2.1,
+        groq_key:         cfg.groq,
+        email_script_url: cfg.emailscript,
+        sender_name:      cfg.sender_name||'',
+        sender_company:   cfg.sender_company||'',
+        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
+        email_body:       cfg.email_body||DEFAULT_BODY,
       })
     });
     const d = await r.json();
     if(d.ok) {
       result.className = 'spam-result ok';
-      const tplLabel = d.template_type ? ` [${d.template_type} template]` : '';
-      result.textContent = '✅ ' + d.msg + tplLabel + '\nSubject: ' + (d.subject||'') + '\n\n' + (d.body||'');
+      result.textContent = '✅ ' + d.msg + '\nSubject: ' + (d.subject||'') + '\n\n' + (d.body||'');
       result.style.display = 'block';
     } else {
       result.className = 'spam-result err';
@@ -1777,64 +1459,27 @@ async function runSpamTest() {
   btn.disabled = false; btn.textContent = '📤 Send Test Email';
 }
 
-// ════ SCORE FORMATTING (mirrors Python format_score) ════
-function formatScore(score) {
-  if (score === null || score === undefined || score === '' || score === 0) return '';
-  const val = parseFloat(score);
-  if (isNaN(val) || val <= 0) return '';
-  return val.toFixed(1);
-}
-
 // ════ LIVE PREVIEW ════
 function fillTpl(tpl, lead) {
-  const scoreStr = formatScore(lead.score);
-  const installsStr = lead.installs ? Number(lead.installs).toLocaleString() : 'growing app';
-  let filled = tpl
+  return tpl
     .replace(/{{app_name}}/g,       lead.app_name||'')
     .replace(/{{developer}}/g,      lead.developer||'')
-    .replace(/{{category}}/g,       lead.category||'app')
-    .replace(/{{installs}}/g,       installsStr)
-    .replace(/{{score}}/g,          scoreStr)
+    .replace(/{{category}}/g,       lead.category||'')
+    .replace(/{{installs}}/g,       String(lead.installs||''))
+    .replace(/{{score}}/g,          String(lead.score||''))
     .replace(/{{url}}/g,            lead.url||'')
     .replace(/{{sender_name}}/g,    cfg.sender_name||'Your Name')
     .replace(/{{sender_company}}/g, cfg.sender_company||'Your Company');
-  // Strip any leftover placeholders
-  filled = filled.replace(/\{\{[a-zA-Z_]+\}\}/g, '');
-  return filled;
 }
-
 function updateLivePreview() {
-  // NEW APP sample — no score
-  const sampleNew = {
-    app_name:'CoolApp Start', developer:'Jane Dev', category:'Productivity',
-    installs: 800, score: null, url:'https://play.google.com/store/apps/details?id=com.example.new',
-  };
-  // OLD APP sample — has score
-  const sampleOld = {
+  const sample = {
     app_name:'MyApp Pro', developer:'John Dev', category:'Productivity',
-    installs: 1500, score: 2.1, url:'https://play.google.com/store/apps/details?id=com.example',
+    installs:1500, score:2.1, url:'https://play.google.com/store/apps/details?id=com.example',
   };
-
-  const newSubj = getVal('cfg-new-app-subject') || DEFAULT_NEW_APP_SUBJECT;
-  const newBody = getVal('cfg-new-app-body')    || DEFAULT_NEW_APP_BODY;
-  const oldSubj = getVal('cfg-old-app-subject') || DEFAULT_OLD_APP_SUBJECT;
-  const oldBody = getVal('cfg-old-app-body')    || DEFAULT_OLD_APP_BODY;
-
-  const lsNew = document.getElementById('liveSubjectNew');
-  const lbNew = document.getElementById('liveBodyNew');
-  const lsOld = document.getElementById('liveSubjectOld');
-  const lbOld = document.getElementById('liveBodyOld');
-
-  if(lsNew) lsNew.textContent = fillTpl(newSubj, sampleNew);
-  if(lbNew) lbNew.textContent = fillTpl(newBody, sampleNew);
-  if(lsOld) lsOld.textContent = fillTpl(oldSubj, sampleOld);
-  if(lbOld) lbOld.textContent = fillTpl(oldBody, sampleOld);
-
-  // Keep legacy single-preview IDs working if they still exist in DOM
   const ls = document.getElementById('liveSubject');
   const lb = document.getElementById('liveBody');
-  if(ls) ls.textContent = fillTpl(newSubj, sampleNew);
-  if(lb) lb.textContent = fillTpl(newBody, sampleNew);
+  if(ls) ls.textContent = fillTpl(getVal('cfg-email-subject')||DEFAULT_SUBJECT, sample);
+  if(lb) lb.textContent = fillTpl(getVal('cfg-email-body')||DEFAULT_BODY, sample);
 }
 
 // ════ CSV ════
@@ -1870,6 +1515,7 @@ setInterval(()=>{ document.getElementById('clk').textContent=new Date().toLocale
 window.addEventListener('load', ()=>{
   loadCfg(); checkWarn(); fetchSt(); startPoll();
   refreshSheetPending();
+  // Refresh sheet pending count every 30s
   setInterval(refreshSheetPending, 30000);
 });
 </script>
