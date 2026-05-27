@@ -7,6 +7,8 @@ services:
     envVars:
       - key: GROQ_API_KEY
         sync: false
+      - key: APPS_SCRIPT_WEB_URLS
+        sync: false
       - key: APPS_SCRIPT_WEB_URL
         sync: false
       - key: EMAIL_SCRIPT_URL
@@ -15,5 +17,11 @@ services:
         sync: false
       - key: SENDER_COMPANY
         sync: false
+      - key: SENDER_ALIAS
+        sync: false
+      - key: SPAM_WORDS
+        sync: false
+      - key: SEND_PROFILE
+        value: "normal"
       - key: TARGET_LEADS
         value: "300"

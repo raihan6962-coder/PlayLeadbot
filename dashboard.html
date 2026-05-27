@@ -3,1520 +3,1180 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PlayLead Engine</title>
+<title>PlayLead Engine v2</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-:root {
-  --bg:     #0a0a0f;
-  --bg2:    #0d0d14;
-  --card:   #111119;
-  --card2:  #16161f;
-  --border: #1e1e2e;
-  --border2:#2a2a40;
-  --gold:   #c9a84c;
-  --gold2:  #e8c76a;
-  --gold3:  #f5e0a0;
-  --cream:  #f0e6d0;
-  --slate:  #8b8ba8;
-  --slate2: #5a5a78;
-  --green:  #4ade80;
-  --red:    #f87171;
-  --amber:  #fbbf24;
-  --blue:   #60a5fa;
-  --mono:   'DM Mono', monospace;
-  --serif:  'Cormorant Garamond', serif;
-  --sans:   'Inter', sans-serif;
-  --r:      8px;
+:root{
+  --bg:#0a0a0f;--bg2:#0d0d14;--card:#111119;--card2:#16161f;
+  --border:#1e1e2e;--border2:#2a2a40;
+  --gold:#c9a84c;--gold2:#e8c76a;--gold3:#f5e0a0;
+  --cream:#f0e6d0;--slate:#8b8ba8;--slate2:#5a5a78;
+  --green:#4ade80;--red:#f87171;--amber:#fbbf24;--blue:#60a5fa;--purple:#a78bfa;
+  --mono:'DM Mono',monospace;--serif:'Cormorant Garamond',serif;--sans:'Inter',sans-serif;
+  --r:8px;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html { scroll-behavior: smooth; }
-body {
-  background: var(--bg);
-  color: var(--cream);
-  font-family: var(--sans);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--cream);font-family:var(--sans);min-height:100vh;overflow-x:hidden}
 
-/* ── SIDEBAR ── */
-.sidebar {
-  position: fixed; left: 0; top: 0; bottom: 0; width: 230px;
-  background: var(--bg2);
-  border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; z-index: 100;
-}
-.sidebar-logo {
-  padding: 28px 22px 22px;
-  border-bottom: 1px solid var(--border);
-}
-.logo-mark {
-  font-family: var(--serif);
-  font-size: 26px; font-weight: 700;
-  letter-spacing: .5px; color: var(--cream);
-  line-height: 1;
-}
-.logo-mark span { color: var(--gold2); }
-.logo-sub {
-  font-size: 9px; color: var(--slate2);
-  letter-spacing: 2.5px; text-transform: uppercase;
-  margin-top: 5px; font-family: var(--mono);
-}
-.nav { padding: 18px 12px; flex: 1; }
-.nav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 6px;
-  cursor: pointer; font-size: 12.5px; font-weight: 500;
-  color: var(--slate); transition: all .15s; margin-bottom: 2px;
-  letter-spacing: .2px;
-}
-.nav-item:hover { background: #161622; color: var(--cream); }
-.nav-item.active {
-  background: linear-gradient(135deg, #1a1520, #221a10);
-  color: var(--gold2);
-  border: 1px solid #2a2215;
-}
-.nav-item .icon { font-size: 14px; width: 18px; text-align: center; }
-.nav-sep { height: 1px; background: var(--border); margin: 10px 6px; }
+/* SIDEBAR */
+.sidebar{position:fixed;left:0;top:0;bottom:0;width:230px;background:var(--bg2);border-right:1px solid var(--border);display:flex;flex-direction:column;z-index:100}
+.sidebar-logo{padding:28px 22px 22px;border-bottom:1px solid var(--border)}
+.logo-mark{font-family:var(--serif);font-size:26px;font-weight:700;letter-spacing:.5px;color:var(--cream);line-height:1}
+.logo-mark span{color:var(--gold2)}
+.logo-sub{font-size:9px;color:var(--slate2);letter-spacing:2.5px;text-transform:uppercase;margin-top:5px;font-family:var(--mono)}
+.version-badge{display:inline-block;font-size:9px;background:#1a1520;color:var(--purple);border:1px solid #2d1f4a;border-radius:4px;padding:1px 6px;margin-top:4px;font-family:var(--mono)}
+.nav{padding:18px 12px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:6px;cursor:pointer;font-size:12.5px;font-weight:500;color:var(--slate);transition:all .15s;margin-bottom:2px;letter-spacing:.2px}
+.nav-item:hover{background:#161622;color:var(--cream)}
+.nav-item.active{background:linear-gradient(135deg,#1a1520,#221a10);color:var(--gold2);border:1px solid #2a2215}
+.nav-item .icon{font-size:14px;width:18px;text-align:center}
+.nav-sep{height:1px;background:var(--border);margin:10px 6px}
+.sidebar-send-pending{padding:10px 12px;border-top:1px solid var(--border)}
+.btn-send-pending{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:11px 14px;border-radius:7px;background:linear-gradient(135deg,#161209,#1e1a0d);border:1px solid #2a2215;cursor:pointer;font-family:var(--sans);font-size:12px;font-weight:600;color:var(--gold2);transition:all .18s;letter-spacing:.2px}
+.btn-send-pending:hover{background:linear-gradient(135deg,#1e180d,#2a2410);border-color:var(--gold)}
+.btn-send-pending:disabled{opacity:.35;cursor:not-allowed}
+.pending-badge{background:var(--gold);color:#0a0808;font-size:10px;font-weight:700;font-family:var(--mono);border-radius:4px;padding:2px 7px;min-width:22px;text-align:center}
 
-/* ── SEND PENDING BUTTON (sidebar, always visible) ── */
-.sidebar-send-pending {
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
-}
-.btn-send-pending {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; padding: 11px 14px; border-radius: 7px;
-  background: linear-gradient(135deg, #161209, #1e1a0d);
-  border: 1px solid #2a2215; cursor: pointer;
-  font-family: var(--sans); font-size: 12px; font-weight: 600;
-  color: var(--gold2); transition: all .18s;
-  letter-spacing: .2px;
-}
-.btn-send-pending:hover { background: linear-gradient(135deg,#1e180d,#2a2410); border-color: var(--gold); }
-.btn-send-pending:disabled { opacity: .35; cursor: not-allowed; }
-.pending-badge {
-  background: var(--gold); color: #0a0808;
-  font-size: 10px; font-weight: 700; font-family: var(--mono);
-  padding: 2px 7px; border-radius: 10px; min-width: 22px; text-align: center;
-}
-.pending-badge.zero { background: var(--slate2); color: var(--bg); }
+/* MAIN */
+.main{margin-left:230px;padding:32px 36px;min-height:100vh}
 
-.sidebar-bottom { padding: 12px; border-top: 1px solid var(--border); }
-.status-pill {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 13px; background: var(--card); border-radius: 6px;
-  font-size: 11px; color: var(--slate);
-  border: 1px solid var(--border);
-}
-.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--slate2); flex-shrink: 0; }
-.dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 1.4s ease-in-out infinite; }
-.dot.done-dot { background: var(--green); }
-.dot.err { background: var(--red); }
-@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.2;} }
+/* SECTION TABS */
+.section{display:none}
+.section.active{display:block}
 
-/* ── MAIN ── */
-.main { margin-left: 230px; min-height: 100vh; padding: 28px 32px; }
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 26px; gap: 12px; flex-wrap: wrap;
-}
-.page-title {
-  font-family: var(--serif);
-  font-size: 28px; font-weight: 600; letter-spacing: .3px;
-  color: var(--cream);
-}
-.page-title .hi { color: var(--gold2); }
-.topbar-right { display: flex; align-items: center; gap: 8px; }
-.time-badge {
-  font-family: var(--mono); font-size: 11px; color: var(--slate);
-  background: var(--card); padding: 6px 14px;
-  border-radius: 6px; border: 1px solid var(--border);
-}
+/* PAGE TITLE */
+.page-title{font-family:var(--serif);font-size:28px;font-weight:600;color:var(--cream);margin-bottom:4px}
+.page-sub{font-size:12px;color:var(--slate);margin-bottom:24px;letter-spacing:.2px}
 
-/* ── KEEPALIVE BADGE ── */
-.ping-badge {
-  font-family: var(--mono); font-size: 10px;
-  padding: 5px 10px; border-radius: 5px;
-  border: 1px solid var(--border); background: var(--card);
-  display: flex; align-items: center; gap: 6px;
-  color: var(--slate2); white-space: nowrap;
-}
-.ping-badge.ok  { border-color: #1a3a1a; background: #0a140a; color: var(--green); }
-.ping-badge.off { border-color: #2a1a1a; background: #140a0a; color: var(--red); }
+/* STATUS BAR */
+.status-bar{display:flex;align-items:center;gap:14px;padding:12px 18px;background:var(--card);border:1px solid var(--border);border-radius:var(--r);margin-bottom:22px;font-size:12px}
+.status-dot{width:8px;height:8px;border-radius:50%;background:var(--slate2)}
+.status-dot.running{background:var(--green);box-shadow:0 0 8px rgba(74,222,128,.5);animation:pulse 1.5s infinite}
+.status-dot.done{background:var(--blue)}
+.status-dot.stopped{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.5}}
+.status-label{font-weight:600;color:var(--cream)}
+.status-sep{width:1px;height:14px;background:var(--border2)}
+.status-stat{color:var(--slate)}
+.status-stat strong{color:var(--gold2);font-weight:600}
+.status-mode-badge{margin-left:auto;font-size:10px;padding:2px 10px;border-radius:4px;font-weight:600;font-family:var(--mono);letter-spacing:.5px}
+.status-mode-badge.hunter{background:#1c0d0d;color:var(--red);border:1px solid #3d1515}
+.status-mode-badge.normal{background:#0d1a0d;color:var(--green);border:1px solid #1a3d1a}
 
-/* ── SECTIONS ── */
-.section { display: none; }
-.section.active { display: block; }
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:22px 24px;margin-bottom:18px}
+.card-title{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1.5px;color:var(--slate);margin-bottom:16px;display:flex;align-items:center;gap:8px}
+.card-title .icon{font-size:13px}
 
-/* ── CARD ── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 22px;
-  position: relative; overflow: hidden;
-}
-.card-head {
-  font-size: 9px; font-weight: 600;
-  letter-spacing: 2.5px; text-transform: uppercase;
-  color: var(--slate2); margin-bottom: 18px;
-  display: flex; align-items: center; gap: 10px;
-}
-.card-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
+.grid-4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px}
 
-/* ── STATS GRID ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 14px; margin-bottom: 20px;
-}
-.stat-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 20px 22px; position: relative;
-}
-.stat-card::before {
-  content: ''; position: absolute; inset: 0; border-radius: var(--r);
-  background: linear-gradient(135deg, rgba(201,168,76,.04), transparent);
-  pointer-events: none;
-}
-.stat-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 2px;
-  text-transform: uppercase; color: var(--slate2); margin-bottom: 10px;
-}
-.stat-val {
-  font-family: var(--serif);
-  font-size: 40px; font-weight: 700;
-  letter-spacing: -1px; line-height: 1;
-}
-.stat-sub { font-size: 10px; color: var(--slate2); margin-top: 6px; font-family: var(--mono); }
-.c-gold .stat-val  { color: var(--gold2); }
-.c-green .stat-val { color: var(--green); }
-.c-blue .stat-val  { color: var(--blue); }
-.c-amber .stat-val { color: var(--amber); }
+/* STAT CARDS */
+.stat-card{background:var(--card2);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
+.stat-label{font-size:10px;color:var(--slate);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.stat-val{font-family:var(--mono);font-size:24px;font-weight:500;color:var(--cream);line-height:1}
+.stat-val.green{color:var(--green)}
+.stat-val.amber{color:var(--amber)}
+.stat-val.red{color:var(--red)}
+.stat-val.blue{color:var(--blue)}
+.stat-sub{font-size:10px;color:var(--slate2);margin-top:4px}
 
-/* ── GRID ── */
-.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+/* FORM */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:11px;font-weight:500;color:var(--slate);text-transform:uppercase;letter-spacing:1px;margin-bottom:6px}
+.field input,.field textarea,.field select{width:100%;background:#0c0c14;border:1px solid var(--border2);border-radius:6px;padding:9px 12px;color:var(--cream);font-family:var(--sans);font-size:13px;transition:border .15s;outline:none}
+.field input:focus,.field textarea:focus,.field select:focus{border-color:var(--gold);box-shadow:0 0 0 2px rgba(201,168,76,.12)}
+.field textarea{resize:vertical;min-height:80px;line-height:1.55}
+.field-note{font-size:10px;color:var(--slate2);margin-top:4px;line-height:1.4}
 
-/* ── PROGRESS ── */
-.prog-row { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
-.prog-lbl { font-size: 11px; color: var(--slate); min-width: 130px; }
-.prog-track { flex: 1; height: 4px; background: #1a1a28; border-radius: 99px; overflow: hidden; }
-.prog-fill { height: 100%; border-radius: 99px; transition: width .6s cubic-bezier(.4,0,.2,1); }
-.pf-gold   { background: linear-gradient(90deg, #8b6914, var(--gold2)); }
-.pf-green  { background: linear-gradient(90deg, #166534, var(--green)); }
-.pf-blue   { background: linear-gradient(90deg, #1e40af, var(--blue)); }
-.pf-amber  { background: linear-gradient(90deg, #92400e, var(--amber)); }
-.prog-pct  { font-family: var(--mono); font-size: 10px; color: var(--slate2); min-width: 36px; text-align: right; }
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:7px;padding:10px 20px;border-radius:6px;border:none;cursor:pointer;font-family:var(--sans);font-size:13px;font-weight:500;transition:all .15s;letter-spacing:.2px}
+.btn-primary{background:linear-gradient(135deg,var(--gold),#a07830);color:#0a0808}
+.btn-primary:hover{filter:brightness(1.1)}
+.btn-danger{background:#1c0d0d;color:var(--red);border:1px solid #3d1515}
+.btn-danger:hover{background:#2a1010}
+.btn-ghost{background:transparent;color:var(--slate);border:1px solid var(--border2)}
+.btn-ghost:hover{color:var(--cream);border-color:var(--border)}
+.btn-sm{padding:6px 14px;font-size:12px}
+.btn:disabled{opacity:.35;cursor:not-allowed}
 
-/* ── PIPELINE ── */
-.pipeline {
-  display: flex; background: var(--card);
-  border: 1px solid var(--border); border-radius: var(--r);
-  overflow: hidden; margin-bottom: 20px;
-}
-.pipe-step {
-  flex: 1; padding: 14px 8px; text-align: center;
-  font-size: 9px; font-weight: 600; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--slate2);
-  border-right: 1px solid var(--border);
-  transition: all .3s; position: relative;
-}
-.pipe-step:last-child { border-right: none; }
-.pipe-ico { font-size: 16px; display: block; margin-bottom: 5px; }
-.pipe-step.p-active { background: #161209; color: var(--gold2); }
-.pipe-step.p-active::after {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-  height: 2px; background: var(--gold);
-}
-.pipe-step.p-done  { background: #0a160d; color: var(--green); }
-.pipe-step.p-err   { background: #160a0a; color: var(--red); }
+/* TOGGLE */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0}
+.toggle-label{font-size:13px;color:var(--cream)}
+.toggle-sub{font-size:11px;color:var(--slate);margin-top:2px}
+.toggle{position:relative;width:38px;height:20px;flex-shrink:0}
+.toggle input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;background:#1e1e30;border-radius:20px;cursor:pointer;transition:.3s}
+.slider::before{content:'';position:absolute;width:14px;height:14px;left:3px;top:3px;background:var(--slate2);border-radius:50%;transition:.3s}
+input:checked+.slider{background:var(--gold)}
+input:checked+.slider::before{transform:translateX(18px);background:#0a0808}
 
-/* ── ACTIVITY FEED ── */
-.act-feed { max-height: 300px; overflow-y: auto; }
-.act-feed::-webkit-scrollbar { width: 2px; }
-.act-feed::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-.act-item {
-  display: flex; gap: 10px; padding: 6px 8px;
-  border-radius: 5px; font-size: 11.5px; line-height: 1.5;
-}
-.act-item:hover { background: var(--card2); }
-.act-time { font-family: var(--mono); color: var(--slate2); flex-shrink: 0; font-size: 10px; padding-top: 1px; }
-.act-msg  { color: var(--slate); flex: 1; }
+/* LEADS TABLE */
+.leads-table-wrap{overflow-x:auto;border-radius:6px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--slate);background:#0d0d16;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody tr{border-bottom:1px solid #13131e;transition:background .1s}
+tbody tr:hover{background:#13131e}
+tbody tr:last-child{border-bottom:none}
+tbody td{padding:9px 14px;color:var(--slate);vertical-align:middle}
+tbody td:first-child{color:var(--cream)}
+.badge{display:inline-block;font-size:10px;font-family:var(--mono);padding:2px 8px;border-radius:4px}
+.badge-green{background:#0d2010;color:var(--green);border:1px solid #1a4020}
+.badge-amber{background:#1e1500;color:var(--amber);border:1px solid #3d2c00}
+.badge-red{background:#1c0d0d;color:var(--red);border:1px solid #3d1515}
+.badge-blue{background:#0d1526;color:var(--blue);border:1px solid #1a2a4d}
+.badge-purple{background:#150d26;color:var(--purple);border:1px solid #2d1f4d}
+.badge-slate{background:#12121c;color:var(--slate);border:1px solid var(--border2)}
 
-/* ── KW CHIPS ── */
-.kw-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
-.kw-chip {
-  display: flex; align-items: center; gap: 5px;
-  background: #161209; border: 1px solid #2a2215;
-  border-radius: 4px; padding: 3px 10px;
-  font-size: 10px; color: var(--gold);
-}
-.kw-idx { font-family: var(--mono); color: var(--slate2); font-size: 9px; }
+/* LOG */
+.log-box{background:#080810;border:1px solid var(--border);border-radius:6px;height:260px;overflow-y:auto;padding:12px 14px;font-family:var(--mono);font-size:11.5px;line-height:1.7}
+.log-box .log-line{display:flex;gap:10px;align-items:baseline}
+.log-time{color:var(--slate2);flex-shrink:0}
+.log-msg{color:#b8b8d0;word-break:break-all}
 
-/* ── RUNNER CARD ── */
-.runner-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 22px; margin-bottom: 18px;
-}
-.runner-row { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
-.kw-input {
-  flex: 1; min-width: 200px; background: #0d0d14;
-  border: 1px solid var(--border); color: var(--cream);
-  font-family: var(--sans); font-size: 14px; font-weight: 400;
-  padding: 13px 18px; border-radius: 7px; outline: none;
-  transition: border .2s, box-shadow .2s;
-}
-.kw-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,.1); }
-.kw-input::placeholder { color: var(--slate2); }
+/* MODE SWITCHER */
+.mode-tabs{display:flex;gap:6px;margin-bottom:18px}
+.mode-tab{flex:1;padding:11px;text-align:center;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;border:1px solid var(--border2);color:var(--slate);transition:all .15s}
+.mode-tab.active-normal{background:#0d1a0d;color:var(--green);border-color:#1a3d1a}
+.mode-tab.active-hunter{background:#1c0d0d;color:var(--red);border-color:#3d1515}
+.mode-tab:not(.active-normal):not(.active-hunter):hover{background:var(--card2)}
 
-/* ── HUNTER MODE ── */
-.hunter-toggle {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px; background: #0d0d14;
-  border: 1px solid var(--border); border-radius: 7px;
-  cursor: pointer; font-size: 12px; color: var(--slate);
-  transition: all .15s; user-select: none; white-space: nowrap;
-}
-.hunter-toggle:hover { border-color: var(--gold); color: var(--gold); }
-.hunter-toggle.active { background: #161209; border-color: var(--gold); color: var(--gold2); }
-.hunter-fields {
-  display: none; margin-top: 12px;
-  background: #0d0d14; border: 1px solid var(--border);
-  border-radius: 7px; padding: 14px;
-  grid-template-columns: 1fr 1fr; gap: 12px;
-}
-.hunter-fields.show { display: grid; }
-.hf-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--slate2); margin-bottom: 6px; }
-.hf-input {
-  background: var(--bg); border: 1px solid var(--border);
-  color: var(--cream); font-family: var(--mono); font-size: 12px;
-  padding: 8px 12px; border-radius: 5px; outline: none; width: 100%;
-  transition: border .2s;
-}
-.hf-input:focus { border-color: var(--gold); }
+/* HUNTER FIELDS */
+.hunter-fields{background:#0e0a0a;border:1px solid #2a1515;border-radius:var(--r);padding:16px;margin-top:12px;display:none}
+.hunter-fields.shown{display:block}
 
-/* ── BUTTONS ── */
-.btn-primary {
-  background: linear-gradient(135deg, #8b6914, var(--gold));
-  color: #0a0808; border: none;
-  padding: 12px 28px; border-radius: 7px;
-  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; letter-spacing: .5px; transition: all .18s;
-  white-space: nowrap;
-}
-.btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
-.btn-primary:active { transform: translateY(0); }
-.btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; filter: none; }
-.btn-danger {
-  background: transparent; color: var(--red);
-  border: 1px solid var(--red); padding: 12px 22px; border-radius: 7px;
-  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all .18s; display: none; white-space: nowrap;
-}
-.btn-danger.show { display: inline-block; }
-.btn-danger:hover { background: var(--red); color: #fff; }
-.btn-ghost {
-  background: var(--card2); border: 1px solid var(--border);
-  color: var(--slate); padding: 8px 16px; border-radius: 6px;
-  font-size: 11px; cursor: pointer; font-family: var(--mono);
-  transition: all .15s; white-space: nowrap;
-}
-.btn-ghost:hover { color: var(--cream); border-color: var(--border2); }
-.btn-gold {
-  background: transparent; color: var(--gold);
-  border: 1px solid var(--gold); padding: 10px 22px; border-radius: 7px;
-  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all .18s; white-space: nowrap;
-}
-.btn-gold:hover { background: var(--gold); color: #0a0808; }
-.btn-gold:disabled { opacity: .3; cursor: not-allowed; }
-.btn-clear {
-  background: transparent; color: var(--red);
-  border: 1px solid #3a1414; padding: 8px 16px; border-radius: 6px;
-  font-size: 11px; cursor: pointer; font-family: var(--mono);
-  transition: all .15s; white-space: nowrap;
-}
-.btn-clear:hover { background: #1a0808; border-color: var(--red); }
+/* SPAM SCORE BAR */
+.spam-bar-wrap{margin-top:8px}
+.spam-bar-label{display:flex;justify-content:space-between;font-size:10px;color:var(--slate);margin-bottom:4px}
+.spam-bar{height:6px;background:#1a1a28;border-radius:3px;overflow:hidden}
+.spam-bar-fill{height:100%;border-radius:3px;transition:width .4s,background .4s}
 
-/* ── TABLE ── */
-.table-wrap { overflow-x: auto; }
-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-thead th {
-  padding: 10px 14px; text-align: left;
-  font-size: 9px; font-weight: 600; letter-spacing: 1.5px;
-  text-transform: uppercase; color: var(--slate2);
-  background: #0d0d14; border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-tbody td {
-  padding: 10px 14px; border-bottom: 1px solid #14141e;
-  vertical-align: middle; white-space: nowrap;
-}
-tbody tr:last-child td { border-bottom: none; }
-tbody tr:hover td { background: #13131c; }
-.bdg {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 9px; font-weight: 600; letter-spacing: .5px;
-  padding: 3px 8px; border-radius: 4px;
-}
-.bdg-sent  { background: #0a160d; color: var(--green); border: 1px solid #166534; }
-.bdg-pend  { background: #161209; color: var(--gold); border: 1px solid #2a2215; }
-.bdg-cat   { background: #111128; color: var(--blue); border: 1px solid #1e3a8a; }
-.email-a   { color: var(--gold); text-decoration: none; font-family: var(--mono); font-size: 10.5px; }
-.email-a:hover { text-decoration: underline; }
-.ext-a     { color: var(--slate2); font-size: 14px; text-decoration: none; transition: color .15s; }
-.ext-a:hover { color: var(--gold); }
+/* KEYWORD BADGE */
+.kw-badge{display:inline-block;padding:3px 10px;background:#13131e;border:1px solid var(--border2);border-radius:20px;font-size:11px;color:var(--slate);margin:3px;font-family:var(--mono)}
+.kw-badge.active{background:#161209;border-color:#2a2215;color:var(--gold2)}
 
-/* ── FUNNEL ── */
-.funnel { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
-.fn-step { display: flex; align-items: center; gap: 12px; }
-.fn-lbl  { font-size: 10px; color: var(--slate); min-width: 100px; text-align: right; }
-.fn-bar-wrap { flex: 1; height: 28px; background: #0d0d14; border-radius: 5px; overflow: hidden; }
-.fn-bar {
-  height: 100%; border-radius: 5px;
-  display: flex; align-items: center; padding: 0 10px;
-  font-size: 11px; font-weight: 600; color: #0a0808;
-  transition: width .8s cubic-bezier(.4,0,.2,1); min-width: 28px;
-}
-.fn-cnt { font-family: var(--mono); font-size: 11px; color: var(--slate2); min-width: 32px; }
+/* URL POOL STATUS */
+.url-pool-row{display:flex;align-items:center;justify-content:space-between;padding:7px 10px;background:#0c0c14;border-radius:5px;margin-bottom:5px;font-size:11px}
+.url-pool-row .url-text{color:var(--slate);font-family:var(--mono);font-size:10px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.url-pool-row .url-status{flex-shrink:0;margin-left:8px}
 
-/* ── SETUP FORMS ── */
-.setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
-.form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-.form-label { font-size: 9px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--slate2); }
-.form-hint  { font-size: 10.5px; color: var(--slate2); line-height: 1.6; }
-.form-input {
-  background: #0d0d14; border: 1px solid var(--border);
-  color: var(--cream); font-family: var(--mono); font-size: 12px;
-  padding: 11px 14px; border-radius: 6px; outline: none;
-  transition: border .2s, box-shadow .2s; width: 100%;
-}
-.form-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,.08); }
-.form-input::placeholder { color: var(--slate2); }
-.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.pass-wrap { position: relative; }
-.pass-wrap .form-input { padding-right: 44px; }
-.pass-toggle {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; color: var(--slate2); cursor: pointer; font-size: 13px; padding: 4px;
-}
-.pass-toggle:hover { color: var(--slate); }
+/* CRM CHARTS */
+.chart-wrap{position:relative;height:200px}
+.chart-wrap canvas{max-height:200px}
 
-/* ── KEEP ALIVE SECTION ── */
-.keepalive-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 22px; margin-bottom: 14px;
-}
-.ka-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-.ka-status {
-  font-family: var(--mono); font-size: 11px;
-  margin-top: 12px; padding: 10px 14px;
-  border-radius: 6px; border: 1px solid var(--border);
-  color: var(--slate2); background: #0d0d14; line-height: 1.8;
-}
-.ka-status.active { border-color: #1a3a1a; background: #0a140a; color: var(--green); }
-.ka-status.off    { border-color: #2a1a1a; background: #140a0a; color: var(--red); }
+/* ACTIONS ROW */
+.actions-row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px}
 
-/* ── AS BOX ── */
-.as-box {
-  background: #0d0d14; border: 1px solid var(--border);
-  border-radius: 7px; padding: 16px; margin-top: 8px;
-}
-.as-box h4 { font-size: 10px; font-weight: 700; color: var(--gold); margin-bottom: 10px; letter-spacing: .5px; text-transform: uppercase; }
-.code-block {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
-  padding: 12px; font-family: var(--mono); font-size: 10.5px;
-  color: #93c5fd; line-height: 1.7; overflow-x: auto; white-space: pre;
-}
-.env-block {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
-  padding: 12px; font-family: var(--mono); font-size: 11px;
-  color: #86efac; line-height: 2; white-space: pre;
-}
-.saved-msg { display: none; font-size: 11px; color: var(--green); align-items: center; gap: 6px; }
-.saved-msg.show { display: flex; }
+/* EMPTY STATE */
+.empty-state{text-align:center;padding:40px;color:var(--slate);font-size:13px}
+.empty-state .icon{font-size:32px;margin-bottom:10px}
 
-/* ── SPAM TEST ── */
-.spam-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 24px; margin-bottom: 18px;
-}
-.spam-result {
-  margin-top: 14px; padding: 12px 16px;
-  border-radius: 6px; font-size: 12px; font-family: var(--mono);
-  display: none;
-}
-.spam-result.ok  { background: #0a160d; border: 1px solid #166534; color: var(--green); display: block; }
-.spam-result.err { background: #160a0a; border: 1px solid #7f1d1d; color: var(--red); display: block; }
+/* SCROLLBAR */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:3px}
 
-/* ── WARN ── */
-.cfg-warn {
-  background: #161209; border: 1px solid #2a2215; border-radius: 7px;
-  padding: 12px 16px; font-size: 11.5px; color: var(--gold);
-  margin-bottom: 18px; display: none; align-items: center; gap: 10px;
-}
-.cfg-warn.show { display: flex; }
+/* TABS within card */
+.inner-tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border);padding-bottom:0}
+.inner-tab{padding:7px 14px;font-size:12px;font-weight:500;color:var(--slate);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;margin-bottom:-1px}
+.inner-tab.active{color:var(--gold2);border-bottom-color:var(--gold2)}
+.inner-tab-panel{display:none}
+.inner-tab-panel.active{display:block}
 
-/* ── EMPTY ── */
-.empty-st { text-align: center; padding: 40px 20px; color: var(--slate2); font-size: 12px; line-height: 2; }
-.empty-ico { font-size: 26px; display: block; margin-bottom: 8px; }
-
-/* ── SHEET LINK ── */
-.sheet-link-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #161209; border: 1px solid #2a2215;
-  color: var(--gold); padding: 7px 14px; border-radius: 5px;
-  font-size: 11px; font-weight: 600; text-decoration: none;
-  transition: all .15s;
-}
-.sheet-link-btn:hover { background: #1e180d; }
-
-::-webkit-scrollbar { width: 4px; height: 4px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
-@media(max-width:900px){
-  .sidebar{display:none;} .main{margin-left:0;}
-  .grid-2,.grid-3,.setup-grid,.form-row{grid-template-columns:1fr;}
-  .stats-grid{grid-template-columns:repeat(2,1fr);}
-}
+/* RESPONSIVE */
+@media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.sidebar{width:60px}.sidebar-logo .logo-mark,.sidebar-logo .logo-sub,.nav-item span,.btn-send-pending span,.version-badge{display:none}.main{margin-left:60px;padding:20px}.grid-2,.grid-3,.grid-4{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 
+<!-- SIDEBAR -->
 <aside class="sidebar">
   <div class="sidebar-logo">
     <div class="logo-mark">Play<span>Lead</span></div>
-    <div class="logo-sub">Automation Engine</div>
+    <div class="logo-sub">Engine</div>
+    <div class="version-badge">v2.0</div>
   </div>
   <nav class="nav">
-    <div class="nav-item active" onclick="showSec('automation',this)"><span class="icon">⚡</span>Automation</div>
-    <div class="nav-item" onclick="showSec('analytics',this)"><span class="icon">📊</span>Analytics</div>
-    <div class="nav-item" onclick="showSec('database',this)"><span class="icon">🗄️</span>Database</div>
-    <div class="nav-item" onclick="showSec('spamtest',this)"><span class="icon">🧪</span>Spam Test</div>
-    <div class="nav-sep"></div>
-    <div class="nav-item" onclick="showSec('setup',this)"><span class="icon">⚙️</span>Setup & Config</div>
-  </nav>
-
-  <!-- ── ALWAYS-VISIBLE SEND PENDING BUTTON ── -->
-  <div class="sidebar-send-pending">
-    <button class="btn-send-pending" id="btnSendPending" onclick="sendPending()" title="Send emails to all unsent leads">
-      <span>📬 Send Pending</span>
-      <span class="pending-badge zero" id="pendingBadge">0</span>
-    </button>
-  </div>
-
-  <div class="sidebar-bottom">
-    <div class="status-pill">
-      <div class="dot" id="sbDot"></div>
-      <span id="sbStatus" style="color:var(--slate);">Idle</span>
+    <div class="nav-item active" onclick="showSection('dashboard')" id="nav-dashboard">
+      <span class="icon">⚡</span><span>Dashboard</span>
     </div>
+    <div class="nav-item" onclick="showSection('leads')" id="nav-leads">
+      <span class="icon">📋</span><span>Leads</span>
+    </div>
+    <div class="nav-item" onclick="showSection('crm')" id="nav-crm">
+      <span class="icon">📊</span><span>Email Overview</span>
+    </div>
+    <div class="nav-sep"></div>
+    <div class="nav-item" onclick="showSection('settings')" id="nav-settings">
+      <span class="icon">⚙️</span><span>Settings</span>
+    </div>
+    <div class="nav-item" onclick="showSection('email')" id="nav-email">
+      <span class="icon">✉️</span><span>Email Template</span>
+    </div>
+  </nav>
+  <div class="sidebar-send-pending">
+    <button class="btn-send-pending" id="sidebarSendPending" onclick="fetchAndSendPending()">
+      <span>📬 Send Pending</span>
+      <span class="pending-badge" id="pendingBadge">—</span>
+    </button>
   </div>
 </aside>
 
+<!-- MAIN -->
 <main class="main">
-  <div class="topbar">
-    <div class="page-title" id="pgTitle">⚡ <span class="hi">Automation</span></div>
-    <div class="topbar-right">
-      <div class="ping-badge" id="pingBadge" title="Keep-Alive status">⚡ Keep-Alive: OFF</div>
-      <div class="time-badge" id="clk">--:--:--</div>
+
+<!-- ═══════════════ DASHBOARD ═══════════════ -->
+<section class="section active" id="section-dashboard">
+  <div class="page-title">Dashboard</div>
+  <div class="page-sub">Scrape leads · AI email · Send — all in one place</div>
+
+  <!-- STATUS BAR -->
+  <div class="status-bar" id="statusBar">
+    <div class="status-dot" id="statusDot"></div>
+    <div class="status-label" id="statusLabel">Idle</div>
+    <div class="status-sep"></div>
+    <div class="status-stat">Leads: <strong id="statLeads">0</strong></div>
+    <div class="status-sep"></div>
+    <div class="status-stat">Sent: <strong id="statSent">0</strong></div>
+    <div class="status-sep"></div>
+    <div class="status-stat">Failed: <strong id="statFailed">0</strong></div>
+    <div class="status-mode-badge normal" id="modeBadge">NORMAL</div>
+  </div>
+
+  <!-- MODE SELECTOR -->
+  <div class="mode-tabs">
+    <div class="mode-tab active-normal" id="tabNormal" onclick="setMode('normal')">
+      🌱 Normal Mode — Find new unrated apps
+    </div>
+    <div class="mode-tab" id="tabHunter" onclick="setMode('hunter')">
+      🎯 Hunter Mode — Find bad-rated apps
     </div>
   </div>
-  <div class="cfg-warn" id="cfgWarn">⚠️ &nbsp;Setup incomplete — go to <strong>Setup &amp; Config</strong> first.</div>
 
-  <!-- ══ AUTOMATION ══ -->
-  <section class="section active" id="sec-automation">
-
-    <div class="runner-card">
-      <div class="card-head">
-        Launch Automation
-        <span style="margin-left:auto;">
-          <button class="btn-clear" id="btnClear" onclick="clearHistory()" style="font-size:10px;padding:5px 12px;">🗑 Clear All History</button>
-        </span>
-      </div>
-      <div class="runner-row">
-        <input class="kw-input" id="kwInput" type="text" placeholder="Keyword — e.g. budget tracker, meditation app …"/>
-        <div class="hunter-toggle" id="hunterToggle" onclick="toggleHunter()" title="Hunter Mode: target low-rating apps">
-          🎯 Hunter
-        </div>
-        <button class="btn-primary" id="btnStart" onclick="startAuto()">▶ Start</button>
-        <button class="btn-danger" id="btnStop" onclick="stopAuto()">⏹ Stop</button>
-      </div>
-      <div class="hunter-fields" id="hunterFields">
-        <div>
-          <div class="hf-label">Max Installs</div>
-          <input class="hf-input" id="hf-installs" type="number" placeholder="5000" value="5000"/>
-        </div>
-        <div>
-          <div class="hf-label">Max Rating</div>
-          <input class="hf-input" id="hf-score" type="number" step="0.1" placeholder="2.5" value="2.5"/>
-        </div>
-      </div>
-    </div>
-
-    <div class="pipeline">
-      <div class="pipe-step" id="pp-scrape"><span class="pipe-ico">🔍</span>Scraping</div>
-      <div class="pipe-step" id="pp-ai"><span class="pipe-ico">🤖</span>AI Keywords</div>
-      <div class="pipe-step" id="pp-leads"><span class="pipe-ico">📋</span>Leads Ready</div>
-      <div class="pipe-step" id="pp-email"><span class="pipe-ico">📧</span>AI Email</div>
-      <div class="pipe-step" id="pp-done"><span class="pipe-ico">✅</span>Complete</div>
-    </div>
-
-    <div class="stats-grid">
-      <div class="stat-card c-gold"><div class="stat-label">Leads Found</div><div class="stat-val" id="stLeads">0</div><div class="stat-sub">Target: <span id="tgtNum">300</span></div></div>
-      <div class="stat-card c-green"><div class="stat-label">Emails Sent</div><div class="stat-val" id="stEmails">0</div><div class="stat-sub">of <span id="tgtLeadsForEmail">0</span> leads</div></div>
-      <div class="stat-card c-blue"><div class="stat-label">Keywords Used</div><div class="stat-val" id="stKws">0</div><div class="stat-sub">incl. AI-generated</div></div>
-      <div class="stat-card c-amber"><div class="stat-label">Delivery Rate</div><div class="stat-val" id="stRate">—</div><div class="stat-sub">email success %</div></div>
-    </div>
-
+  <!-- HUNTER SETTINGS -->
+  <div class="hunter-fields" id="hunterFields">
+    <div class="card-title"><span class="icon">🎯</span> Hunter Mode Settings</div>
     <div class="grid-2">
-      <div class="card">
-        <div class="card-head">Progress</div>
-        <div class="prog-row"><div class="prog-lbl">Lead collection</div><div class="prog-track"><div class="prog-fill pf-gold" id="pfLeads" style="width:0%"></div></div><div class="prog-pct" id="ppLeads">0%</div></div>
-        <div class="prog-row"><div class="prog-lbl">Email outreach</div><div class="prog-track"><div class="prog-fill pf-green" id="pfEmail" style="width:0%"></div></div><div class="prog-pct" id="ppEmail">0%</div></div>
-        <div class="prog-row"><div class="prog-lbl">AI keywords</div><div class="prog-track"><div class="prog-fill pf-blue" id="pfAI" style="width:0%"></div></div><div class="prog-pct" id="ppAI">0</div></div>
-        <div style="margin-top:18px;">
-          <div style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;margin-bottom:8px;">Keywords in queue</div>
-          <div class="kw-chips" id="kwChips"><span style="color:var(--slate2);font-size:11px;">None yet</span></div>
-        </div>
+      <div class="field">
+        <label>Max Installs</label>
+        <input type="number" id="hunterMaxInstalls" value="5000" placeholder="5000"/>
+        <div class="field-note">Only target apps with ≤ this many installs</div>
       </div>
-      <div class="card">
-        <div class="card-head">Live Activity</div>
-        <div class="act-feed" id="actFeed"><div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div></div>
+      <div class="field">
+        <label>Max Rating Score</label>
+        <input type="number" id="hunterMaxScore" value="2.5" step="0.1" min="1" max="5" placeholder="2.5"/>
+        <div class="field-note">Only target apps with rating ≤ this value</div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ══ ANALYTICS ══ -->
-  <section class="section" id="sec-analytics">
-    <div class="stats-grid">
-      <div class="stat-card c-gold"><div class="stat-label">Total Leads</div><div class="stat-val" id="an-l">0</div><div class="stat-sub">collected</div></div>
-      <div class="stat-card c-green"><div class="stat-label">Emails Sent</div><div class="stat-val" id="an-e">0</div><div class="stat-sub">outreach done</div></div>
-      <div class="stat-card c-blue"><div class="stat-label">Categories</div><div class="stat-val" id="an-c">—</div><div class="stat-sub">unique genres</div></div>
-      <div class="stat-card c-amber"><div class="stat-label">Avg Rating</div><div class="stat-val" id="an-s">—</div><div class="stat-sub">Play Store score</div></div>
-    </div>
-    <div class="grid-2" style="margin-bottom:14px;">
-      <div class="card">
-        <div class="card-head">Conversion Funnel</div>
-        <div class="funnel">
-          <div class="fn-step"><div class="fn-lbl">Scraped</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div><div class="fn-cnt" id="fn1c">0</div></div>
-          <div class="fn-step"><div class="fn-lbl">Has Email</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div><div class="fn-cnt" id="fn2c">0</div></div>
-          <div class="fn-step"><div class="fn-lbl">Email Sent</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn3" style="width:0%;background:linear-gradient(90deg,#166534,var(--green))">0</div></div><div class="fn-cnt" id="fn3c">0</div></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-head">Top Categories</div>
-        <div id="catBreak"><div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div></div>
-      </div>
-    </div>
-    <div class="grid-3">
-      <div class="card">
-        <div class="card-head">Install Distribution</div>
-        <div id="installBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
-      </div>
-      <div class="card">
-        <div class="card-head">Keyword Performance</div>
-        <div id="kwPerf"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
-      </div>
-      <div class="card">
-        <div class="card-head">Session Summary</div>
-        <div style="font-size:11px;color:var(--slate2);line-height:2.4;padding:4px 0;">
-          Start time: <span id="ss-start" style="color:var(--slate)">—</span><br>
-          Duration: <span id="ss-dur" style="color:var(--slate)">—</span><br>
-          Phase: <span id="ss-phase" style="color:var(--gold)">—</span><br>
-          AI calls: <span id="ss-ai" style="color:var(--blue)">0</span><br>
-          Sheet: <span id="ss-sheet" style="color:var(--green)">—</span><br>
-          Status: <span id="ss-st" style="color:var(--slate)">Idle</span>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ══ DATABASE ══ -->
-  <section class="section" id="sec-database">
+  <div class="grid-2">
+    <!-- START PANEL -->
     <div class="card">
-      <div class="card-head" style="justify-content:space-between;">
-        <span>All Leads &nbsp;<span id="dbCnt" style="color:var(--gold2);font-family:var(--serif);font-size:18px;letter-spacing:0;font-weight:700">0</span></span>
-        <div style="display:flex;gap:8px;align-items:center;">
-          <span id="sheetLinkWrap"></span>
-          <button class="btn-clear" onclick="clearHistory()">🗑 Clear History</button>
-          <button class="btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
+      <div class="card-title"><span class="icon">🚀</span> Start Automation</div>
+      <div class="field">
+        <label>Seed Keyword</label>
+        <input type="text" id="keyword" placeholder="e.g. crypto wallet android" oninput="scoreKeyword(this.value)"/>
+        <div id="kwScoreWrap" style="margin-top:6px;display:none">
+          <span id="kwScoreBadge" class="badge"></span>
+          <span id="kwScoreText" style="font-size:10px;color:var(--slate);margin-left:6px"></span>
         </div>
       </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>#</th><th>App Name</th><th>Developer</th><th>Email</th>
-            <th>Category</th><th>Installs</th><th>Score</th>
-            <th>Keyword</th><th>Status</th><th>Link</th>
-          </tr></thead>
-          <tbody id="dbBody"><tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr></tbody>
-        </table>
+      <div class="field">
+        <label>Target Leads</label>
+        <input type="number" id="targetLeads" value="50" min="1" max="500"/>
+      </div>
+      <div class="actions-row" style="margin-bottom:0">
+        <button class="btn btn-primary" id="btnStart" onclick="startAuto()">▶ Start</button>
+        <button class="btn btn-danger" id="btnStop" onclick="stopAuto()" disabled>⏹ Stop</button>
+        <button class="btn btn-ghost btn-sm" onclick="clearState()">🗑 Clear</button>
       </div>
     </div>
-  </section>
 
-  <!-- ══ SPAM TEST ══ -->
-  <section class="section" id="sec-spamtest">
-    <div class="spam-card">
-      <div class="card-head">🧪 Spam Test — Email Preview</div>
-      <p style="font-size:12px;color:var(--slate);margin-bottom:18px;line-height:1.7;">
-        AI তোমার template দেখে একটা unique email বানাবে এবং এই test email এ পাঠাবে।
-        Inbox এ আসলে ✅, Spam এ গেলে template টা আরো improve করো।
-      </p>
-      <div class="form-row" style="margin-bottom:14px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Your Test Email</label>
-          <input class="form-input" id="spamTestEmail" type="email" placeholder="yourname@gmail.com"/>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Sample App Name</label>
-          <input class="form-input" id="spamSampleApp" type="text" placeholder="MyApp Pro"/>
-        </div>
-      </div>
-      <div class="form-row" style="margin-bottom:18px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Sample Developer</label>
-          <input class="form-input" id="spamSampleDev" type="text" placeholder="John Dev"/>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Sample Rating</label>
-          <input class="form-input" id="spamSampleScore" type="number" step="0.1" placeholder="2.1" value="2.1"/>
-        </div>
-      </div>
-      <button class="btn-primary" onclick="runSpamTest()" id="btnSpamTest">📤 Send Test Email</button>
-      <div id="spamResult" class="spam-result"></div>
-    </div>
+    <!-- KEYWORD TRACK -->
     <div class="card">
-      <div class="card-head">Email Template Preview (sample data)</div>
-      <div style="font-size:11px;color:var(--slate2);margin-bottom:12px;">AI will rewrite this uniquely per lead — this is just the base structure:</div>
-      <div style="background:#0d0d14;border:1px solid var(--border);border-radius:7px;padding:16px;">
-        <div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-bottom:8px;">Subject: <span id="liveSubject" style="color:var(--slate);">—</span></div>
-        <pre id="liveBody" style="font-size:11.5px;color:var(--slate);white-space:pre-wrap;font-family:var(--mono);line-height:1.7;">—</pre>
+      <div class="card-title"><span class="icon">🔑</span> Keywords Used</div>
+      <div id="kwList" style="min-height:60px">
+        <div class="empty-state" style="padding:20px">
+          <div>Keywords appear here as automation runs</div>
+        </div>
       </div>
     </div>
-  </section>
+  </div>
 
-  <!-- ══ SETUP ══ -->
-  <section class="section" id="sec-setup">
-    <div class="setup-grid">
-      <div style="display:flex;flex-direction:column;gap:14px;">
+  <!-- LOG -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📡</span> Live Log</div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+</section>
 
-        <div class="card">
-          <div class="card-head">API Credentials</div>
-          <div class="form-group">
-            <label class="form-label">Groq API Key</label>
-            <div class="pass-wrap">
-              <input class="form-input" id="cfg-groq" type="password" placeholder="gsk_…"/>
-              <button class="pass-toggle" onclick="togglePass('cfg-groq',this)">👁</button>
-            </div>
-            <div class="form-hint">From <strong style="color:var(--gold)">console.groq.com</strong> — free tier available. Used for AI keywords AND AI email writing.</div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Target Leads</label>
-            <input class="form-input" id="cfg-target" type="number" placeholder="300" value="300" min="10" max="2000"/>
-          </div>
-        </div>
+<!-- ═══════════════ LEADS ═══════════════ -->
+<section class="section" id="section-leads">
+  <div class="page-title">Leads</div>
+  <div class="page-sub">All discovered app developer leads this session</div>
+  <div class="actions-row">
+    <input type="text" id="leadsSearch" placeholder="🔍 Search leads…" style="background:#0c0c14;border:1px solid var(--border2);border-radius:6px;padding:8px 12px;color:var(--cream);font-size:12px;width:240px;outline:none" oninput="filterLeads()"/>
+    <button class="btn btn-ghost btn-sm" onclick="exportLeadsCSV()">⬇ Export CSV</button>
+    <span id="leadsCount" style="font-size:12px;color:var(--slate);margin-left:auto"></span>
+  </div>
+  <div class="leads-table-wrap">
+    <table id="leadsTable">
+      <thead>
+        <tr>
+          <th>App Name</th>
+          <th>Developer</th>
+          <th>Email</th>
+          <th>Category</th>
+          <th>Installs</th>
+          <th>Score</th>
+          <th>Ratings</th>
+          <th>Conf.</th>
+          <th>Mode</th>
+          <th>Keyword</th>
+          <th>Status</th>
+          <th>Link</th>
+        </tr>
+      </thead>
+      <tbody id="leadsBody">
+        <tr><td colspan="12" class="empty-state"><div class="icon">📭</div>No leads yet — start automation</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
-        <div class="card">
-          <div class="card-head">Sender Identity</div>
-          <div class="form-row">
-            <div class="form-group" style="margin-bottom:0;">
-              <label class="form-label">Your Name</label>
-              <input class="form-input" id="cfg-sender-name" type="text" placeholder="Abu Raihan"/>
-            </div>
-            <div class="form-group" style="margin-bottom:0;">
-              <label class="form-label">Your Company</label>
-              <input class="form-input" id="cfg-sender-company" type="text" placeholder="ReviewBoost BD"/>
-            </div>
-          </div>
-        </div>
+<!-- ═══════════════ EMAIL OVERVIEW / CRM ═══════════════ -->
+<section class="section" id="section-crm">
+  <div class="page-title">Email Overview</div>
+  <div class="page-sub">Campaign analytics, deliverability health, and sender performance</div>
 
-        <div class="card">
-          <div class="card-head">Email Template (AI Base)</div>
-          <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:1.7;">
-            AI এই template এর <strong style="color:var(--gold)">value proposition</strong> রেখে প্রতিটা lead এর জন্য unique subject + body লিখবে।
-            Template টা যত ভালো হবে, AI output তত ভালো হবে।
-          </div>
-          <div class="form-group">
-            <label class="form-label">Subject Line Template</label>
-            <input class="form-input" id="cfg-email-subject" type="text" placeholder="Quick question about {{app_name}}"/>
-          </div>
-          <div style="font-size:10px;color:var(--slate2);margin-bottom:8px;">
-            Variables: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{app_name}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{developer}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{category}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{score}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{installs}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_name}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_company}}</code>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Email Body Template</label>
-            <textarea class="form-input" id="cfg-email-body" rows="10" style="resize:vertical;line-height:1.7;font-size:11.5px;" oninput="updateLivePreview()"></textarea>
-          </div>
-          <button class="btn-ghost" onclick="resetTemplate()">↺ Reset to default</button>
-        </div>
+  <!-- DATE FILTER -->
+  <div class="actions-row">
+    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('today')" id="fToday">Today</button>
+    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('week')" id="fWeek">Last 7 days</button>
+    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('month')" id="fMonth">This month</button>
+    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('all')" id="fAll" style="border-color:var(--gold);color:var(--gold2)">All time</button>
+  </div>
 
-      </div>
+  <!-- STATS -->
+  <div class="grid-4" style="margin-bottom:18px">
+    <div class="stat-card">
+      <div class="stat-label">Total Sent</div>
+      <div class="stat-val blue" id="crmSent">0</div>
+      <div class="stat-sub">this session</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Delivered</div>
+      <div class="stat-val green" id="crmDelivered">0</div>
+      <div class="stat-sub">est. based on send status</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Failed / Bounced</div>
+      <div class="stat-val red" id="crmFailed">0</div>
+      <div class="stat-sub">send errors</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Delivery Rate</div>
+      <div class="stat-val amber" id="crmRate">—</div>
+      <div class="stat-sub">% successfully sent</div>
+    </div>
+  </div>
 
-      <div style="display:flex;flex-direction:column;gap:14px;">
-
-        <!-- KEEP ALIVE -->
-        <div class="keepalive-card">
-          <div class="card-head">⚡ Keep-Alive (Anti-Sleep)</div>
-          <div style="font-size:11px;color:var(--slate);margin-bottom:14px;line-height:1.8;">
-            Render free plan এ server 15 min পরে sleep হয়। নিচে তোমার <strong style="color:var(--gold)">deployed app এর URL</strong> দাও — এই page নিজেই নির্দিষ্ট সময় পর ping করে server কে জাগিয়ে রাখবে।
-          </div>
-          <div class="ka-row">
-            <div class="form-group" style="flex:1;margin-bottom:0;">
-              <label class="form-label">Your App URL</label>
-              <input class="form-input" id="cfg-keepalive-url" type="url" placeholder="https://your-app.onrender.com"/>
-            </div>
-            <div class="form-group" style="min-width:130px;margin-bottom:0;">
-              <label class="form-label">Interval (seconds)</label>
-              <input class="form-input" id="cfg-keepalive-interval" type="number" placeholder="25" value="25" min="10" max="60"/>
-            </div>
-          </div>
-          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
-            <button class="btn-primary" onclick="startKeepAlive()" id="btnKaStart" style="font-size:11.5px;padding:9px 20px;">▶ Start Keep-Alive</button>
-            <button class="btn-clear" onclick="stopKeepAlive()" id="btnKaStop" style="display:none;padding:9px 16px;">⏹ Stop</button>
-          </div>
-          <div class="ka-status off" id="kaStatus" style="margin-top:10px;">Keep-Alive: OFF — server may sleep after 15 minutes</div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">Google Sheet Database</div>
-          <div class="form-group">
-            <label class="form-label">Google Sheet URL</label>
-            <input class="form-input" id="cfg-sheeturl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…"/>
-            <div id="sheetLinkRowSetup" style="margin-top:8px;"></div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Lead Sheet Apps Script URL</label>
-            <input class="form-input" id="cfg-appsscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
-            <div class="form-hint">Leads sheet এ data লেখার জন্য</div>
-          </div>
-          <div class="as-box">
-            <h4>📋 Lead Sheet Apps Script (4 tabs auto-created)</h4>
-            <div style="font-size:10px;color:var(--slate2);line-height:1.9;margin-bottom:10px;">
-              Tabs: <strong style="color:var(--gold)">All Leads</strong> | <strong style="color:var(--gold)">Qualified Leads</strong> | <strong style="color:var(--gold)">Email Sent</strong> | <strong style="color:var(--gold)">Keyword Log</strong>
-            </div>
-            <div class="code-block" id="asCode">function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var action = data.action;
-
-    if (action === "append") {
-      var tab = data.tab || "All Leads";
-      var sheet = ss.getSheetByName(tab);
-      if (!sheet) sheet = ss.insertSheet(tab);
-      var row = data.row;
-      if (sheet.getLastRow() === 0) {
-        sheet.appendRow(Object.keys(row));
-      }
-      sheet.appendRow(Object.values(row));
-
-    } else if (action === "mark_sent") {
-      // Mark in All Leads tab
-      var allSheet = ss.getSheetByName("All Leads");
-      if (allSheet) {
-        var appId = data.app_id;
-        var vals = allSheet.getDataRange().getValues();
-        for (var i = 1; i < vals.length; i++) {
-          if (String(vals[i][vals[i].length - 1]) === appId) {
-            var sentCol = vals[0].indexOf("Email Sent") + 1;
-            if (sentCol > 0) allSheet.getRange(i+1, sentCol).setValue("Yes");
-            break;
-          }
-        }
-      }
-      // Mark in Qualified Leads tab
-      var qSheet = ss.getSheetByName("Qualified Leads");
-      if (qSheet) {
-        var appId = data.app_id;
-        var vals = qSheet.getDataRange().getValues();
-        for (var i = 1; i < vals.length; i++) {
-          if (String(vals[i][vals[i].length - 1]) === appId) {
-            var sentCol = vals[0].indexOf("Email Sent") + 1;
-            if (sentCol > 0) qSheet.getRange(i+1, sentCol).setValue("Yes");
-            break;
-          }
-        }
-      }
-      // Append to Email Sent tab
-      var sentSheet = ss.getSheetByName("Email Sent");
-      if (!sentSheet) sentSheet = ss.insertSheet("Email Sent");
-      if (sentSheet.getLastRow() === 0) {
-        sentSheet.appendRow(["App ID","App Name","Email","Sent At"]);
-      }
-      sentSheet.appendRow([data.app_id, data.app_name||"", data.email||"", new Date().toLocaleString()]);
-
-    } else if (action === "get_pending") {
-      // Return all rows from All Leads where Email Sent = No
-      var allSheet = ss.getSheetByName("All Leads");
-      if (!allSheet) {
-        return ContentService
-          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-      var vals = allSheet.getDataRange().getValues();
-      if (vals.length < 2) {
-        return ContentService
-          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-      var headers = vals[0];
-      var colIdx = {};
-      headers.forEach(function(h, i) { colIdx[h] = i; });
-      var leads = [];
-      for (var i = 1; i < vals.length; i++) {
-        var row = vals[i];
-        var emailSent = String(row[colIdx["Email Sent"]] || "").trim().toLowerCase();
-        if (emailSent === "no" || emailSent === "") {
-          leads.push({
-            app_id:    String(row[colIdx["App ID"]]    || ""),
-            app_name:  String(row[colIdx["App Name"]]  || ""),
-            developer: String(row[colIdx["Developer"]] || ""),
-            email:     String(row[colIdx["Email"]]     || ""),
-            category:  String(row[colIdx["Category"]]  || ""),
-            installs:  Number(row[colIdx["Installs"]]  || 0),
-            score:     row[colIdx["Score"]] ? Number(row[colIdx["Score"]]) : null,
-            url:       String(row[colIdx["URL"]]       || ""),
-            keyword:   String(row[colIdx["Keyword"]]   || ""),
-          });
-        }
-      }
-      return ContentService
-        .createTextOutput(JSON.stringify({status:"ok", leads:leads}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    return ContentService
-      .createTextOutput(JSON.stringify({status:"ok"}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({status:"error",msg:err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}</div>
-            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('asCode')">📋 Copy Lead Script</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">Email Apps Script</div>
-          <div class="form-group">
-            <label class="form-label">Email Apps Script URL</label>
-            <input class="form-input" id="cfg-emailscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
-            <div class="form-hint">Gmail দিয়ে email পাঠানোর জন্য — আলাদা Script deploy করো</div>
-          </div>
-          <div class="as-box">
-            <h4>📧 Email Apps Script Code</h4>
-            <div class="code-block" id="emailCode">function doPost(e) {
-  try {
-    var data = JSON.parse(e.postData.contents);
-    GmailApp.sendEmail(data.to, data.subject, data.body);
-    return ContentService
-      .createTextOutput(JSON.stringify({status: "ok"}))
-      .setMimeType(ContentService.MimeType.JSON);
-  } catch(err) {
-    return ContentService
-      .createTextOutput(JSON.stringify({status:"error",msg:err.toString()}))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-}</div>
-            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('emailCode')">📋 Copy Email Script</button>
-          </div>
-        </div>
-
+  <div class="grid-2">
+    <!-- Sent vs Failed chart -->
+    <div class="card">
+      <div class="card-title"><span class="icon">📈</span> Sent vs Failed</div>
+      <div class="chart-wrap">
+        <canvas id="chartSentFailed"></canvas>
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:18px;">
-      <div class="card-head">Render Environment Variables</div>
-      <div style="font-size:11px;color:var(--slate);margin-bottom:10px;">Copy these to Render → your service → Environment:</div>
-      <div class="env-block" id="envPrev">GROQ_API_KEY=…
-APPS_SCRIPT_WEB_URL=…
-EMAIL_SCRIPT_URL=…
-SENDER_NAME=…
-SENDER_COMPANY=…
-TARGET_LEADS=300</div>
-      <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('envPrev')">📋 Copy ENV Block</button>
+    <!-- Spam Score Health -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🛡️</span> Email Health Check</div>
+      <div class="field" style="margin-bottom:10px">
+        <label>Check Template Spam Score</label>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="runSpamCheck()" style="flex-shrink:0">Analyse</button>
+        </div>
+      </div>
+      <div id="spamCheckResult" style="display:none">
+        <div class="spam-bar-wrap">
+          <div class="spam-bar-label">
+            <span>Spam Score</span>
+            <span id="spamScoreVal">0/100</span>
+          </div>
+          <div class="spam-bar"><div class="spam-bar-fill" id="spamBarFill"></div></div>
+        </div>
+        <div id="spamTriggerList" style="margin-top:10px;font-size:11px;color:var(--slate)"></div>
+      </div>
+
+      <div style="margin-top:16px">
+        <div class="card-title" style="margin-bottom:10px"><span class="icon">📮</span> DKIM / SPF Reminder</div>
+        <div style="font-size:11.5px;color:var(--slate);line-height:1.7">
+          ✅ Set up <strong style="color:var(--cream)">SPF</strong>, <strong style="color:var(--cream)">DKIM</strong>, and <strong style="color:var(--cream)">DMARC</strong> records in your domain DNS.<br>
+          ✅ Warm up your sending account (start with 20/day).<br>
+          ✅ Always include an unsubscribe line.<br>
+          ✅ Avoid image-only emails; use plain text.
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- URL Pool Health -->
+  <div class="card">
+    <div class="card-title"><span class="icon">🔗</span> Apps Script URL Pool Health</div>
+    <div id="urlPoolStatus">
+      <div class="empty-state" style="padding:16px">Configure URL pool in Settings to see health status</div>
+    </div>
+  </div>
+
+  <!-- Campaign History -->
+  <div class="card">
+    <div class="card-title"><span class="icon">📁</span> Campaign Sessions</div>
+    <div id="campaignHistory">
+      <div class="empty-state" style="padding:20px">No campaigns recorded yet</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ SETTINGS ═══════════════ -->
+<section class="section" id="section-settings">
+  <div class="page-title">Settings</div>
+  <div class="page-sub">Configure API keys, sender identity, and automation behaviour</div>
+
+  <div class="grid-2">
+    <!-- API Keys -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🔑</span> API Keys</div>
+      <div class="field">
+        <label>Groq API Key</label>
+        <input type="password" id="groqKey" placeholder="gsk_…" autocomplete="off"/>
+        <div class="field-note">Used for AI keyword generation and email rewriting (llama-3.3-70b)</div>
+      </div>
+
+      <div class="field">
+        <label>Apps Script Web URLs <span style="color:var(--gold);font-size:9px;margin-left:4px">MULTI-URL SUPPORTED</span></label>
+        <textarea id="sheetUrls" placeholder="https://script.google.com/macros/s/ABC/exec&#10;https://script.google.com/macros/s/DEF/exec&#10;(one URL per line — auto-failover if quota exceeded)" style="min-height:90px;font-size:11px;font-family:var(--mono)"></textarea>
+        <div class="field-note">Enter multiple URLs on separate lines. System auto-rotates when one hits quota.</div>
+      </div>
+
+      <div class="field">
+        <label>Email Script URL</label>
+        <input type="text" id="emailScriptUrl" placeholder="https://script.google.com/macros/s/…/exec"/>
+        <div class="field-note">Apps Script URL that handles GmailApp.sendEmail()</div>
+      </div>
     </div>
 
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
-      <button class="btn-primary" onclick="saveConfig()">💾 Save Configuration</button>
-      <div class="saved-msg" id="savedMsg">✅ Saved!</div>
+    <!-- Sender Identity -->
+    <div class="card">
+      <div class="card-title"><span class="icon">👤</span> Sender Identity</div>
+      <div class="field">
+        <label>Your Name</label>
+        <input type="text" id="senderName" placeholder="Alex Johnson"/>
+      </div>
+      <div class="field">
+        <label>Company / Service Name</label>
+        <input type="text" id="senderCompany" placeholder="AppRank Solutions"/>
+      </div>
+      <div class="field">
+        <label>Sender Alias Email <span style="color:var(--purple);font-size:9px;margin-left:4px">NEW</span></label>
+        <input type="email" id="senderAlias" placeholder="outreach@yourdomain.com"/>
+        <div class="field-note">If set, emails are sent from this alias (must be configured in Gmail → Settings → "Send mail as"). Falls back to primary account if unavailable.</div>
+      </div>
     </div>
-  </section>
+  </div>
+
+  <div class="grid-2">
+    <!-- Automation Behaviour -->
+    <div class="card">
+      <div class="card-title"><span class="icon">⏱️</span> Sending Behaviour</div>
+      <div class="field">
+        <label>Send Delay Profile</label>
+        <select id="sendProfile">
+          <option value="normal">Normal (45–120 sec between emails)</option>
+          <option value="conservative">Conservative (90–180 sec — safest)</option>
+          <option value="aggressive">Aggressive (20–60 sec — faster)</option>
+        </select>
+        <div class="field-note">Delays are randomized with human-like jitter patterns. Conservative is recommended for new accounts.</div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div class="toggle-label">Test email before bulk send</div>
+          <div class="toggle-sub">Send yourself a preview first</div>
+        </div>
+        <label class="toggle"><input type="checkbox" id="testFirst"><span class="slider"></span></label>
+      </div>
+      <div class="field" id="testEmailField" style="display:none;margin-top:10px">
+        <label>Your Test Email</label>
+        <input type="email" id="testEmail" placeholder="you@gmail.com"/>
+        <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="sendTestEmail()">Send Test Now</button>
+      </div>
+    </div>
+
+    <!-- Spam Word Filter -->
+    <div class="card">
+      <div class="card-title"><span class="icon">🚫</span> Spam Word Filter <span style="color:var(--purple);font-size:9px;margin-left:4px">NEW</span></div>
+      <div class="field">
+        <label>Custom Spam Words / Phrases</label>
+        <textarea id="spamWords" placeholder="guaranteed&#10;act now&#10;limited time offer&#10;click here&#10;(one per line or comma-separated)" style="min-height:110px;font-size:12px"></textarea>
+        <div class="field-note">These words trigger automatic replacement by AI during email rewriting. System also checks built-in spam triggers.</div>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="runSpamCheck()">🛡️ Check Current Template</button>
+    </div>
+  </div>
+
+  <div class="card" style="text-align:center;padding:16px">
+    <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
+    <span id="settingsSaved" style="display:none;margin-left:12px;font-size:12px;color:var(--green)">✅ Saved!</span>
+  </div>
+</section>
+
+<!-- ═══════════════ EMAIL TEMPLATE ═══════════════ -->
+<section class="section" id="section-email">
+  <div class="page-title">Email Template</div>
+  <div class="page-sub">Customise the base template — AI rewrites each email uniquely before sending</div>
+
+  <div class="inner-tabs">
+    <div class="inner-tab active" onclick="switchEmailTab('editor')" id="etab-editor">✏️ Template Editor</div>
+    <div class="inner-tab" onclick="switchEmailTab('preview')" id="etab-preview">👁 Preview</div>
+    <div class="inner-tab" onclick="switchEmailTab('spam')" id="etab-spam">🛡️ Spam Analysis</div>
+  </div>
+
+  <div class="inner-tab-panel active" id="epanel-editor">
+    <div class="card">
+      <div class="field">
+        <label>Subject Line</label>
+        <input type="text" id="emailSubject" value="Quick question about {{app_name}}" oninput="liveSpamCheck()"/>
+        <div class="field-note">Supports: {{app_name}} {{developer}} {{category}} {{installs}} {{score}}</div>
+      </div>
+      <div class="field">
+        <label>Email Body</label>
+        <textarea id="emailBody" style="min-height:280px;line-height:1.6" oninput="liveSpamCheck()">Hi {{developer}} team,
+
+I came across {{app_name}} on Google Play and wanted to reach out.
+
+I noticed your app could benefit from a stronger review presence — which is something we specialize in helping developers with.
+
+We work with app developers to professionally improve their Play Store reputation through authentic outreach and review management strategies.
+
+Would you be open to a quick 10-minute call this week to see if we can help?
+
+Best,
+{{sender_name}}
+{{sender_company}}</textarea>
+        <div class="field-note">AI will intelligently rewrite each email before sending while preserving your message, tone, and structure.</div>
+      </div>
+
+      <!-- Live spam bar -->
+      <div class="spam-bar-wrap">
+        <div class="spam-bar-label">
+          <span style="font-size:10px;color:var(--slate)">Live Spam Score</span>
+          <span id="liveSpamVal" style="font-size:10px;color:var(--slate)">—</span>
+        </div>
+        <div class="spam-bar"><div class="spam-bar-fill" id="liveSpamFill" style="width:0%"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner-tab-panel" id="epanel-preview">
+    <div class="card">
+      <div class="card-title"><span class="icon">👁</span> Email Preview (sample app data)</div>
+      <div style="background:#080810;border:1px solid var(--border);border-radius:6px;padding:18px;font-size:13px;line-height:1.7">
+        <div style="color:var(--slate);font-size:11px;margin-bottom:10px">
+          <strong style="color:var(--cream)">To:</strong> developer@example.com<br>
+          <strong style="color:var(--cream)">Subject:</strong> <span id="previewSubject"></span>
+        </div>
+        <div id="previewBody" style="white-space:pre-wrap;color:var(--cream)"></div>
+      </div>
+      <div style="margin-top:12px">
+        <button class="btn btn-ghost btn-sm" onclick="refreshPreview()">🔄 Refresh Preview</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="inner-tab-panel" id="epanel-spam">
+    <div class="card">
+      <div class="card-title"><span class="icon">🛡️</span> Deep Spam Analysis</div>
+      <button class="btn btn-ghost btn-sm" onclick="runDeepSpamCheck()" style="margin-bottom:16px">Run Analysis</button>
+      <div id="deepSpamResult">
+        <div class="empty-state" style="padding:20px">Click Run Analysis to check your template</div>
+      </div>
+    </div>
+  </div>
+</section>
+
 </main>
 
 <script>
-// ════ CONFIG ════
-const CFG_KEY = 'playlead_v5';
-let cfg = {};
+// ─────────────────────────────────────────────────────────────────────────────
+// State
+// ─────────────────────────────────────────────────────────────────────────────
+let currentMode = 'normal';
+let allLeads = [];
+let pollTimer = null;
+let chartSF = null;
+let campaignLog = [];
+let kwScoreTimer = null;
+let liveSpamTimer = null;
 
-const DEFAULT_SUBJECT = 'Quick question about {{app_name}}';
-const DEFAULT_BODY =
-`Hi {{developer}} team,
-
-I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
-
-I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
-
-Would you be open to a quick 15-minute chat this week?
-
-Best regards,
-{{sender_name}}
-{{sender_company}}
-
-App: {{url}}`;
-
-function loadCfg() {
-  try { cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) { cfg={}; }
-  setVal('cfg-groq',              cfg.groq||'');
-  setVal('cfg-target',            cfg.target||300);
-  setVal('cfg-sender-name',       cfg.sender_name||'');
-  setVal('cfg-sender-company',    cfg.sender_company||'');
-  setVal('cfg-email-subject',     cfg.email_subject||DEFAULT_SUBJECT);
-  setVal('cfg-email-body',        cfg.email_body||DEFAULT_BODY);
-  setVal('cfg-sheeturl',          cfg.sheeturl||'');
-  setVal('cfg-appsscript',        cfg.appsscript||'');
-  setVal('cfg-emailscript',       cfg.emailscript||'');
-  setVal('cfg-keepalive-url',     cfg.keepalive_url||'');
-  setVal('cfg-keepalive-interval',cfg.keepalive_interval||25);
-  refreshDerived();
-  updateLivePreview();
-}
-
-function saveConfig() {
-  cfg = {
-    groq:               getVal('cfg-groq'),
-    target:             parseInt(getVal('cfg-target'))||300,
-    sender_name:        getVal('cfg-sender-name'),
-    sender_company:     getVal('cfg-sender-company'),
-    email_subject:      getVal('cfg-email-subject'),
-    email_body:         getVal('cfg-email-body'),
-    sheeturl:           getVal('cfg-sheeturl'),
-    appsscript:         getVal('cfg-appsscript'),
-    emailscript:        getVal('cfg-emailscript'),
-    keepalive_url:      getVal('cfg-keepalive-url'),
-    keepalive_interval: parseInt(getVal('cfg-keepalive-interval'))||25,
-  };
-  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  const m = document.getElementById('savedMsg');
-  m.classList.add('show'); setTimeout(()=>m.classList.remove('show'), 3000);
-  refreshDerived(); checkWarn(); updateLivePreview();
-}
-
-function refreshDerived() {
-  document.getElementById('tgtNum').textContent = cfg.target||300;
-  document.getElementById('envPrev').textContent =
-    `GROQ_API_KEY=${cfg.groq||'…'}\nAPPS_SCRIPT_WEB_URL=${cfg.appsscript||'…'}\nEMAIL_SCRIPT_URL=${cfg.emailscript||'…'}\nSENDER_NAME=${cfg.sender_name||'…'}\nSENDER_COMPANY=${cfg.sender_company||'…'}\nTARGET_LEADS=${cfg.target||300}`;
-  const url = cfg.sheeturl||'';
-  const lh = url ? `<a class="sheet-link-btn" href="${esc(url)}" target="_blank">📊 Open Sheet ↗</a>` : '';
-  ['sheetLinkRowSetup','sheetLinkWrap'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=lh; });
-  document.getElementById('ss-sheet').textContent = cfg.appsscript ? 'Yes ✓' : 'Not set';
-}
-
-function checkWarn() {
-  const bad = !cfg.groq || !cfg.emailscript || !cfg.appsscript;
-  document.getElementById('cfgWarn').classList.toggle('show', bad);
-}
-
-function resetTemplate() {
-  if(!confirm('Default template-এ reset করবে?')) return;
-  setVal('cfg-email-subject', DEFAULT_SUBJECT);
-  setVal('cfg-email-body', DEFAULT_BODY);
-  updateLivePreview();
-}
-
-function togglePass(id, btn) {
-  const el = document.getElementById(id);
-  el.type = el.type==='password' ? 'text' : 'password';
-  btn.textContent = el.type==='password' ? '👁' : '🙈';
-}
-
-// ════ KEEP-ALIVE ════
-let kaTmr = null;
-
-function startKeepAlive() {
-  const url = getVal('cfg-keepalive-url') || cfg.keepalive_url;
-  if(!url) { alert('Enter your App URL first!'); return; }
-  const interval = (parseInt(getVal('cfg-keepalive-interval')) || 25) * 1000;
-  if(kaTmr) clearInterval(kaTmr);
-  kaTmr = setInterval(()=>doPing(url), interval);
-  doPing(url);
-  document.getElementById('btnKaStart').style.display = 'none';
-  document.getElementById('btnKaStop').style.display  = 'inline-block';
-  setKaStatus('Pinging…', null);
-}
-
-function stopKeepAlive() {
-  if(kaTmr) { clearInterval(kaTmr); kaTmr = null; }
-  document.getElementById('btnKaStart').style.display = 'inline-block';
-  document.getElementById('btnKaStop').style.display  = 'none';
-  setKaStatus('OFF — server may sleep after 15 minutes', false);
-  document.getElementById('pingBadge').className = 'ping-badge off';
-  document.getElementById('pingBadge').textContent = '⚡ Keep-Alive: OFF';
-}
-
-async function doPing(url) {
-  try {
-    const pingUrl = url.replace(/\/$/, '') + '/api/ping';
-    const start = Date.now();
-    const r = await fetch(pingUrl, {method:'GET', cache:'no-cache'});
-    const ms = Date.now() - start;
-    if(r.ok) {
-      const kaLastPing = new Date().toLocaleTimeString();
-      const interval = parseInt(getVal('cfg-keepalive-interval'))||25;
-      setKaStatus(`✅ Active — last ping: ${kaLastPing} (${ms}ms) | every ${interval}s`, true);
-      document.getElementById('pingBadge').className = 'ping-badge ok';
-      document.getElementById('pingBadge').textContent = `⚡ Alive ${kaLastPing}`;
-    } else {
-      setKaStatus(`⚠️ Ping returned ${r.status} — check URL`, false);
-      document.getElementById('pingBadge').className = 'ping-badge off';
-    }
-  } catch(e) {
-    setKaStatus(`❌ Ping failed: ${e.message} — CORS or wrong URL`, false);
-    document.getElementById('pingBadge').className = 'ping-badge off';
-    document.getElementById('pingBadge').textContent = '⚡ Ping failed';
-  }
-}
-
-function setKaStatus(msg, ok) {
-  const el = document.getElementById('kaStatus');
-  el.textContent = 'Keep-Alive: ' + msg;
-  el.className = 'ka-status ' + (ok===true?'active':ok===false?'off':'');
-}
-
-// ════ NAV ════
-const pgTitles = {
-  automation: '⚡ <span class="hi">Automation</span>',
-  analytics:  '📊 <span class="hi">Analytics</span>',
-  database:   '🗄️ <span class="hi">Database</span>',
-  spamtest:   '🧪 <span class="hi">Spam Test</span>',
-  setup:      '⚙️ <span class="hi">Setup & Config</span>',
+// ─────────────────────────────────────────────────────────────────────────────
+// Persistence
+// ─────────────────────────────────────────────────────────────────────────────
+const KEYS = {
+  groqKey:'ple_groqKey', sheetUrls:'ple_sheetUrls', emailScriptUrl:'ple_emailScriptUrl',
+  senderName:'ple_senderName', senderCompany:'ple_senderCompany',
+  senderAlias:'ple_senderAlias', emailSubject:'ple_emailSubject',
+  emailBody:'ple_emailBody', spamWords:'ple_spamWords', sendProfile:'ple_sendProfile'
 };
-function showSec(name, el) {
-  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
-  document.getElementById('sec-'+name).classList.add('active');
-  el.classList.add('active');
-  document.getElementById('pgTitle').innerHTML = pgTitles[name];
-  if(name==='analytics') renderAnalytics();
-  if(name==='spamtest')  updateLivePreview();
-}
 
-// ════ HUNTER MODE ════
-let hunterActive = false;
-function toggleHunter() {
-  hunterActive = !hunterActive;
-  document.getElementById('hunterToggle').classList.toggle('active', hunterActive);
-  document.getElementById('hunterFields').classList.toggle('show', hunterActive);
-}
-
-// ════ UPDATE PENDING BADGE — fetches from Sheet ════
-async function refreshSheetPending() {
-  const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) {
-    updatePendingBadge(0, false);
-    return;
-  }
-  try {
-    const r = await fetch('/api/sheet_pending', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      updatePendingBadge(d.count, false);
+function loadSettings() {
+  for (const [id, key] of Object.entries(KEYS)) {
+    const el = document.getElementById(id);
+    const val = localStorage.getItem(key);
+    if (el && val !== null) {
+      if (el.tagName === 'SELECT') el.value = val;
+      else el.value = val;
     }
-  } catch(e) {}
-}
-
-function updatePendingBadge(count, running) {
-  const badge = document.getElementById('pendingBadge');
-  const btn   = document.getElementById('btnSendPending');
-  badge.textContent = count;
-  if(count > 0) {
-    badge.classList.remove('zero');
-  } else {
-    badge.classList.add('zero');
   }
-  btn.disabled = running;
+  document.getElementById('testFirst').addEventListener('change', function(){
+    document.getElementById('testEmailField').style.display = this.checked ? 'block' : 'none';
+  });
+  refreshPreview();
+  liveSpamCheck();
 }
 
-// ════ CLEAR HISTORY ════
-async function clearHistory() {
-  if(!confirm('⚠️ Dashboard history tamam clear hobe — leads, logs, sob kisu. Sheet e kono change hobe na. Continue?')) return;
-  try {
-    const r = await fetch('/api/clear', {method:'POST'});
-    const d = await r.json();
-    if(!r.ok) { alert(d.error||'Cannot clear while running'); return; }
-    allLeads = []; lastLogLen = 0; startTime = null; aiCalls = 0;
-    renderDB([]);
-    document.getElementById('actFeed').innerHTML = '<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>';
-    document.getElementById('kwChips').innerHTML = '<span style="color:var(--slate2);font-size:11px;">None yet</span>';
-    ['stLeads','stEmails','stKws'].forEach(id=>setText(id,'0'));
-    document.getElementById('stRate').textContent='—';
-    setBar('pfLeads','ppLeads',0,'0%'); setBar('pfEmail','ppEmail',0,'0%'); setBar('pfAI','ppAI',0,'0');
-    document.getElementById('dbCnt').textContent='0';
-    updatePendingBadge(0, false);
-    refreshSheetPending();
-    ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'].forEach(id=>{
-      const e=document.getElementById(id); if(e) e.className='pipe-step';
-    });
-    alert('✅ History cleared!');
-  } catch(e) { alert('Error: '+e.message); }
+function saveSettings() {
+  for (const [id, key] of Object.entries(KEYS)) {
+    const el = document.getElementById(id);
+    if (el) localStorage.setItem(key, el.value);
+  }
+  const msg = document.getElementById('settingsSaved');
+  msg.style.display = 'inline';
+  setTimeout(() => msg.style.display = 'none', 2500);
 }
 
-// ════ AUTOMATION ════
-let pollTmr = null, lastLogLen = 0, startTime = null, allLeads = [], aiCalls = 0;
+function getSettings() {
+  return {
+    groq_key:         document.getElementById('groqKey').value.trim(),
+    sheet_urls:       document.getElementById('sheetUrls').value.trim(),
+    email_script_url: document.getElementById('emailScriptUrl').value.trim(),
+    sender_name:      document.getElementById('senderName').value.trim(),
+    sender_company:   document.getElementById('senderCompany').value.trim(),
+    sender_alias:     document.getElementById('senderAlias').value.trim(),
+    email_subject:    document.getElementById('emailSubject').value.trim(),
+    email_body:       document.getElementById('emailBody').value.trim(),
+    spam_words:       document.getElementById('spamWords').value.trim(),
+    send_profile:     document.getElementById('sendProfile').value,
+  };
+}
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Navigation
+// ─────────────────────────────────────────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  document.getElementById('nav-' + name).classList.add('active');
+  if (name === 'crm') { updateCRM(); refreshURLPool(); }
+  if (name === 'email') { refreshPreview(); liveSpamCheck(); }
+}
+
+function switchEmailTab(name) {
+  document.querySelectorAll('.inner-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.inner-tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('etab-' + name).classList.add('active');
+  document.getElementById('epanel-' + name).classList.add('active');
+  if (name === 'preview') refreshPreview();
+  if (name === 'spam') runDeepSpamCheck();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Mode
+// ─────────────────────────────────────────────────────────────────────────────
+function setMode(mode) {
+  currentMode = mode;
+  const tn = document.getElementById('tabNormal');
+  const th = document.getElementById('tabHunter');
+  const hf = document.getElementById('hunterFields');
+  tn.className = 'mode-tab' + (mode === 'normal' ? ' active-normal' : '');
+  th.className = 'mode-tab' + (mode === 'hunter' ? ' active-hunter' : '');
+  hf.classList.toggle('shown', mode === 'hunter');
+  document.getElementById('modeBadge').textContent = mode.toUpperCase();
+  document.getElementById('modeBadge').className = 'status-mode-badge ' + mode;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Automation
+// ─────────────────────────────────────────────────────────────────────────────
 async function startAuto() {
-  const kw = document.getElementById('kwInput').value.trim();
-  if(!kw) { alert('Enter a keyword first!'); return; }
-  checkWarn();
-  const hunter = hunterActive ? {
-    active: true,
-    max_installs: parseInt(document.getElementById('hf-installs').value)||5000,
-    max_score:    parseFloat(document.getElementById('hf-score').value)||2.5,
+  const kw = document.getElementById('keyword').value.trim();
+  if (!kw) { alert('Please enter a seed keyword'); return; }
+  const cfg = getSettings();
+
+  const hunter = currentMode === 'hunter' ? {
+    active:        true,
+    max_installs:  parseInt(document.getElementById('hunterMaxInstalls').value) || 5000,
+    max_score:     parseFloat(document.getElementById('hunterMaxScore').value) || 2.5,
   } : { active: false };
 
+  const payload = {
+    keyword: kw,
+    target:  parseInt(document.getElementById('targetLeads').value) || 50,
+    hunter,
+    ...cfg,
+  };
+
   try {
-    const body = {
-      keyword:          kw,
-      groq_key:         cfg.groq,
-      sheet_url:        cfg.appsscript,
-      email_script_url: cfg.emailscript,
-      target:           cfg.target||300,
-      sender_name:      cfg.sender_name||'',
-      sender_company:   cfg.sender_company||'',
-      email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-      email_body:       cfg.email_body||DEFAULT_BODY,
-      hunter:           hunter,
-    };
-    const r = await fetch('/api/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
+    const r = await fetch('/api/start', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(payload) });
     const d = await r.json();
-    if(!r.ok) { alert(d.error||'Error starting'); return; }
-    startTime = new Date(); aiCalls = 0;
-    document.getElementById('btnStart').disabled = true;
-    document.getElementById('btnStop').classList.add('show');
-    startPoll();
-  } catch(e) { alert('Cannot reach server: '+e.message); }
+    if (d.error) { alert(d.error); return; }
+    startPolling();
+  } catch(e) { alert('Error: ' + e); }
 }
 
 async function stopAuto() {
-  await fetch('/api/stop', {method:'POST'}).catch(()=>{});
+  await fetch('/api/stop', { method:'POST' });
 }
 
-async function sendPending() {
-  const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) { alert('Sheet URL not set in Setup & Config!'); return; }
+async function clearState() {
+  if (confirm('Clear all leads and logs from this session?')) {
+    await fetch('/api/clear', { method:'POST' });
+    allLeads = [];
+    renderLeads([]);
+    document.getElementById('logBox').innerHTML = '';
+  }
+}
 
-  // Step 1: fetch pending leads from Sheet
-  let pending = [];
+// ─────────────────────────────────────────────────────────────────────────────
+// Polling
+// ─────────────────────────────────────────────────────────────────────────────
+function startPolling() {
+  clearInterval(pollTimer);
+  pollTimer = setInterval(poll, 2000);
+  poll();
+}
+
+async function poll() {
+  try {
+    const r = await fetch('/api/status');
+    const d = await r.json();
+    updateStatusBar(d);
+    updateLog(d.logs || []);
+    if ((d.leads || []).length > 0) {
+      allLeads = d.leads;
+      renderLeads(allLeads);
+    }
+    updateKwList(d.keywords_used || []);
+    if (!d.running && (d.phase === 'done' || d.phase === 'stopped')) {
+      clearInterval(pollTimer);
+      recordCampaign(d);
+    }
+    // Update CRM live if on that tab
+    updateCRMStats(d.emails_sent || 0, d.emails_failed || 0);
+  } catch(e) { /* silent */ }
+}
+
+function updateStatusBar(d) {
+  const dot   = document.getElementById('statusDot');
+  const label = document.getElementById('statusLabel');
+  dot.className = 'status-dot' + (d.running ? ' running' : d.phase === 'done' ? ' done' : d.phase === 'stopped' ? ' stopped' : '');
+  const phaseMap = {idle:'Idle',loading_sheet:'Loading sheet…',scraping:'Scraping…',emailing:'Sending emails…',done:'Done ✓',stopped:'Stopped'};
+  label.textContent = phaseMap[d.phase] || d.phase;
+  document.getElementById('statLeads').textContent  = d.leads_found || 0;
+  document.getElementById('statSent').textContent   = d.emails_sent || 0;
+  document.getElementById('statFailed').textContent = d.emails_failed || 0;
+  document.getElementById('btnStart').disabled = !!d.running;
+  document.getElementById('btnStop').disabled  = !d.running;
+}
+
+let lastLogLen = 0;
+function updateLog(logs) {
+  if (logs.length === lastLogLen) return;
+  lastLogLen = logs.length;
+  const box = document.getElementById('logBox');
+  box.innerHTML = logs.map(l =>
+    `<div class="log-line"><span class="log-time">${l.time}</span><span class="log-msg">${escHtml(l.msg)}</span></div>`
+  ).join('');
+  box.scrollTop = box.scrollHeight;
+}
+
+function updateKwList(kws) {
+  const el = document.getElementById('kwList');
+  if (!kws.length) return;
+  el.innerHTML = kws.map((k, i) =>
+    `<span class="kw-badge ${i === kws.length-1 ? 'active' : ''}">${escHtml(k)}</span>`
+  ).join('');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Leads table
+// ─────────────────────────────────────────────────────────────────────────────
+function renderLeads(leads) {
+  const body = document.getElementById('leadsBody');
+  const q = document.getElementById('leadsSearch').value.toLowerCase();
+  const filtered = q ? leads.filter(l =>
+    (l.app_name||'').toLowerCase().includes(q) ||
+    (l.email||'').toLowerCase().includes(q) ||
+    (l.category||'').toLowerCase().includes(q) ||
+    (l.keyword||'').toLowerCase().includes(q)
+  ) : leads;
+
+  document.getElementById('leadsCount').textContent = `${filtered.length} of ${leads.length} leads`;
+
+  if (!filtered.length) {
+    body.innerHTML = `<tr><td colspan="12" class="empty-state"><div class="icon">📭</div>No leads yet</td></tr>`;
+    return;
+  }
+
+  body.innerHTML = filtered.map(l => {
+    const score   = l.score != null && l.score > 0 ? l.score.toFixed(1) + '★' : '—';
+    const ratings = l.ratings_count || 0;
+    const conf    = l.rating_confidence != null ? Math.round(l.rating_confidence * 100) + '%' : '—';
+    const sent    = l.email_sent;
+    const modeCls = l.mode === 'hunter' ? 'badge-red' : 'badge-green';
+    return `<tr>
+      <td title="${escHtml(l.app_name)}">${escHtml((l.app_name||'').slice(0,28))}</td>
+      <td>${escHtml((l.developer||'').slice(0,22))}</td>
+      <td><a href="mailto:${escHtml(l.email)}" style="color:var(--blue);text-decoration:none">${escHtml(l.email)}</a></td>
+      <td>${escHtml(l.category||'')}</td>
+      <td>${(l.installs||0).toLocaleString()}</td>
+      <td>${score}</td>
+      <td>${ratings.toLocaleString()}</td>
+      <td><span class="badge ${conf === '—' || parseInt(conf) < 60 ? 'badge-amber' : 'badge-green'}">${conf}</span></td>
+      <td><span class="badge ${modeCls}">${(l.mode||'normal').toUpperCase()}</span></td>
+      <td><span class="kw-badge">${escHtml((l.keyword||'').slice(0,18))}</span></td>
+      <td>${sent ? '<span class="badge badge-green">Sent</span>' : '<span class="badge badge-slate">Pending</span>'}</td>
+      <td><a href="${escHtml(l.url||'#')}" target="_blank" style="color:var(--gold);font-size:11px">▶ Play</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLeads() { renderLeads(allLeads); }
+
+function exportLeadsCSV() {
+  if (!allLeads.length) return;
+  const headers = ['App Name','Developer','Email','Category','Installs','Score','Ratings','Conf','Mode','Keyword','Sent','URL'];
+  const rows = allLeads.map(l => [
+    l.app_name, l.developer, l.email, l.category, l.installs,
+    l.score||'', l.ratings_count||0,
+    l.rating_confidence != null ? (l.rating_confidence*100).toFixed(0)+'%' : '',
+    l.mode, l.keyword, l.email_sent ? 'Yes' : 'No', l.url
+  ].map(v => `"${String(v||'').replace(/"/g,'""')}"`).join(','));
+  const csv = [headers.join(','), ...rows].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `playleads_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Send Pending
+// ─────────────────────────────────────────────────────────────────────────────
+async function fetchAndSendPending() {
+  const cfg = getSettings();
+  if (!cfg.sheet_urls && !cfg.email_script_url) { alert('Configure Settings first'); return; }
+  const btn = document.getElementById('sidebarSendPending');
+  btn.disabled = true;
+
+  // Fetch count
   try {
     const r = await fetch('/api/sheet_pending', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
-    const d = await r.json();
-    if (!r.ok || !d.ok) { alert('Error fetching from sheet: ' + (d.error||'unknown')); return; }
-    pending = d.leads || [];
-  } catch(e) { alert('Network error: ' + e.message); return; }
-
-  if (!pending.length) { alert('✅ No pending leads in sheet — all already sent!'); return; }
-  if (!confirm(`📬 Sheet এ ${pending.length}টা pending lead আছে। সবগুলোতে email পাঠাবো?`)) return;
-
-  // Step 2: send
-  try {
-    const r = await fetch('/api/send_pending', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        leads:            pending,
-        groq_key:         cfg.groq,
-        email_script_url: cfg.emailscript,
-        sheet_url:        cfg.appsscript,
-        sender_name:      cfg.sender_name||'',
-        sender_company:   cfg.sender_company||'',
-        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-        email_body:       cfg.email_body||DEFAULT_BODY,
-      })
+      body: JSON.stringify({ sheet_urls: cfg.sheet_urls, sheet_url: cfg.sheet_urls })
     });
     const d = await r.json();
-    if(!r.ok) { alert(d.error||'Error'); return; }
-    startPoll();
-  } catch(e) { alert('Error: '+e.message); }
+    const leads = d.leads || [];
+    document.getElementById('pendingBadge').textContent = leads.length;
+
+    if (!leads.length) { alert('No pending leads in sheet.'); btn.disabled = false; return; }
+    if (!confirm(`Send emails to ${leads.length} pending leads?`)) { btn.disabled = false; return; }
+
+    const pr = await fetch('/api/send_pending', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ leads, ...cfg })
+    });
+    const pd = await pr.json();
+    if (pd.ok) { startPolling(); }
+    else { alert(pd.error || 'Failed'); }
+  } catch(e) { alert('Error: ' + e); }
+  btn.disabled = false;
 }
 
-function startPoll() {
-  if(pollTmr) clearInterval(pollTmr);
-  pollTmr = setInterval(fetchSt, 2000);
-  fetchSt();
+// ─────────────────────────────────────────────────────────────────────────────
+// CRM / Analytics
+// ─────────────────────────────────────────────────────────────────────────────
+function updateCRMStats(sent, failed) {
+  document.getElementById('crmSent').textContent      = sent;
+  document.getElementById('crmDelivered').textContent = sent - failed;
+  document.getElementById('crmFailed').textContent    = failed;
+  const total = sent + failed;
+  document.getElementById('crmRate').textContent = total ? Math.round((sent/total)*100) + '%' : '—';
+  renderSFChart(sent, failed);
 }
 
-async function fetchSt() {
-  try { const r = await fetch('/api/status'); const d = await r.json(); renderSt(d); } catch(e) {}
+function updateCRM() {
+  fetch('/api/status').then(r=>r.json()).then(d => {
+    updateCRMStats(d.emails_sent||0, d.emails_failed||0);
+  });
+  refreshURLPool();
 }
 
-function renderSt(d) {
-  const running = d.running, phase = d.phase||'idle';
-  const leads = d.leads_found||0, emails = d.emails_sent||0;
-  const target = cfg.target||300;
-  const kws = d.keywords_used||[];
-  allLeads = d.leads||[];
+function setCrmFilter(f) {
+  ['fToday','fWeek','fMonth','fAll'].forEach(id => {
+    document.getElementById(id).style.borderColor = '';
+    document.getElementById(id).style.color = '';
+  });
+  const btn = document.getElementById('f' + f.charAt(0).toUpperCase() + f.slice(1));
+  if (btn) { btn.style.borderColor = 'var(--gold)'; btn.style.color = 'var(--gold2)'; }
+}
 
-  const dot = document.getElementById('sbDot'), sl = document.getElementById('sbStatus');
-  if(running)              { dot.className='dot live';     sl.textContent='Running'; }
-  else if(phase==='done')  { dot.className='dot done-dot'; sl.textContent='Done ✓'; }
-  else if(phase==='stopped'){ dot.className='dot err';     sl.textContent='Stopped'; }
-  else                     { dot.className='dot';          sl.textContent='Idle'; }
+function renderSFChart(sent, failed) {
+  const ctx = document.getElementById('chartSentFailed').getContext('2d');
+  if (chartSF) chartSF.destroy();
+  chartSF = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Sent ✓', 'Failed ✗'],
+      datasets: [{
+        data: [sent || 0, failed || 0],
+        backgroundColor: ['#1a4020', '#3d1515'],
+        borderColor:     ['#4ade80', '#f87171'],
+        borderWidth: 1,
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color:'#8b8ba8', font:{size:11} } } },
+    }
+  });
+}
 
-  document.getElementById('btnStart').disabled = running;
-  document.getElementById('btnStop').classList.toggle('show', running);
+async function refreshURLPool() {
+  const cfg = getSettings();
+  if (!cfg.sheet_urls) return;
+  try {
+    const r = await fetch('/api/url_pool_status');
+    const d = await r.json();
+    const pool = d.url_pool || [];
+    const el = document.getElementById('urlPoolStatus');
+    if (!pool.length) { el.innerHTML = '<div class="empty-state" style="padding:16px">No URLs configured in Settings</div>'; return; }
+    el.innerHTML = pool.map(u => `
+      <div class="url-pool-row">
+        <span class="url-text">${escHtml(u.url)}</span>
+        <span class="url-status">
+          ${u.healthy
+            ? `<span class="badge badge-green">Healthy</span>`
+            : `<span class="badge badge-red">Cooldown ${u.cooldown}s</span>`}
+          <span class="badge badge-slate" style="margin-left:4px">Fails: ${u.fails}</span>
+        </span>
+      </div>`).join('');
+  } catch(e) { /* silent */ }
+}
 
-  // Badge: disable during run, but count comes from refreshSheetPending
-  document.getElementById('btnSendPending').disabled = running;
+function recordCampaign(d) {
+  campaignLog.push({
+    keyword:  d.keyword,
+    mode:     d.mode,
+    leads:    d.leads_found,
+    sent:     d.emails_sent,
+    failed:   d.emails_failed || 0,
+    ts:       new Date().toLocaleString(),
+  });
+  renderCampaignHistory();
+}
 
-  setText('stLeads', leads);
-  setText('stEmails', emails);
-  setText('stKws', kws.length);
-  setText('tgtLeadsForEmail', leads);
-  document.getElementById('stRate').textContent = leads>0 ? Math.round((emails/leads)*100)+'%' : '—';
+function renderCampaignHistory() {
+  const el = document.getElementById('campaignHistory');
+  if (!campaignLog.length) return;
+  el.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:12px">
+    <thead><tr>
+      <th style="padding:8px 12px;text-align:left;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Keyword</th>
+      <th style="padding:8px 12px;text-align:left;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Mode</th>
+      <th style="padding:8px 12px;text-align:center;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Leads</th>
+      <th style="padding:8px 12px;text-align:center;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Sent</th>
+      <th style="padding:8px 12px;text-align:center;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Failed</th>
+      <th style="padding:8px 12px;text-align:left;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Time</th>
+    </tr></thead>
+    <tbody>${campaignLog.slice().reverse().map(c=>`<tr>
+      <td style="padding:8px 12px;color:var(--cream)">${escHtml(c.keyword)}</td>
+      <td style="padding:8px 12px"><span class="badge ${c.mode==='hunter'?'badge-red':'badge-green'}">${(c.mode||'').toUpperCase()}</span></td>
+      <td style="padding:8px 12px;text-align:center;color:var(--blue)">${c.leads}</td>
+      <td style="padding:8px 12px;text-align:center;color:var(--green)">${c.sent}</td>
+      <td style="padding:8px 12px;text-align:center;color:var(--red)">${c.failed}</td>
+      <td style="padding:8px 12px;color:var(--slate)">${c.ts}</td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
 
-  const lp = Math.min(100, Math.round((leads/target)*100));
-  const ep = leads>0 ? Math.min(100, Math.round((emails/leads)*100)) : 0;
-  const ap = Math.min(100, Math.round((kws.length-1)/4*100));
-  setBar('pfLeads','ppLeads', lp, lp+'%');
-  setBar('pfEmail','ppEmail', ep, ep+'%');
-  setBar('pfAI','ppAI', ap, Math.max(0,kws.length-1)+' kws');
-
-  renderPipeline(phase, running);
-
-  const cc = document.getElementById('kwChips');
-  cc.innerHTML = kws.length
-    ? kws.map((k,i)=>`<div class="kw-chip"><span class="kw-idx">#${i+1}</span>${esc(k)}</div>`).join('')
-    : '<span style="color:var(--slate2);font-size:11px;">None yet</span>';
-
-  const logs = d.logs||[];
-  if(logs.length!==lastLogLen) { lastLogLen=logs.length; renderFeed(logs); }
-
-  setText('an-l', leads); setText('an-e', emails);
-  const cats = [...new Set(allLeads.map(l=>l.category).filter(Boolean))];
-  document.getElementById('an-c').textContent = cats.length||'—';
-  const sc = allLeads.map(l=>l.score).filter(x=>x!==null&&x!==undefined);
-  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
-
-  if(startTime) {
-    document.getElementById('ss-start').textContent = startTime.toLocaleTimeString();
-    document.getElementById('ss-dur').textContent = fmtDur(Math.floor((Date.now()-startTime)/1000));
+// ─────────────────────────────────────────────────────────────────────────────
+// Spam checking
+// ─────────────────────────────────────────────────────────────────────────────
+async function runSpamCheck() {
+  const cfg = getSettings();
+  const r = await fetch('/api/spam_check', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ subject: cfg.email_subject, body: cfg.email_body })
+  });
+  const d = await r.json();
+  const wrap = document.getElementById('spamCheckResult');
+  wrap.style.display = 'block';
+  const score = d.score || 0;
+  document.getElementById('spamScoreVal').textContent = `${score}/100`;
+  const fill = document.getElementById('spamBarFill');
+  fill.style.width = score + '%';
+  fill.style.background = score < 20 ? 'var(--green)' : score < 50 ? 'var(--amber)' : 'var(--red)';
+  const tl = document.getElementById('spamTriggerList');
+  if (d.triggers && d.triggers.length) {
+    tl.innerHTML = '⚠️ Triggers: ' + d.triggers.map(t=>`<span class="badge badge-amber" style="margin:2px">${escHtml(t)}</span>`).join(' ');
+  } else {
+    tl.innerHTML = '<span style="color:var(--green)">✅ No spam triggers detected</span>';
   }
-  document.getElementById('ss-phase').textContent = phase;
-  document.getElementById('ss-ai').textContent = Math.max(0,kws.length-1)*5;
-  document.getElementById('ss-st').textContent = running?'Running':phase==='done'?'Done ✓':'Stopped';
+}
 
-  renderDB(allLeads);
+async function liveSpamCheck() {
+  clearTimeout(liveSpamTimer);
+  liveSpamTimer = setTimeout(async () => {
+    const subject = document.getElementById('emailSubject').value;
+    const body    = document.getElementById('emailBody').value;
+    try {
+      const r = await fetch('/api/spam_check', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ subject, body })
+      });
+      const d = await r.json();
+      const score = d.score || 0;
+      document.getElementById('liveSpamVal').textContent = `${score}/100 (${d.verdict})`;
+      const fill = document.getElementById('liveSpamFill');
+      fill.style.width = score + '%';
+      fill.style.background = score < 20 ? 'var(--green)' : score < 50 ? 'var(--amber)' : 'var(--red)';
+    } catch(e) { /* silent */ }
+  }, 800);
+}
 
-  if(!running && (phase==='done'||phase==='stopped'||phase==='idle')) {
-    document.getElementById('btnStart').disabled = false;
-    document.getElementById('btnStop').classList.remove('show');
-    if(pollTmr) { clearInterval(pollTmr); pollTmr=null; }
+async function runDeepSpamCheck() {
+  const subject = document.getElementById('emailSubject').value;
+  const body    = document.getElementById('emailBody').value;
+  const el = document.getElementById('deepSpamResult');
+  el.innerHTML = '<div style="color:var(--slate);font-size:12px">Analysing…</div>';
+  try {
+    const r = await fetch('/api/spam_check', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ subject, body })
+    });
+    const d = await r.json();
+    const score = d.score || 0;
+    const colour = score < 20 ? 'var(--green)' : score < 50 ? 'var(--amber)' : 'var(--red)';
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px">
+        <div style="font-family:var(--mono);font-size:36px;color:${colour}">${score}</div>
+        <div>
+          <div style="font-size:14px;color:var(--cream);font-weight:600">Spam Score: ${d.verdict.toUpperCase()}</div>
+          <div style="font-size:11px;color:var(--slate);margin-top:2px">0–19 = Clean · 20–49 = Risky · 50+ = Likely spam</div>
+        </div>
+      </div>
+      <div class="spam-bar" style="height:8px;margin-bottom:16px">
+        <div class="spam-bar-fill" style="width:${score}%;background:${colour}"></div>
+      </div>
+      ${d.triggers && d.triggers.length
+        ? `<div style="margin-bottom:10px"><div style="font-size:11px;color:var(--slate);margin-bottom:6px">Detected spam triggers:</div>
+           ${d.triggers.map(t=>`<span class="badge badge-amber" style="margin:3px">${escHtml(t)}</span>`).join('')}</div>`
+        : `<div style="color:var(--green);font-size:12px">✅ No spam trigger words detected</div>`}
+      <div style="margin-top:12px;font-size:11px;color:var(--slate);line-height:1.7">
+        💡 <strong style="color:var(--cream)">Tips:</strong> Keep subject under 50 chars · Avoid punctuation spam · Use plain text · 
+        Include sender name · Personalise each email (AI does this automatically).
+      </div>`;
+  } catch(e) { el.innerHTML = `<div style="color:var(--red)">Error: ${e}</div>`; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Keyword scoring
+// ─────────────────────────────────────────────────────────────────────────────
+async function scoreKeyword(kw) {
+  clearTimeout(kwScoreTimer);
+  if (!kw || kw.length < 3) { document.getElementById('kwScoreWrap').style.display = 'none'; return; }
+  kwScoreTimer = setTimeout(async () => {
+    try {
+      const r = await fetch('/api/keyword_score', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ keyword: kw })
+      });
+      const d = await r.json();
+      document.getElementById('kwScoreWrap').style.display = 'block';
+      const badge = document.getElementById('kwScoreBadge');
+      const text  = document.getElementById('kwScoreText');
+      const cls   = d.verdict === 'high_value' ? 'badge-green' : d.verdict === 'medium_value' ? 'badge-amber' : 'badge-red';
+      badge.className = 'badge ' + cls;
+      badge.textContent = d.verdict.replace('_', ' ').toUpperCase();
+      text.textContent = `Intent score: ${Math.round(d.score * 100)}%`;
+    } catch(e) { /* silent */ }
+  }, 600);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email preview
+// ─────────────────────────────────────────────────────────────────────────────
+const SAMPLE = {
+  app_name:'FinanceTrack Pro', developer:'Alex Johnson',
+  category:'Finance', installs:'1,200', score:'2.1 stars',
+  url:'https://play.google.com/store/apps/details?id=com.example',
+  sender_name:'', sender_company:''
+};
+
+function refreshPreview() {
+  SAMPLE.sender_name    = document.getElementById('senderName').value || 'Your Name';
+  SAMPLE.sender_company = document.getElementById('senderCompany').value || 'Your Company';
+  let subj = document.getElementById('emailSubject').value;
+  let body = document.getElementById('emailBody').value;
+  for (const [k,v] of Object.entries(SAMPLE)) {
+    subj = subj.replace(new RegExp('{{'+k+'}}','g'), v);
+    body = body.replace(new RegExp('{{'+k+'}}','g'), v);
   }
+  document.getElementById('previewSubject').textContent = subj;
+  document.getElementById('previewBody').textContent    = body;
 }
 
-function renderPipeline(phase, running) {
-  const all = ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'];
-  all.forEach(id=>{ const e=document.getElementById(id); if(e) e.className='pipe-step'; });
-  if(phase==='done') { all.forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.add('p-done'); }); return; }
-  const map = {scraping:'pp-scrape', ai_keywords:'pp-ai', emailing:'pp-email'};
-  if(running && map[phase]) {
-    const activeId = map[phase];
-    document.getElementById(activeId).classList.add('p-active');
-    const order = ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'];
-    const idx = order.indexOf(activeId);
-    for(let i=0;i<idx;i++) { const e=document.getElementById(order[i]); if(e) e.classList.add('p-done'); }
-    if(phase==='emailing') { const e=document.getElementById('pp-leads'); if(e) e.classList.add('p-done'); }
-  }
-}
-
-function renderFeed(logs) {
-  const feed = document.getElementById('actFeed');
-  if(!logs.length) { feed.innerHTML='<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>'; return; }
-  feed.innerHTML = [...logs].reverse().slice(0,100).map(l=>`
-    <div class="act-item">
-      <span class="act-time">${l.time}</span>
-      <span class="act-msg">${esc(l.msg)}</span>
-    </div>`).join('');
-}
-
-// ════ DATABASE ════
-function renderDB(leads) {
-  document.getElementById('dbCnt').textContent = leads.length;
-  refreshDerived();
-  const tbody = document.getElementById('dbBody');
-  if(!leads.length) { tbody.innerHTML=`<tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr>`; return; }
-  tbody.innerHTML = leads.map((l,i)=>`
-    <tr>
-      <td style="color:var(--slate2);font-family:var(--mono);font-size:10px">${i+1}</td>
-      <td><div style="font-weight:600;color:var(--cream);max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</div></td>
-      <td style="color:var(--slate);font-size:10.5px;max-width:110px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
-      <td><a class="email-a" href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
-      <td><span class="bdg bdg-cat">${esc(l.category||'—')}</span></td>
-      <td style="font-family:var(--mono);font-size:10.5px">${(l.installs||0).toLocaleString()}</td>
-      <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null?Number(l.score).toFixed(1):'new'}</td>
-      <td style="color:var(--gold);font-size:10.5px">${esc(l.keyword||'')}</td>
-      <td>${l.email_sent?'<span class="bdg bdg-sent">✓ Sent</span>':'<span class="bdg bdg-pend">Pending</span>'}</td>
-      <td><a class="ext-a" href="${esc(l.url)}" target="_blank">↗</a></td>
-    </tr>`).join('');
-}
-
-// ════ ANALYTICS ════
-function renderAnalytics() {
-  const leads = allLeads;
-  if(!leads.length) return;
-  const total=leads.length, withEmail=leads.filter(l=>l.email).length, sent=leads.filter(l=>l.email_sent).length;
-  setText('fn1',total); setText('fn1c',total);
-  const p2=total>0?Math.round((withEmail/total)*100):0;
-  document.getElementById('fn2').style.width=p2+'%'; setText('fn2',withEmail); setText('fn2c',withEmail);
-  const p3=withEmail>0?Math.round((sent/withEmail)*100):0;
-  document.getElementById('fn3').style.width=p3+'%'; setText('fn3',sent); setText('fn3c',sent);
-  const catMap={};
-  leads.forEach(l=>{ if(l.category) catMap[l.category]=(catMap[l.category]||0)+1; });
-  const catS=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const cMax=catS[0]?catS[0][1]:1;
-  document.getElementById('catBreak').innerHTML=catS.map(([c,n])=>`
-    <div class="prog-row" style="margin-bottom:10px;">
-      <div class="prog-lbl" style="font-size:10px;min-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div>
-      <div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div>
-      <div class="prog-pct">${n}</div>
-    </div>`).join('')||'<div class="empty-st" style="padding:12px">No data</div>';
-  const ir={'0–1K':0,'1K–5K':0,'5K+':0};
-  leads.forEach(l=>{ const i=l.installs||0; if(i<1000)ir['0–1K']++; else if(i<=5000)ir['1K–5K']++; else ir['5K+']++; });
-  document.getElementById('installBreak').innerHTML=Object.entries(ir).map(([k,v])=>`
-    <div class="prog-row" style="margin-bottom:10px;">
-      <div class="prog-lbl" style="font-size:10px;min-width:60px">${k}</div>
-      <div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div>
-      <div class="prog-pct">${v}</div>
-    </div>`).join('');
-  const kwM={};
-  leads.forEach(l=>{ if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1; });
-  const kwS=Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
-  const kwMax=kwS[0]?kwS[0][1]:1;
-  document.getElementById('kwPerf').innerHTML=kwS.map(([k,v])=>`
-    <div class="prog-row" style="margin-bottom:8px;">
-      <div class="prog-lbl" style="font-size:10px;min-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div>
-      <div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/kwMax)*100)}%"></div></div>
-      <div class="prog-pct">${v}</div>
-    </div>`).join('')||'<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
-}
-
-// ════ SPAM TEST ════
-async function runSpamTest() {
-  const testEmail = document.getElementById('spamTestEmail').value.trim();
-  if(!testEmail) { alert('Enter your test email!'); return; }
-  const btn = document.getElementById('btnSpamTest');
-  btn.disabled = true; btn.textContent = '⏳ AI writing + sending…';
-  const result = document.getElementById('spamResult');
-  result.className = 'spam-result'; result.style.display = 'none';
+// ─────────────────────────────────────────────────────────────────────────────
+// Test email
+// ─────────────────────────────────────────────────────────────────────────────
+async function sendTestEmail() {
+  const to = document.getElementById('testEmail').value.trim();
+  if (!to) { alert('Enter a test email'); return; }
+  const cfg = getSettings();
   try {
     const r = await fetch('/api/spam_test', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        test_email:       testEmail,
-        sample_app_name:  document.getElementById('spamSampleApp').value || 'MyApp Pro',
-        sample_developer: document.getElementById('spamSampleDev').value || 'John Dev',
-        sample_score:     parseFloat(document.getElementById('spamSampleScore').value)||2.1,
-        groq_key:         cfg.groq,
-        email_script_url: cfg.emailscript,
-        sender_name:      cfg.sender_name||'',
-        sender_company:   cfg.sender_company||'',
-        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-        email_body:       cfg.email_body||DEFAULT_BODY,
-      })
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ test_email: to, ...cfg })
     });
     const d = await r.json();
-    if(d.ok) {
-      result.className = 'spam-result ok';
-      result.textContent = '✅ ' + d.msg + '\nSubject: ' + (d.subject||'') + '\n\n' + (d.body||'');
-      result.style.display = 'block';
-    } else {
-      result.className = 'spam-result err';
-      result.textContent = '❌ Error: ' + (d.error||'Unknown');
-      result.style.display = 'block';
-    }
-  } catch(e) {
-    result.className = 'spam-result err';
-    result.textContent = '❌ Network: ' + e.message;
-    result.style.display = 'block';
-  }
-  btn.disabled = false; btn.textContent = '📤 Send Test Email';
+    if (d.ok) alert(`✅ Test sent to ${to}\nSpam score: ${d.spam_check?.score||'?'}/100`);
+    else alert('Error: ' + (d.error || 'Failed'));
+  } catch(e) { alert('Error: ' + e); }
 }
 
-// ════ LIVE PREVIEW ════
-function fillTpl(tpl, lead) {
-  return tpl
-    .replace(/{{app_name}}/g,       lead.app_name||'')
-    .replace(/{{developer}}/g,      lead.developer||'')
-    .replace(/{{category}}/g,       lead.category||'')
-    .replace(/{{installs}}/g,       String(lead.installs||''))
-    .replace(/{{score}}/g,          String(lead.score||''))
-    .replace(/{{url}}/g,            lead.url||'')
-    .replace(/{{sender_name}}/g,    cfg.sender_name||'Your Name')
-    .replace(/{{sender_company}}/g, cfg.sender_company||'Your Company');
-}
-function updateLivePreview() {
-  const sample = {
-    app_name:'MyApp Pro', developer:'John Dev', category:'Productivity',
-    installs:1500, score:2.1, url:'https://play.google.com/store/apps/details?id=com.example',
-  };
-  const ls = document.getElementById('liveSubject');
-  const lb = document.getElementById('liveBody');
-  if(ls) ls.textContent = fillTpl(getVal('cfg-email-subject')||DEFAULT_SUBJECT, sample);
-  if(lb) lb.textContent = fillTpl(getVal('cfg-email-body')||DEFAULT_BODY, sample);
+// ─────────────────────────────────────────────────────────────────────────────
+// Util
+// ─────────────────────────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ════ CSV ════
-function exportCSV() {
-  if(!allLeads.length) { alert('No leads to export.'); return; }
-  const h = ['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent'];
-  const rows = allLeads.map(l=>[l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent]
-    .map(v=>'"'+String(v||'').replace(/"/g,'""')+'"'));
-  const csv = [h,...rows].map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download = 'playleads_'+Date.now()+'.csv'; a.click();
-}
-
-// ════ COPY ════
-function copyCode(id) {
-  navigator.clipboard.writeText(document.getElementById(id).textContent)
-    .then(()=>alert('✅ Copied!'));
-}
-
-// ════ UTILS ════
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function setText(id,v) { const e=document.getElementById(id); if(e) e.textContent=v; }
-function setBar(fId,pId,pct,lbl) { document.getElementById(fId).style.width=pct+'%'; document.getElementById(pId).textContent=lbl; }
-function getVal(id) { const e=document.getElementById(id); return e ? e.value.trim() : ''; }
-function setVal(id,v) { const e=document.getElementById(id); if(e) e.value=v; }
-function fmtDur(s) { return Math.floor(s/60)+'m '+s%60+'s'; }
-
-// ════ CLOCK ════
-setInterval(()=>{ document.getElementById('clk').textContent=new Date().toLocaleTimeString(); }, 1000);
-
-// ════ INIT ════
-window.addEventListener('load', ()=>{
-  loadCfg(); checkWarn(); fetchSt(); startPoll();
-  refreshSheetPending();
-  // Refresh sheet pending count every 30s
-  setInterval(refreshSheetPending, 30000);
+// ─────────────────────────────────────────────────────────────────────────────
+// Init
+// ─────────────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  loadSettings();
+  startPolling();
+  renderSFChart(0, 0);
 });
 </script>
 </body>
