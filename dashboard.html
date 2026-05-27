@@ -536,6 +536,7 @@ tbody td:first-child{color:var(--cream)}
   <div class="card" style="text-align:center;padding:16px">
     <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
     <span id="settingsSaved" style="display:none;margin-left:12px;font-size:12px;color:var(--green)">✅ Saved!</span>
+    <span style="font-size:11px;color:var(--slate);margin-left:16px">🌐 Settings sync automatically to all devices</span>
   </div>
 </section>
 
@@ -637,15 +638,70 @@ const KEYS = {
   emailBody:'ple_emailBody', spamWords:'ple_spamWords', sendProfile:'ple_sendProfile'
 };
 
-function loadSettings() {
-  for (const [id, key] of Object.entries(KEYS)) {
+// ── Server-side config helpers (cross-device persistence) ──────────────────
+function _applyConfig(cfg) {
+  for (const [id] of Object.entries(KEYS)) {
+    const el  = document.getElementById(id);
+    const val = cfg[id];
+    if (el && val !== undefined && val !== null && val !== '') {
+      el.value = val;
+      localStorage.setItem(KEYS[id], val);  // keep localStorage in sync
+    }
+  }
+  refreshPreview();
+  liveSpamCheck();
+}
+
+async function loadConfigFromServer() {
+  try {
+    const r = await fetch('/api/load_config');
+    const d = await r.json();
+    if (d.ok && d.config && Object.keys(d.config).length > 0) {
+      _applyConfig(d.config);
+      console.log('Config loaded from server (' + Object.keys(d.config).length + ' keys)');
+    }
+  } catch(e) {
+    console.log('Server config unavailable, using localStorage only:', e);
+  }
+}
+
+async function saveConfigToServer(silent) {
+  const cfg = {};
+  for (const [id] of Object.entries(KEYS)) {
     const el = document.getElementById(id);
+    if (el) cfg[id] = el.value;
+  }
+  try {
+    const r = await fetch('/api/save_config', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(cfg)
+    });
+    const d = await r.json();
+    if (!silent && d.ok) {
+      const msg = document.getElementById('settingsSaved');
+      msg.textContent = '✅ Saved & synced to all devices!';
+      msg.style.display = 'inline';
+      setTimeout(() => { msg.style.display = 'none'; msg.textContent = '✅ Saved!'; }, 3000);
+    }
+  } catch(e) {
+    console.log('Server config save failed:', e);
+  }
+}
+
+function loadSettings() {
+  // 1. Instant load from localStorage (same device cache)
+  for (const [id, key] of Object.entries(KEYS)) {
+    const el  = document.getElementById(id);
     const val = localStorage.getItem(key);
     if (el && val !== null) {
       if (el.tagName === 'SELECT') el.value = val;
       else el.value = val;
     }
   }
+  // 2. Authoritative load from server (any device, overwrites localStorage)
+  loadConfigFromServer();
+
   document.getElementById('testFirst').addEventListener('change', function(){
     document.getElementById('testEmailField').style.display = this.checked ? 'block' : 'none';
   });
@@ -654,13 +710,13 @@ function loadSettings() {
 }
 
 function saveSettings() {
+  // Save to localStorage (instant, same device)
   for (const [id, key] of Object.entries(KEYS)) {
     const el = document.getElementById(id);
     if (el) localStorage.setItem(key, el.value);
   }
-  const msg = document.getElementById('settingsSaved');
-  msg.style.display = 'inline';
-  setTimeout(() => msg.style.display = 'none', 2500);
+  // Save to server (persists across all devices)
+  saveConfigToServer(false);
 }
 
 function getSettings() {
@@ -1177,6 +1233,19 @@ document.addEventListener('DOMContentLoaded', () => {
   loadSettings();
   startPolling();
   renderSFChart(0, 0);
+
+  // Auto-save any settings field to server when user leaves it
+  // so settings are always up-to-date on every device instantly
+  const settingsFieldIds = Object.keys(KEYS);
+  settingsFieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('blur', () => {
+        localStorage.setItem(KEYS[id], el.value);
+        saveConfigToServer(true);   // silent — no popup, just background sync
+      });
+    }
+  });
 });
 </script>
 </body>

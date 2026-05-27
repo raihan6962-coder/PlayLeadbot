@@ -12,6 +12,7 @@ _APP_ROOT = os.path.dirname(os.path.abspath(__file__))
 if _APP_ROOT not in sys.path:
     sys.path.insert(0, _APP_ROOT)
 
+import json
 import time
 import threading
 import logging
@@ -28,7 +29,7 @@ from modules import keyword_engine as kw_eng
 from modules import email_engine as email_eng
 
 # ── Flask setup ───────────────────────────────────────────────────────────────
-application = Flask(__name__, static_folder=".")
+application = Flask(__name__, static_folder=_APP_ROOT)
 app = application
 CORS(application)
 
@@ -43,7 +44,9 @@ def _keepalive():
     time.sleep(60)
     while True:
         try:
-            host = os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:5000")
+            host = (os.environ.get("RAILWAY_PUBLIC_DOMAIN") and
+                "https://" + os.environ.get("RAILWAY_PUBLIC_DOMAIN", "")) or \
+               os.environ.get("RENDER_EXTERNAL_URL", "http://localhost:5000")
             import requests as _req
             _req.get(f"{host}/api/ping", timeout=10)
         except Exception:
@@ -230,13 +233,51 @@ def _send_email(lead: dict, subject: str, body: str) -> bool:
         return False
 
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Persistent server-side config (cross-device settings)
+# ─────────────────────────────────────────────────────────────────────────────
+_CONFIG_FILE  = os.path.join(_APP_ROOT, "playload_config.json")
+_server_cfg:  dict = {}
+_cfg_lock     = threading.Lock()
+
+def _load_cfg_from_disk() -> dict:
+    """Read saved config from disk into memory (called once at startup)."""
+    global _server_cfg
+    try:
+        if os.path.exists(_CONFIG_FILE):
+            with open(_CONFIG_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            with _cfg_lock:
+                _server_cfg = data
+            log.info(f"Config loaded from disk ({len(data)} keys)")
+            return data
+    except Exception as e:
+        log.warning(f"Config load error: {e}")
+    return {}
+
+def _save_cfg_to_disk(data: dict) -> None:
+    """Write config to disk and update in-memory cache."""
+    global _server_cfg
+    try:
+        with open(_CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        with _cfg_lock:
+            _server_cfg = data
+        log.info("Config saved to disk")
+    except Exception as e:
+        log.error(f"Config save error: {e}")
+
+# Load on startup
+_load_cfg_from_disk()
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
 # ─────────────────────────────────────────────────────────────────────────────
 
 @application.route("/")
 def index():
-    return send_from_directory(".", "dashboard.html")
+    return send_from_directory(_APP_ROOT, "dashboard.html")
 
 
 @application.route("/api/start", methods=["POST"])
@@ -416,6 +457,25 @@ def api_sheet_memory_status():
 @application.route("/api/url_pool_status")
 def api_url_pool_status():
     return jsonify(sm.get_state() | {"url_pool": sheets.url_pool_status()})
+
+
+
+@application.route("/api/save_config", methods=["POST"])
+def api_save_config():
+    """Save dashboard settings to disk (cross-device persistence)."""
+    data = request.get_json(silent=True) or {}
+    if not data:
+        return jsonify({"error": "No data"}), 400
+    _save_cfg_to_disk(data)
+    return jsonify({"ok": True})
+
+
+@application.route("/api/load_config")
+def api_load_config():
+    """Return saved dashboard settings to any device that opens the dashboard."""
+    with _cfg_lock:
+        config = dict(_server_cfg)
+    return jsonify({"ok": True, "config": config})
 
 
 @application.route("/api/spam_check", methods=["POST"])
