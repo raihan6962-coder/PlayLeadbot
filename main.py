@@ -1,9 +1,17 @@
 """
-main.py — PlayLead Engine v2.0
+main.py — PlayLead Engine v2.1
 Flask entry point. All business logic lives in modules/.
 """
 
+import sys
 import os
+
+# ── Ensure the app root is always on sys.path regardless of how Gunicorn
+#    sets the working directory (fixes Railway / Docker deployments).
+_APP_ROOT = os.path.dirname(os.path.abspath(__file__))
+if _APP_ROOT not in sys.path:
+    sys.path.insert(0, _APP_ROOT)
+
 import time
 import threading
 import logging
