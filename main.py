@@ -3,14 +3,8 @@ main.py — PlayLead Engine v2.1
 Flask entry point. All business logic lives in modules/.
 """
 
-import sys
 import os
 
-# ── Ensure the app root is always on sys.path regardless of how Gunicorn
-#    sets the working directory (fixes Railway / Docker deployments).
-_APP_ROOT = os.path.dirname(os.path.abspath(__file__))
-if _APP_ROOT not in sys.path:
-    sys.path.insert(0, _APP_ROOT)
 
 import json
 import time
@@ -20,16 +14,16 @@ import logging
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 
-from modules import config as cfg
-from modules.config import set_run_cfg, get_cfg
-from modules import state_manager as sm
-from modules import sheet_manager as sheets
-from modules import scraper
-from modules import keyword_engine as kw_eng
-from modules import email_engine as email_eng
+import app_config as cfg
+from app_config import set_run_cfg, get_cfg
+import app_state as sm
+import app_sheets as sheets
+import app_scraper as scraper
+import app_keywords as kw_eng
+import app_email as email_eng
 
 # ── Flask setup ───────────────────────────────────────────────────────────────
-application = Flask(__name__, static_folder=_APP_ROOT)
+application = Flask(__name__, static_folder=os.path.dirname(os.path.abspath(__file__)))
 app = application
 CORS(application)
 
@@ -237,7 +231,7 @@ def _send_email(lead: dict, subject: str, body: str) -> bool:
 # ─────────────────────────────────────────────────────────────────────────────
 # Persistent server-side config (cross-device settings)
 # ─────────────────────────────────────────────────────────────────────────────
-_CONFIG_FILE  = os.path.join(_APP_ROOT, "playload_config.json")
+_CONFIG_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "playload_config.json")
 _server_cfg:  dict = {}
 _cfg_lock     = threading.Lock()
 
@@ -277,7 +271,7 @@ _load_cfg_from_disk()
 
 @application.route("/")
 def index():
-    return send_from_directory(_APP_ROOT, "dashboard.html")
+    return send_from_directory(os.path.dirname(os.path.abspath(__file__)), "dashboard.html")
 
 
 @application.route("/api/start", methods=["POST"])
