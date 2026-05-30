@@ -529,6 +529,19 @@ tbody td:first-child{color:var(--cream)}
         <input type="text" id="senderCompany" placeholder="AppRank Solutions"/>
       </div>
 
+      <div style="border-top:1px solid var(--border);margin:14px 0"></div>
+      <div class="card-title" style="margin-bottom:10px"><span class="icon">📨</span> Gmail SMTP — Direct Sending <span style="color:var(--green);font-size:9px;margin-left:4px">RECOMMENDED</span></div>
+      <div class="field-note" style="margin-bottom:12px">App Password ব্যবহার করলে Gmail-এর daily limit নেই। Gmail → Google Account → Security → 2-Step Verification চালু করো → App Passwords থেকে 16-digit password তৈরি করো।</div>
+      <div class="field">
+        <label>Gmail Address</label>
+        <input type="email" id="gmailAddress" placeholder="yourname@gmail.com" autocomplete="off"/>
+        <div class="field-note">যে Gmail account থেকে email পাঠাবে সেটার address</div>
+      </div>
+      <div class="field">
+        <label>Gmail App Password</label>
+        <input type="password" id="appPassword" placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password"/>
+        <div class="field-note">Google Account → Security → App Passwords → "Mail" select → Generate</div>
+      </div>
     </div>
   </div>
 
@@ -791,6 +804,8 @@ function getSettings() {
     sender_name:        document.getElementById('senderName').value.trim(),
     sender_company:     document.getElementById('senderCompany').value.trim(),
     sender_email:       document.getElementById('senderEmail').value.trim(),
+    gmail_address:      document.getElementById('gmailAddress').value.trim(),
+    app_password:       document.getElementById('appPassword').value.trim(),
     app_url:            document.getElementById('appUrl').value.trim(),
     email_subject:      document.getElementById('emailSubject').value.trim(),
     email_body:         document.getElementById('emailBody').value.trim(),
@@ -1004,7 +1019,7 @@ function exportLeadsCSV() {
 // ─────────────────────────────────────────────────────────────────────────────
 async function fetchAndSendPending() {
   const cfg = getSettings();
-  if (!cfg.sheet_urls && !cfg.email_script_url) { alert('Configure Settings first'); return; }
+  if (!cfg.sheet_url) { alert('Please configure Apps Script Web URL in Settings first.'); return; }
   const btn = document.getElementById('sidebarSendPending');
   btn.disabled = true;
 
