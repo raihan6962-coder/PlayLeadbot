@@ -263,7 +263,6 @@ def _save_cfg_to_disk(data: dict) -> None:
 
 # Load on startup
 _load_cfg_from_disk()
-_load_opens()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Email open tracking (pixel-based)
@@ -302,6 +301,7 @@ def _record_open(token: str) -> None:
         _opens.append(record)
     _save_opens()
 
+_load_opens()   # load persisted opens from disk on startup
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
