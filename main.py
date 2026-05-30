@@ -195,23 +195,22 @@ def run_send_pending(leads: list):
 
 
 def _send_email(lead: dict, subject: str, body: str) -> bool:
-    url = get_cfg("EMAIL_SCRIPT_URL")
-    if not url or not lead.get("email"):
-        sm.push_log("  ❌ EMAIL_SCRIPT_URL not set or missing email")
-        return False
 
-    # Determine sender alias
-    alias = get_cfg("SENDER_ALIAS", "")
+
+    sender_email = get_cfg("SENDER_EMAIL", "")
+    app_url      = get_cfg("APP_URL", "").rstrip("/")
+    token        = lead.get("app_id", "unknown")
+    tracking_url = f"{app_url}/track/open/{token}" if app_url else ""
 
     payload = {
-        "action":      "send_email",
-        "to":          lead["email"],
-        "subject":     subject,
-        "body":        body,
-        "sender_name": get_cfg("SENDER_NAME", ""),
+        "action":             "send_email",
+        "to":                 lead["email"],
+        "subject":            subject,
+        "body":               body,
+        "sender_name":        get_cfg("SENDER_NAME", ""),
+        "from_email":         sender_email,
+        "tracking_pixel_url": tracking_url,
     }
-    if alias:
-        payload["from_alias"] = alias
 
     try:
         import requests as _req
@@ -264,6 +263,45 @@ def _save_cfg_to_disk(data: dict) -> None:
 
 # Load on startup
 _load_cfg_from_disk()
+_load_opens()
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Email open tracking (pixel-based)
+# ─────────────────────────────────────────────────────────────────────────────
+_TRACKING_PIXEL = bytes([
+    0x47,0x49,0x46,0x38,0x39,0x61,0x01,0x00,0x01,0x00,0x80,0x00,0x00,
+    0xff,0xff,0xff,0x00,0x00,0x00,0x21,0xf9,0x04,0x00,0x00,0x00,0x00,0x00,
+    0x2c,0x00,0x00,0x00,0x00,0x01,0x00,0x01,0x00,0x00,0x02,0x02,0x44,0x01,0x00,0x3b,
+])
+_opens:      list = []
+_opens_lock  = threading.Lock()
+_OPENS_FILE  = os.path.join(os.path.dirname(os.path.abspath(__file__)), "email_opens.json")
+
+def _load_opens() -> None:
+    global _opens
+    try:
+        if os.path.exists(_OPENS_FILE):
+            with open(_OPENS_FILE) as f:
+                _opens = json.load(f)
+            log.info(f"Loaded {len(_opens)} email opens from disk")
+    except Exception as e:
+        log.warning(f"Opens load error: {e}")
+
+def _save_opens() -> None:
+    try:
+        with _opens_lock:
+            data = list(_opens)
+        with open(_OPENS_FILE, "w") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        log.warning(f"Opens save error: {e}")
+
+def _record_open(token: str) -> None:
+    record = {"token": token, "opened_at": time.strftime("%Y-%m-%d %H:%M:%S")}
+    with _opens_lock:
+        _opens.append(record)
+    _save_opens()
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
@@ -288,12 +326,12 @@ def api_start():
     # Build run-time config from request payload + env fallbacks
     rc = {
         "GROQ_API_KEY":        data.get("groq_key")          or os.environ.get("GROQ_API_KEY", ""),
-        "APPS_SCRIPT_WEB_URLS": data.get("sheet_urls")        or data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URLS", "") or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "APPS_SCRIPT_WEB_URL": data.get("sheet_url")         or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "EMAIL_SCRIPT_URL":    data.get("email_script_url")  or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "APPS_SCRIPT_WEB_URL":  data.get("sheet_url")          or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "EMAIL_SCRIPT_URLS":    data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
         "SENDER_NAME":         data.get("sender_name")       or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":      data.get("sender_company")    or os.environ.get("SENDER_COMPANY", ""),
-        "SENDER_ALIAS":        data.get("sender_alias")      or os.environ.get("SENDER_ALIAS", ""),
+        "SENDER_EMAIL":        data.get("sender_email")       or os.environ.get("SENDER_EMAIL", ""),
+        "APP_URL":             data.get("app_url")            or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")     or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")        or os.environ.get("EMAIL_BODY", ""),
         "SPAM_WORDS":          data.get("spam_words")        or os.environ.get("SPAM_WORDS", ""),
@@ -334,6 +372,48 @@ def api_clear():
     return jsonify({"ok": True})
 
 
+
+@application.route("/track/open/<token>")
+def track_open(token: str):
+    """Serve 1x1 tracking pixel and record email open."""
+    from flask import make_response
+    _record_open(token)
+    resp = make_response(_TRACKING_PIXEL)
+    resp.headers["Content-Type"]  = "image/gif"
+    resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    resp.headers["Pragma"]        = "no-cache"
+    return resp
+
+
+@application.route("/api/opens")
+def api_opens():
+    """Return email open records, optionally filtered by date range."""
+    start_dt = request.args.get("start", "")
+    end_dt   = request.args.get("end",   "")
+    with _opens_lock:
+        data = list(_opens)
+    if start_dt:
+        data = [o for o in data if o.get("opened_at", "") >= start_dt]
+    if end_dt:
+        data = [o for o in data if o.get("opened_at", "") <= end_dt + " 23:59:59"]
+    return jsonify({"ok": True, "opens": data, "total": len(data)})
+
+
+@application.route("/api/script/<script_name>")
+def api_get_script(script_name: str):
+    """Serve Apps Script (.gs) file content for the dashboard code viewer."""
+    allowed = {"sheet": "Code.gs", "email": "EmailSender.gs"}
+    filename = allowed.get(script_name)
+    if not filename:
+        return jsonify({"error": "Unknown script name"}), 404
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), filename)
+    try:
+        content_gs = open(path, encoding="utf-8").read()
+        return jsonify({"ok": True, "content": content_gs, "filename": filename})
+    except FileNotFoundError:
+        return jsonify({"error": f"{filename} not found on server"}), 404
+
+
 @application.route("/api/ping", methods=["GET", "POST"])
 def api_ping():
     return jsonify({"ok": True, "ts": time.time()})
@@ -352,11 +432,12 @@ def api_send_pending():
 
     rc = {
         "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
-        "APPS_SCRIPT_WEB_URLS": data.get("sheet_urls")       or data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URLS", ""),
-        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "APPS_SCRIPT_WEB_URL":  data.get("sheet_url")          or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "EMAIL_SCRIPT_URLS":    data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
         "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
-        "SENDER_ALIAS":        data.get("sender_alias")     or os.environ.get("SENDER_ALIAS", ""),
+        "SENDER_EMAIL":        data.get("sender_email")      or os.environ.get("SENDER_EMAIL", ""),
+        "APP_URL":             data.get("app_url")           or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
         "SPAM_WORDS":          data.get("spam_words")       or os.environ.get("SPAM_WORDS", ""),
@@ -377,10 +458,11 @@ def api_spam_test():
 
     rc = {
         "GROQ_API_KEY":     data.get("groq_key")        or os.environ.get("GROQ_API_KEY", ""),
-        "EMAIL_SCRIPT_URL": data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "EMAIL_SCRIPT_URLS": data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
         "SENDER_NAME":      data.get("sender_name")     or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":   data.get("sender_company")  or os.environ.get("SENDER_COMPANY", ""),
-        "SENDER_ALIAS":     data.get("sender_alias")    or os.environ.get("SENDER_ALIAS", ""),
+        "SENDER_EMAIL":     data.get("sender_email")     or os.environ.get("SENDER_EMAIL", ""),
+        "APP_URL":          data.get("app_url")          or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":    data.get("email_subject")   or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":       data.get("email_body")      or os.environ.get("EMAIL_BODY", ""),
         "SPAM_WORDS":       data.get("spam_words")      or os.environ.get("SPAM_WORDS", ""),
@@ -402,20 +484,24 @@ def api_spam_test():
     subject, body = email_eng.ai_rewrite_email(sample, base_subject, base_body)
     check = email_eng.spam_score(subject, body)
 
-    url = get_cfg("EMAIL_SCRIPT_URL")
+    url = _next_email_url()
     if not url:
         return jsonify({
             "ok": True, "skipped_send": True,
             "subject": subject, "body": body, "spam_check": check,
-            "msg": "No EMAIL_SCRIPT_URL — preview only"
+            "msg": "No Email Script URLs configured — add in Settings"
         })
 
     try:
         import requests as _req
-        payload = {"to": test_to, "subject": subject, "body": body}
-        alias = get_cfg("SENDER_ALIAS", "")
-        if alias:
-            payload["from_alias"] = alias
+        payload = {
+            "action":      "send_email",
+            "to":          test_to,
+            "subject":     subject,
+            "body":        body,
+            "sender_name": get_cfg("SENDER_NAME", ""),
+            "from_email":  get_cfg("SENDER_EMAIL", ""),
+        }
         r = _req.post(url, json=payload, timeout=30)
         result = r.json() if r.text else {}
         if result.get("status") == "ok":
@@ -431,10 +517,10 @@ def api_spam_test():
 @application.route("/api/sheet_pending", methods=["POST"])
 def api_sheet_pending():
     data      = request.get_json(silent=True) or {}
-    sheet_url = data.get("sheet_urls") or data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URLS", "") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
+    sheet_url = data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
     if not sheet_url:
         return jsonify({"error": "sheet_url not set"}), 400
-    rc = {"APPS_SCRIPT_WEB_URLS": sheet_url, "APPS_SCRIPT_WEB_URL": sheet_url}
+    rc = {"APPS_SCRIPT_WEB_URL": sheet_url}
     set_run_cfg(rc)
     try:
         leads = sheets.sheet_fetch_pending()
@@ -450,7 +536,7 @@ def api_sheet_memory_status():
 
 @application.route("/api/url_pool_status")
 def api_url_pool_status():
-    return jsonify(sm.get_state() | {"url_pool": sheets.url_pool_status()})
+    return jsonify(sm.get_state() | {"url_pool": email_pool_status()})
 
 
 

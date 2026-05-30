@@ -357,15 +357,26 @@ tbody td:first-child{color:var(--cream)}
   <div class="page-sub">Campaign analytics, deliverability health, and sender performance</div>
 
   <!-- DATE FILTER -->
-  <div class="actions-row">
-    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('today')" id="fToday">Today</button>
-    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('week')" id="fWeek">Last 7 days</button>
-    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('month')" id="fMonth">This month</button>
-    <button class="btn btn-ghost btn-sm" onclick="setCrmFilter('all')" id="fAll" style="border-color:var(--gold);color:var(--gold2)">All time</button>
+  <div class="actions-row" style="flex-wrap:wrap;gap:8px;margin-bottom:14px">
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:11px;color:var(--slate);white-space:nowrap">From</label>
+      <input type="date" id="filterStart" style="background:#0c0c14;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;color:var(--cream);font-size:12px;outline:none" onchange="applyDateFilter()"/>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <label style="font-size:11px;color:var(--slate);white-space:nowrap">To</label>
+      <input type="date" id="filterEnd" style="background:#0c0c14;border:1px solid var(--border2);border-radius:6px;padding:6px 10px;color:var(--cream);font-size:12px;outline:none" onchange="applyDateFilter()"/>
+    </div>
+    <button class="btn btn-ghost btn-sm" onclick="applyDateFilter()">Apply</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearDateFilter()">Clear</button>
+    <div style="width:1px;height:20px;background:var(--border2)"></div>
+    <button class="btn btn-ghost btn-sm" onclick="quickFilter('today')" id="fToday">Today</button>
+    <button class="btn btn-ghost btn-sm" onclick="quickFilter('week')" id="fWeek">Last 7 days</button>
+    <button class="btn btn-ghost btn-sm" onclick="quickFilter('month')" id="fMonth">This month</button>
+    <button class="btn btn-ghost btn-sm" onclick="clearDateFilter()" id="fAll" style="border-color:var(--gold);color:var(--gold2)">All time</button>
   </div>
 
   <!-- STATS -->
-  <div class="grid-4" style="margin-bottom:18px">
+  <div class="grid-3" style="margin-bottom:10px">
     <div class="stat-card">
       <div class="stat-label">Total Sent</div>
       <div class="stat-val blue" id="crmSent">0</div>
@@ -381,10 +392,22 @@ tbody td:first-child{color:var(--cream)}
       <div class="stat-val red" id="crmFailed">0</div>
       <div class="stat-sub">send errors</div>
     </div>
+  </div>
+  <div class="grid-3" style="margin-bottom:18px">
     <div class="stat-card">
       <div class="stat-label">Delivery Rate</div>
       <div class="stat-val amber" id="crmRate">—</div>
       <div class="stat-sub">% successfully sent</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Email Opens</div>
+      <div class="stat-val" style="color:var(--purple)" id="crmOpens">0</div>
+      <div class="stat-sub">tracked pixel opens</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Open Rate</div>
+      <div class="stat-val" style="color:var(--purple)" id="crmOpenRate">—</div>
+      <div class="stat-sub">% of sent emails opened</div>
     </div>
   </div>
 
@@ -429,11 +452,19 @@ tbody td:first-child{color:var(--cream)}
     </div>
   </div>
 
+  <!-- Email Opens Log -->
+  <div class="card">
+    <div class="card-title"><span class="icon">👁</span> Email Opens Log</div>
+    <div id="opensLog">
+      <div class="empty-state" style="padding:20px"><div class="icon">📭</div>No opens recorded yet. Make sure App URL is set in Settings.</div>
+    </div>
+  </div>
+
   <!-- URL Pool Health -->
   <div class="card">
     <div class="card-title"><span class="icon">🔗</span> Apps Script URL Pool Health</div>
     <div id="urlPoolStatus">
-      <div class="empty-state" style="padding:16px">Configure URL pool in Settings to see health status</div>
+      <div class="empty-state" style="padding:16px">Configure Email Script URLs in Settings to see health status</div>
     </div>
   </div>
 
@@ -462,15 +493,27 @@ tbody td:first-child{color:var(--cream)}
       </div>
 
       <div class="field">
-        <label>Apps Script Web URLs <span style="color:var(--gold);font-size:9px;margin-left:4px">MULTI-URL SUPPORTED</span></label>
-        <textarea id="sheetUrls" placeholder="https://script.google.com/macros/s/ABC/exec&#10;https://script.google.com/macros/s/DEF/exec&#10;(one URL per line — auto-failover if quota exceeded)" style="min-height:90px;font-size:11px;font-family:var(--mono)"></textarea>
-        <div class="field-note">Enter multiple URLs on separate lines. System auto-rotates when one hits quota.</div>
+        <label>App URL <span style="color:var(--slate2);font-size:9px;margin-left:4px">for email open tracking</span></label>
+        <input type="text" id="appUrl" placeholder="https://your-app.up.railway.app"/>
+        <div class="field-note">Your deployed app URL. Used to embed open-tracking pixels in sent emails.</div>
       </div>
 
       <div class="field">
-        <label>Email Script URL</label>
-        <input type="text" id="emailScriptUrl" placeholder="https://script.google.com/macros/s/…/exec"/>
-        <div class="field-note">Apps Script URL that handles GmailApp.sendEmail()</div>
+        <label>Apps Script Web URL <span style="color:var(--slate2);font-size:9px;margin-left:4px">(Code.gs)</span></label>
+        <input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/ABC/exec"/>
+        <div class="field-note">Code.gs deploy করার পরে যে একটাই URL পাবে — এখানে বসাও।</div>
+      </div>
+
+      <div class="field">
+        <label>Email Script URLs <span style="color:var(--gold);font-size:9px;margin-left:4px">MULTI-ACCOUNT ROTATION</span></label>
+        <textarea id="emailScriptUrls" placeholder="https://script.google.com/macros/s/ABC/exec&#10;https://script.google.com/macros/s/DEF/exec&#10;https://script.google.com/macros/s/GHI/exec&#10;(প্রতিটা Gmail account-এর EmailSender.gs URL — এক লাইনে একটা)" style="min-height:100px;font-size:11px;font-family:var(--mono)"></textarea>
+        <div class="field-note">একাধিক Gmail account থাকলে প্রতিটার EmailSender.gs URL এখানে দাও। System automatically rotate করবে — daily limit শেষ হলে পরের account-এ চলে যাবে।</div>
+      </div>
+
+      <div class="field">
+        <label>Sending Email Address</label>
+        <input type="email" id="senderEmail" placeholder="yourname@gmail.com"/>
+        <div class="field-note">Gmail address emails are sent from. Use your primary Gmail or a configured "Send mail as" alias. This exact address appears as the sender in recipients' inboxes.</div>
       </div>
     </div>
 
@@ -485,11 +528,7 @@ tbody td:first-child{color:var(--cream)}
         <label>Company / Service Name</label>
         <input type="text" id="senderCompany" placeholder="AppRank Solutions"/>
       </div>
-      <div class="field">
-        <label>Sender Alias Email <span style="color:var(--purple);font-size:9px;margin-left:4px">NEW</span></label>
-        <input type="email" id="senderAlias" placeholder="outreach@yourdomain.com"/>
-        <div class="field-note">If set, emails are sent from this alias (must be configured in Gmail → Settings → "Send mail as"). Falls back to primary account if unavailable.</div>
-      </div>
+
     </div>
   </div>
 
@@ -537,6 +576,31 @@ tbody td:first-child{color:var(--cream)}
     <button class="btn btn-primary" onclick="saveSettings()">💾 Save Settings</button>
     <span id="settingsSaved" style="display:none;margin-left:12px;font-size:12px;color:var(--green)">✅ Saved!</span>
     <span style="font-size:11px;color:var(--slate);margin-left:16px">🌐 Settings sync automatically to all devices</span>
+  </div>
+
+  <div class="card">
+    <div class="card-title"><span class="icon">📜</span> Apps Script Code</div>
+    <div class="field-note" style="margin-bottom:14px">Load and copy the Apps Script code to deploy in your Google Apps Script project.</div>
+    <div class="inner-tabs">
+      <div class="inner-tab active" onclick="switchScriptTab('sheet')" id="stab-sheet">📊 Sheets Script (Code.gs)</div>
+      <div class="inner-tab" onclick="switchScriptTab('email')" id="stab-email">✉️ Email Script (EmailSender.gs)</div>
+    </div>
+    <div id="spanel-sheet" class="inner-tab-panel active">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;color:var(--slate)">Deploy in Google Sheets → Extensions → Apps Script</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadScript('sheet')">⬇ Load Code</button>
+      </div>
+      <textarea id="scriptSheet" readonly style="width:100%;min-height:220px;font-size:11px;font-family:var(--mono);background:#08080f;color:#8b8ba8;border:1px solid var(--border);border-radius:6px;padding:12px;resize:vertical;outline:none" placeholder="Click 'Load Code' to fetch Code.gs..."></textarea>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyScript('sheet')">📋 Copy Code</button>
+    </div>
+    <div id="spanel-email" class="inner-tab-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:11px;color:var(--slate)">Deploy in a separate Google Apps Script project</span>
+        <button class="btn btn-ghost btn-sm" onclick="loadScript('email')">⬇ Load Code</button>
+      </div>
+      <textarea id="scriptEmail" readonly style="width:100%;min-height:220px;font-size:11px;font-family:var(--mono);background:#08080f;color:#8b8ba8;border:1px solid var(--border);border-radius:6px;padding:12px;resize:vertical;outline:none" placeholder="Click 'Load Code' to fetch EmailSender.gs..."></textarea>
+      <button class="btn btn-ghost btn-sm" style="margin-top:8px" onclick="copyScript('email')">📋 Copy Code</button>
+    </div>
   </div>
 </section>
 
@@ -632,9 +696,9 @@ let liveSpamTimer = null;
 // Persistence
 // ─────────────────────────────────────────────────────────────────────────────
 const KEYS = {
-  groqKey:'ple_groqKey', sheetUrls:'ple_sheetUrls', emailScriptUrl:'ple_emailScriptUrl',
+  groqKey:'ple_groqKey', sheetUrl:'ple_sheetUrl', emailScriptUrls:'ple_emailScriptUrls',
   senderName:'ple_senderName', senderCompany:'ple_senderCompany',
-  senderAlias:'ple_senderAlias', emailSubject:'ple_emailSubject',
+  senderEmail:'ple_senderEmail', appUrl:'ple_appUrl', emailSubject:'ple_emailSubject',
   emailBody:'ple_emailBody', spamWords:'ple_spamWords', sendProfile:'ple_sendProfile'
 };
 
@@ -721,16 +785,17 @@ function saveSettings() {
 
 function getSettings() {
   return {
-    groq_key:         document.getElementById('groqKey').value.trim(),
-    sheet_urls:       document.getElementById('sheetUrls').value.trim(),
-    email_script_url: document.getElementById('emailScriptUrl').value.trim(),
-    sender_name:      document.getElementById('senderName').value.trim(),
-    sender_company:   document.getElementById('senderCompany').value.trim(),
-    sender_alias:     document.getElementById('senderAlias').value.trim(),
-    email_subject:    document.getElementById('emailSubject').value.trim(),
-    email_body:       document.getElementById('emailBody').value.trim(),
-    spam_words:       document.getElementById('spamWords').value.trim(),
-    send_profile:     document.getElementById('sendProfile').value,
+    groq_key:           document.getElementById('groqKey').value.trim(),
+    sheet_url:          document.getElementById('sheetUrl').value.trim(),
+    email_script_urls:  document.getElementById('emailScriptUrls').value.trim(),
+    sender_name:        document.getElementById('senderName').value.trim(),
+    sender_company:     document.getElementById('senderCompany').value.trim(),
+    sender_email:       document.getElementById('senderEmail').value.trim(),
+    app_url:            document.getElementById('appUrl').value.trim(),
+    email_subject:      document.getElementById('emailSubject').value.trim(),
+    email_body:         document.getElementById('emailBody').value.trim(),
+    spam_words:         document.getElementById('spamWords').value.trim(),
+    send_profile:       document.getElementById('sendProfile').value,
   };
 }
 
@@ -947,7 +1012,7 @@ async function fetchAndSendPending() {
   try {
     const r = await fetch('/api/sheet_pending', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ sheet_urls: cfg.sheet_urls, sheet_url: cfg.sheet_urls })
+      body: JSON.stringify({ sheet_url: cfg.sheet_url })
     });
     const d = await r.json();
     const leads = d.leads || [];
@@ -984,16 +1049,12 @@ function updateCRM() {
     updateCRMStats(d.emails_sent||0, d.emails_failed||0);
   });
   refreshURLPool();
+  const start = document.getElementById('filterStart') ? document.getElementById('filterStart').value : '';
+  const end   = document.getElementById('filterEnd')   ? document.getElementById('filterEnd').value   : '';
+  loadOpens(start, end);
 }
 
-function setCrmFilter(f) {
-  ['fToday','fWeek','fMonth','fAll'].forEach(id => {
-    document.getElementById(id).style.borderColor = '';
-    document.getElementById(id).style.color = '';
-  });
-  const btn = document.getElementById('f' + f.charAt(0).toUpperCase() + f.slice(1));
-  if (btn) { btn.style.borderColor = 'var(--gold)'; btn.style.color = 'var(--gold2)'; }
-}
+
 
 function renderSFChart(sent, failed) {
   const ctx = document.getElementById('chartSentFailed').getContext('2d');
@@ -1216,6 +1277,112 @@ async function sendTestEmail() {
     if (d.ok) alert(`✅ Test sent to ${to}\nSpam score: ${d.spam_check?.score||'?'}/100`);
     else alert('Error: ' + (d.error || 'Failed'));
   } catch(e) { alert('Error: ' + e); }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Email Opens Tracking
+// ─────────────────────────────────────────────────────────────────────────────
+async function loadOpens(start, end) {
+  let url = '/api/opens';
+  const params = [];
+  if (start) params.push('start=' + encodeURIComponent(start));
+  if (end)   params.push('end='   + encodeURIComponent(end));
+  if (params.length) url += '?' + params.join('&');
+  try {
+    const r = await fetch(url);
+    const d = await r.json();
+    const opens = d.opens || [];
+    document.getElementById('crmOpens').textContent = opens.length;
+    const sent = parseInt(document.getElementById('crmSent').textContent) || 0;
+    document.getElementById('crmOpenRate').textContent =
+      sent > 0 ? Math.round((opens.length / sent) * 100) + '%' : '—';
+    renderOpensLog(opens);
+  } catch(e) { console.log('Opens load error:', e); }
+}
+
+function renderOpensLog(opens) {
+  const el = document.getElementById('opensLog');
+  if (!opens.length) {
+    el.innerHTML = '<div class="empty-state" style="padding:20px"><div class="icon">📭</div>No opens in this date range. Make sure App URL is set in Settings.</div>';
+    return;
+  }
+  el.innerHTML = '<table style="width:100%;border-collapse:collapse;font-size:12px">'
+    + '<thead><tr>'
+    + '<th style="padding:8px 14px;text-align:left;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">App ID / Token</th>'
+    + '<th style="padding:8px 14px;text-align:left;color:var(--slate);font-size:10px;text-transform:uppercase;letter-spacing:1px;border-bottom:1px solid var(--border)">Opened At</th>'
+    + '</tr></thead><tbody>'
+    + opens.slice().reverse().slice(0, 100).map(o =>
+        '<tr style="border-bottom:1px solid #13131e">'
+        + '<td style="padding:8px 14px;color:var(--cream);font-family:var(--mono);font-size:11px">' + escHtml(o.token || '—') + '</td>'
+        + '<td style="padding:8px 14px;color:var(--slate)">' + escHtml(o.opened_at || '—') + '</td>'
+        + '</tr>'
+      ).join('')
+    + '</tbody></table>';
+}
+
+function applyDateFilter() {
+  const start = document.getElementById('filterStart').value;
+  const end   = document.getElementById('filterEnd').value;
+  loadOpens(start, end);
+}
+
+function clearDateFilter() {
+  document.getElementById('filterStart').value = '';
+  document.getElementById('filterEnd').value   = '';
+  loadOpens('', '');
+}
+
+function quickFilter(range) {
+  const now   = new Date();
+  const today = now.toISOString().slice(0, 10);
+  let start   = today;
+  if (range === 'week') {
+    const d = new Date(now); d.setDate(d.getDate() - 7);
+    start = d.toISOString().slice(0, 10);
+  } else if (range === 'month') {
+    start = today.slice(0, 7) + '-01';
+  }
+  document.getElementById('filterStart').value = start;
+  document.getElementById('filterEnd').value   = today;
+  loadOpens(start, today);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Apps Script Code Viewer
+// ─────────────────────────────────────────────────────────────────────────────
+function switchScriptTab(name) {
+  ['sheet','email'].forEach(n => {
+    document.getElementById('stab-'+n).classList.toggle('active', n===name);
+    const p = document.getElementById('spanel-'+n);
+    if (p) p.classList.toggle('active', n===name);
+  });
+}
+
+async function loadScript(type) {
+  const key = 'script' + type.charAt(0).toUpperCase() + type.slice(1);
+  const el  = document.getElementById(key);
+  if (!el) return;
+  el.value = 'Loading...';
+  try {
+    const r = await fetch('/api/script/' + type);
+    const d = await r.json();
+    el.value = d.ok ? d.content : ('Error: ' + (d.error || 'Failed'));
+  } catch(e) { el.value = 'Error: ' + e; }
+}
+
+async function copyScript(type) {
+  const key = 'script' + type.charAt(0).toUpperCase() + type.slice(1);
+  const el  = document.getElementById(key);
+  if (!el) return;
+  if (!el.value || el.value.startsWith('Click') || el.value.startsWith('Load') || el.value.startsWith('Error')) {
+    await loadScript(type);
+  }
+  try {
+    await navigator.clipboard.writeText(el.value);
+    alert('✅ Code copied to clipboard!');
+  } catch(e) {
+    el.select(); document.execCommand('copy'); alert('✅ Code copied!');
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
