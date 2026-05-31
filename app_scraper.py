@@ -134,11 +134,10 @@ def passes_filter(installs: int, score: Optional[float],
             return False, f"hunter:score_too_high({score:.1f})"
         return True, "ok"
 
-    # Normal mode — only accept apps with ZERO ratings (truly new apps)
-    # This ensures we only contact developers who genuinely need our service
-    if is_rated:
-        return False, "normal:has_ratings"
-    if installs > 50_000:
+    # Normal mode — accept unrated apps OR apps with very few ratings
+    if is_rated and not few_ratings:
+        return False, "normal:too_many_ratings"
+    if installs > 100_000:
         return False, f"normal:too_many_installs({installs})"
     return True, "ok"
 
@@ -269,7 +268,7 @@ def scrape_keyword(keyword: str, hunter: dict, stop_event) -> list:
             if not valid:
                 push_log(f"  ⚠️  Skip (email verify failed — {reason}): {email}")
                 continue
-            if conf < 0.5:
+            if conf < 0.3:
                 push_log(f"  ⚠️  Skip (low email confidence {conf:.2f} — {reason}): {email}")
                 continue
 

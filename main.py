@@ -269,6 +269,51 @@ def _send_via_smtp(lead: dict, subject: str, body: str,
         return False
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Email URL pool (rotation + failure tracking for Apps Script)
+# ─────────────────────────────────────────────────────────────────────────────
+_email_url_pool: list  = []          # list of {url, fails}
+_email_url_idx:  int   = 0
+_email_url_lock  = threading.Lock()
+
+def _parse_email_urls() -> list:
+    """Parse EMAIL_SCRIPT_URL (comma/newline separated) into URL list."""
+    global _email_url_pool
+    raw = get_cfg("EMAIL_SCRIPT_URL", "")
+    urls = [u.strip() for u in raw.replace(",", "
+").splitlines() if u.strip().startswith("http")]
+    with _email_url_lock:
+        # Rebuild pool preserving fail counts for known URLs
+        known = {e["url"]: e["fails"] for e in _email_url_pool}
+        _email_url_pool = [{"url": u, "fails": known.get(u, 0)} for u in urls]
+    return urls
+
+def _next_email_url() -> str:
+    """Round-robin pick; skip URLs with >= 3 consecutive failures."""
+    global _email_url_idx
+    with _email_url_lock:
+        pool = [e for e in _email_url_pool if e["fails"] < 3]
+        if not pool:
+            pool = _email_url_pool  # all failing — try anyway
+        if not pool:
+            return ""
+        idx = _email_url_idx % len(pool)
+        _email_url_idx = (idx + 1) % max(len(pool), 1)
+        return pool[idx]["url"]
+
+def _mark_email_ok(url: str) -> None:
+    with _email_url_lock:
+        for e in _email_url_pool:
+            if e["url"] == url:
+                e["fails"] = 0
+
+def _mark_email_fail(url: str) -> None:
+    with _email_url_lock:
+        for e in _email_url_pool:
+            if e["url"] == url:
+                e["fails"] += 1
+
+
 def _send_via_apps_script(lead: dict, subject: str, body: str,
                            html: str, sender_email: str,
                            sender_name: str, tracking_url: str) -> bool:
@@ -343,12 +388,26 @@ def _send_email(lead: dict, subject: str, body: str) -> bool:
     # Build HTML email with tracking pixel (works when APP_URL is set in Settings/env)
     html = _build_html_email(body, gmail_address, sender_name, tracking_url)
 
-    # ── Gmail SMTP + App Password (only sending method) ──────────────────────
-    if gmail_address and app_password:
-        return _send_via_smtp(lead, subject, body, html,
-                              gmail_address, app_password, sender_name)
+    # ── Send: try SMTP first, fall back to Apps Script if network blocked ────
+    gas_urls = _parse_email_urls()
 
-    sm.push_log("  ❌ No Gmail credentials configured. Go to Settings → Connect Gmail.")
+    if gmail_address and app_password:
+        smtp_ok = _send_via_smtp(lead, subject, body, html,
+                                 gmail_address, app_password, sender_name)
+        if smtp_ok:
+            return True
+        # SMTP failed (e.g. Railway blocks port 465) — try GAS fallback
+        if gas_urls:
+            sm.push_log("  ↩️  SMTP failed — trying Apps Script fallback...")
+            return _send_via_apps_script(lead, subject, body, html,
+                                         gmail_address, sender_name, tracking_url)
+        return False
+
+    if gas_urls:
+        return _send_via_apps_script(lead, subject, body, html,
+                                     gmail_address, sender_name, tracking_url)
+
+    sm.push_log("  ❌ No email method configured. Add Gmail credentials or Email Script URL.")
     return False
 
 
@@ -674,33 +733,45 @@ def api_smtp_connect():
     if not sender_name:
         return jsonify({"error": "Sender name is required"}), 400
 
+    # ── Try direct SMTP verify; if server blocks port 465, save creds anyway
+    # so Apps Script fallback can still send emails on behalf of this account.
+    smtp_verified = False
+    smtp_err_msg  = ""
     try:
         import ssl as _ssl
         ctx = _ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=20) as server:
+        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=15) as server:
             server.ehlo()
             server.login(gmail_address, app_password)
-        # Persist verified credentials
-        existing = dict(_server_cfg)
-        existing["gmailAddress"] = gmail_address
-        existing["appPassword"]  = app_password
-        existing["senderName"]   = sender_name
-        _save_cfg_to_disk(existing)
-        set_run_cfg({
-            "GMAIL_ADDRESS": gmail_address,
-            "APP_PASSWORD":  app_password,
-            "SENDER_NAME":   sender_name,
-        })
-        log.info(f"SMTP credentials verified for {gmail_address}")
-        return jsonify({"ok": True, "msg": f"Connected as {gmail_address}"})
+        smtp_verified = True
     except smtplib.SMTPAuthenticationError:
-        return jsonify({"error": "Authentication failed. Check your Gmail address and App Password. Make sure 2-Step Verification is ON and use a 16-character App Password from Google Account → Security → App Passwords."}), 401
-    except smtplib.SMTPConnectError as e:
-        return jsonify({"error": f"Cannot connect to Gmail SMTP (port 465): {e}"}), 503
-    except OSError as e:
-        return jsonify({"error": f"Network error connecting to Gmail: {e}. Please check server network access."}), 503
+        return jsonify({"error": "Authentication failed. Make sure 2-Step Verification is ON and use a 16-character App Password from Google Account → Security → App Passwords."}), 401
     except Exception as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
+        # Port blocked (common on Railway/Render free tier) — treat as soft error
+        smtp_err_msg = str(e)
+        log.warning(f"SMTP connect blocked for {gmail_address}: {e} — saving creds for GAS fallback")
+
+    # Always persist credentials so GAS fallback works even when SMTP is blocked
+    existing = dict(_server_cfg)
+    existing["gmailAddress"] = gmail_address
+    existing["appPassword"]  = app_password
+    existing["senderName"]   = sender_name
+    _save_cfg_to_disk(existing)
+    set_run_cfg({
+        "GMAIL_ADDRESS": gmail_address,
+        "APP_PASSWORD":  app_password,
+        "SENDER_NAME":   sender_name,
+    })
+    log.info(f"Credentials saved for {gmail_address} (smtp_verified={smtp_verified})")
+
+    if smtp_verified:
+        return jsonify({"ok": True, "msg": f"Connected as {gmail_address}"})
+    else:
+        # Credentials saved; emails will route through Apps Script
+        return jsonify({
+            "ok": True,
+            "msg": f"Connected as {gmail_address} (via Apps Script — direct SMTP blocked by server)"
+        })
 
 
 @application.route("/api/sheet_pending", methods=["POST"])
