@@ -10,9 +10,6 @@ import json
 import time
 import threading
 import logging
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
 
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
@@ -197,159 +194,36 @@ def run_send_pending(leads: list):
     sm.upd(running=False, phase="done")
 
 
-def _build_html_email(body_text: str, sender_email: str, sender_name: str,
-                       tracking_url: str = "") -> str:
-    """Build styled HTML email with gold accent, unsubscribe footer, tracking pixel."""
-    escaped  = body_text.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-    rows     = []
-    for line in escaped.split("\n"):
-        t = line.strip()
-        if not t:
-            rows.append('<tr><td style="height:10px;font-size:0">&nbsp;</td></tr>')
-        else:
-            rows.append(f'<tr><td style="font-family:Arial,sans-serif;font-size:14px;'
-                        f'line-height:1.75;color:#2c2c2c;padding:0 0 2px 0">{t}</td></tr>')
-    html_rows    = "\n".join(rows)
-    display_name = sender_name or sender_email
-    unsub = (f"mailto:{sender_email}?subject=Unsubscribe"
-             f"&body=Please%20remove%20me%20from%20your%20mailing%20list.%20Thank%20you.")
-    pixel = (f'<img src="{tracking_url}" width="1" height="1" alt="" '
-             f'style="display:none" border="0">') if tracking_url else ""
-    return f"""<!DOCTYPE html>
-<html><head><meta charset="UTF-8"></head>
-<body style="margin:0;padding:0;background:#f0f0f0">
-<table width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f0f0;padding:32px 16px">
-<tr><td align="center">
-<table width="600" cellpadding="0" cellspacing="0" border="0"
- style="max-width:600px;width:100%;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 20px rgba(0,0,0,.08)">
-<tr><td height="5" style="background:linear-gradient(90deg,#c9a84c,#e8c76a,#c9a84c);font-size:0">&nbsp;</td></tr>
-<tr><td style="padding:36px 44px 28px">
-<table width="100%" cellpadding="0" cellspacing="0" border="0">{html_rows}</table>
-</td></tr>
-<tr><td style="padding:0 44px"><div style="border-top:1px solid #ececec"></div></td></tr>
-<tr><td style="padding:22px 44px 30px;text-align:center">
-<p style="font-family:Arial,sans-serif;font-size:11px;color:#aaa;margin:0 0 14px;line-height:1.6">
-You received this message because your app was found on Google Play Store.<br>
-To opt out from <strong>{display_name}</strong>, click below.</p>
-<a href="{unsub}" style="display:inline-block;padding:9px 28px;background:#f7f7f7;color:#777;
-text-decoration:none;border-radius:6px;border:1px solid #ddd;
-font-family:Arial,sans-serif;font-size:12px;font-weight:500">Unsubscribe</a>
-</td></tr>
-<tr><td height="4" style="background:linear-gradient(90deg,#c9a84c,#e8c76a,#c9a84c);font-size:0">&nbsp;</td></tr>
-</table></td></tr></table>
-{pixel}
-</body></html>"""
+def _send_email(lead: dict, subject: str, body: str) -> bool:
 
 
-def _send_via_smtp(lead: dict, subject: str, body: str,
-                   html: str, gmail_address: str, app_password: str,
-                   sender_name: str) -> bool:
-    """Send via Gmail SMTP + App Password — no Apps Script, no daily limits."""
-    from_addr = f"{sender_name} <{gmail_address}>" if sender_name else gmail_address
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = subject
-    msg["From"]    = from_addr
-    msg["To"]      = lead["email"]
-    msg.attach(MIMEText(body, "plain", "utf-8"))
-    msg.attach(MIMEText(html,  "html",  "utf-8"))
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(gmail_address, app_password)
-            server.sendmail(gmail_address, lead["email"], msg.as_string())
-        sm.push_log(f"  📧 [SMTP] Sent → {lead['email']} ({lead.get('app_name', '')})")
-        return True
-    except smtplib.SMTPAuthenticationError:
-        sm.push_log("  ❌ SMTP Auth failed — check Gmail address + App Password")
-        return False
-    except Exception as e:
-        sm.push_log(f"  ❌ SMTP error: {e}")
-        return False
+    sender_email = get_cfg("SENDER_EMAIL", "")
+    app_url      = get_cfg("APP_URL", "").rstrip("/")
+    token        = lead.get("app_id", "unknown")
+    tracking_url = f"{app_url}/track/open/{token}" if app_url else ""
 
-
-def _send_via_apps_script(lead: dict, subject: str, body: str,
-                           html: str, sender_email: str,
-                           sender_name: str, tracking_url: str) -> bool:
-    """Send via Apps Script URL rotation."""
-    import requests as _req
-    urls = _parse_email_urls()
-    if not urls:
-        sm.push_log("  ❌ No Email Script URLs configured")
-        return False
     payload = {
         "action":             "send_email",
         "to":                 lead["email"],
         "subject":            subject,
         "body":               body,
-        "sender_name":        sender_name,
+        "sender_name":        get_cfg("SENDER_NAME", ""),
         "from_email":         sender_email,
         "tracking_pixel_url": tracking_url,
     }
-    tried = set()
-    for _ in range(len(urls)):
-        url = _next_email_url()
-        if not url or url in tried:
-            continue
-        tried.add(url)
-        try:
-            r      = _req.post(url, json=payload, timeout=30)
-            result = r.json() if r.text else {}
-            if result.get("status") == "ok":
-                _mark_email_ok(url)
-                sm.push_log(f"  📧 [GAS] Sent → {lead['email']} ({lead.get('app_name', '')})")
-                return True
-            _mark_email_fail(url)
-            sm.push_log(f"  ⚠️  GAS failed ({url[:40]}…): {result.get('msg','?')}")
-        except Exception as e:
-            _mark_email_fail(url)
-            sm.push_log(f"  ⚠️  GAS error ({url[:40]}…): {e}")
-    sm.push_log(f"  ❌ All email methods failed for {lead['email']}")
-    return False
 
-
-def _send_email(lead: dict, subject: str, body: str) -> bool:
-    """Route email through SMTP (if App Password set) or Apps Script URLs.
-    Performs real-time email verification before sending to reduce bounces.
-    """
-    import app_verify as _ev
-    if not lead.get("email"):
-        sm.push_log("  ❌ Missing email address")
+    try:
+        import requests as _req
+        r = _req.post(url, json=payload, timeout=30)
+        result = r.json() if r.text else {}
+        if result.get("status") == "ok":
+            sm.push_log(f"  📧 Sent → {lead['email']} ({lead.get('app_name', '')})")
+            return True
+        sm.push_log(f"  ❌ Email failed: {result.get('msg', '?')}")
         return False
-
-    # ── Pre-send email verification ────────────────────────────────────────
-    email = lead["email"]
-    valid, confidence, reason = _ev.verify_email(email)
-    if not valid:
-        sm.push_log(f"  ❌ Skip — email verification failed ({reason}): {email}")
+    except Exception as e:
+        sm.push_log(f"  ❌ Email error: {e}")
         return False
-    if confidence < 0.3:
-        sm.push_log(f"  ❌ Skip — email confidence too low ({confidence:.2f}, {reason}): {email}")
-        return False
-    if confidence < 0.6:
-        sm.push_log(f"  ⚠️  Low confidence email ({confidence:.2f}) — sending anyway: {email}")
-
-    sender_name   = get_cfg("SENDER_NAME",   "")
-    sender_email  = get_cfg("SENDER_EMAIL",  "")
-    gmail_address = get_cfg("GMAIL_ADDRESS", "")
-    app_password  = get_cfg("APP_PASSWORD",  "")
-    app_url       = get_cfg("APP_URL",       "").rstrip("/")
-    token         = lead.get("app_id", "unknown")
-    tracking_url  = f"{app_url}/track/open/{token}" if app_url else ""
-
-    # Build HTML once (used by both SMTP and Apps Script paths)
-    from_for_html = gmail_address or sender_email or ""
-    html = _build_html_email(body, from_for_html, sender_name, tracking_url)
-
-    # ── Path 1: Gmail SMTP + App Password (preferred, no daily limits) ─────────
-    if gmail_address and app_password:
-        return _send_via_smtp(lead, subject, body, html,
-                              gmail_address, app_password, sender_name)
-
-    # ── Path 2: Apps Script URL rotation (fallback) ────────────────────────────
-    return _send_via_apps_script(lead, subject, body, html,
-                                 sender_email, sender_name, tracking_url)
 
 
 
@@ -389,6 +263,7 @@ def _save_cfg_to_disk(data: dict) -> None:
 
 # Load on startup
 _load_cfg_from_disk()
+_load_opens()
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Email open tracking (pixel-based)
@@ -427,7 +302,6 @@ def _record_open(token: str) -> None:
         _opens.append(record)
     _save_opens()
 
-_load_opens()   # load persisted opens from disk on startup
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Routes
@@ -457,8 +331,6 @@ def api_start():
         "SENDER_NAME":         data.get("sender_name")       or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":      data.get("sender_company")    or os.environ.get("SENDER_COMPANY", ""),
         "SENDER_EMAIL":        data.get("sender_email")       or os.environ.get("SENDER_EMAIL", ""),
-        "GMAIL_ADDRESS":       data.get("gmail_address")      or os.environ.get("GMAIL_ADDRESS", ""),
-        "APP_PASSWORD":        data.get("app_password")        or os.environ.get("APP_PASSWORD", ""),
         "APP_URL":             data.get("app_url")            or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")     or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")        or os.environ.get("EMAIL_BODY", ""),
@@ -565,8 +437,6 @@ def api_send_pending():
         "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
         "SENDER_EMAIL":        data.get("sender_email")      or os.environ.get("SENDER_EMAIL", ""),
-        "GMAIL_ADDRESS":       data.get("gmail_address")     or os.environ.get("GMAIL_ADDRESS", ""),
-        "APP_PASSWORD":        data.get("app_password")       or os.environ.get("APP_PASSWORD", ""),
         "APP_URL":             data.get("app_url")           or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
@@ -581,48 +451,32 @@ def api_send_pending():
 
 @application.route("/api/spam_test", methods=["POST"])
 def api_spam_test():
-    """Legacy endpoint — delegates to smtp_test for actual SMTP delivery."""
-    return api_smtp_test()
-
-
-@application.route("/api/smtp_test", methods=["POST"])
-def api_smtp_test():
-    """Send a real test email via Gmail SMTP and return spam analysis."""
     data = request.get_json(silent=True) or {}
-    test_to       = (data.get("test_email") or "").strip()
-    gmail_address = (data.get("gmail_address") or os.environ.get("GMAIL_ADDRESS", "")).strip()
-    app_password  = (data.get("app_password")  or os.environ.get("APP_PASSWORD",  "")).strip()
-    sender_name   = (data.get("sender_name")   or os.environ.get("SENDER_NAME",   "")).strip()
-
+    test_to = (data.get("test_email") or "").strip()
     if not test_to:
         return jsonify({"error": "test_email required"}), 400
-    if not gmail_address:
-        return jsonify({"error": "Gmail address is not configured. Please connect your Gmail account first."}), 400
-    if not app_password:
-        return jsonify({"error": "Gmail App Password is not configured. Please connect your Gmail account first."}), 400
 
     rc = {
-        "GROQ_API_KEY":   data.get("groq_key")      or os.environ.get("GROQ_API_KEY", ""),
-        "SENDER_NAME":    sender_name,
-        "SENDER_COMPANY": data.get("sender_company") or os.environ.get("SENDER_COMPANY", ""),
-        "GMAIL_ADDRESS":  gmail_address,
-        "APP_PASSWORD":   app_password,
-        "APP_URL":        data.get("app_url")        or os.environ.get("APP_URL", ""),
-        "EMAIL_SUBJECT":  data.get("email_subject")  or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":     data.get("email_body")     or os.environ.get("EMAIL_BODY", ""),
-        "SPAM_WORDS":     data.get("spam_words")     or os.environ.get("SPAM_WORDS", ""),
+        "GROQ_API_KEY":     data.get("groq_key")        or os.environ.get("GROQ_API_KEY", ""),
+        "EMAIL_SCRIPT_URLS": data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":      data.get("sender_name")     or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":   data.get("sender_company")  or os.environ.get("SENDER_COMPANY", ""),
+        "SENDER_EMAIL":     data.get("sender_email")     or os.environ.get("SENDER_EMAIL", ""),
+        "APP_URL":          data.get("app_url")          or os.environ.get("APP_URL", ""),
+        "EMAIL_SUBJECT":    data.get("email_subject")   or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":       data.get("email_body")      or os.environ.get("EMAIL_BODY", ""),
+        "SPAM_WORDS":       data.get("spam_words")      or os.environ.get("SPAM_WORDS", ""),
     }
     set_run_cfg(rc)
 
     sample = {
-        "app_id":    "com.example.testapp",
-        "app_name":  "FinanceTrack Pro",
-        "developer": "Alex Dev",
+        "app_name":  data.get("sample_app_name", "FinanceTrack Pro"),
+        "developer": data.get("sample_developer", "Alex Dev"),
         "category":  "Finance",
         "installs":  1200,
-        "score":     2.1,
+        "score":     data.get("sample_score", 2.1),
         "email":     test_to,
-        "url":       "https://play.google.com/store/apps/details?id=com.example.testapp",
+        "url":       "https://play.google.com/store/apps/details?id=com.example.finance",
     }
 
     base_subject = get_cfg("EMAIL_SUBJECT") or email_eng.DEFAULT_SUBJECT
@@ -630,82 +484,34 @@ def api_smtp_test():
     subject, body = email_eng.ai_rewrite_email(sample, base_subject, base_body)
     check = email_eng.spam_score(subject, body)
 
-    html = _build_html_email(body, gmail_address, sender_name, "")
-    from_addr = f"{sender_name} <{gmail_address}>" if sender_name else gmail_address
-    msg = MIMEMultipart("alternative")
-    msg["Subject"] = "[TEST] " + subject
-    msg["From"]    = from_addr
-    msg["To"]      = test_to
-    msg["X-Mailer"] = "PlayLeadBot-Test"
-    msg.attach(MIMEText(body, "plain", "utf-8"))
-    msg.attach(MIMEText(html,  "html",  "utf-8"))
-
-    try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(gmail_address, app_password)
-            server.sendmail(gmail_address, test_to, msg.as_string())
-        log.info(f"Test email sent via SMTP to {test_to}")
+    url = _next_email_url()
+    if not url:
         return jsonify({
-            "ok": True,
-            "msg": f"Test email delivered to {test_to} via Gmail SMTP",
-            "subject": subject,
-            "body": body,
-            "spam_check": check
+            "ok": True, "skipped_send": True,
+            "subject": subject, "body": body, "spam_check": check,
+            "msg": "No Email Script URLs configured — add in Settings"
         })
-    except smtplib.SMTPAuthenticationError:
-        return jsonify({"error": "Gmail authentication failed. Check your Gmail address and App Password. Ensure 2-Step Verification is ON and you are using a valid App Password (16 characters)."}), 401
-    except smtplib.SMTPRecipientsRefused:
-        return jsonify({"error": f"Recipient address refused: {test_to}"}), 400
-    except smtplib.SMTPException as e:
-        return jsonify({"error": f"SMTP error: {str(e)}"}), 500
-    except Exception as e:
-        log.error(f"Unexpected error during test email: {e}")
-        return jsonify({"error": f"Failed to send: {str(e)}"}), 500
-
-
-@application.route("/api/smtp_connect", methods=["POST"])
-def api_smtp_connect():
-    """Validate Gmail SMTP credentials by opening a live connection (no email sent)."""
-    data          = request.get_json(silent=True) or {}
-    gmail_address = (data.get("gmail_address") or "").strip()
-    app_password  = (data.get("app_password")  or "").strip()
-    sender_name   = (data.get("sender_name")   or "").strip()
-
-    if not gmail_address:
-        return jsonify({"error": "Gmail address is required"}), 400
-    if not app_password:
-        return jsonify({"error": "App Password is required"}), 400
-    if not sender_name:
-        return jsonify({"error": "Sender name is required"}), 400
 
     try:
-        with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
-            server.login(gmail_address, app_password)
-        # Persist verified credentials
-        existing = dict(_server_cfg)
-        existing["gmailAddress"] = gmail_address
-        existing["appPassword"]  = app_password
-        existing["senderName"]   = sender_name
-        _save_cfg_to_disk(existing)
-        set_run_cfg({
-            "GMAIL_ADDRESS": gmail_address,
-            "APP_PASSWORD":  app_password,
-            "SENDER_NAME":   sender_name,
-        })
-        log.info(f"SMTP credentials verified for {gmail_address}")
-        return jsonify({"ok": True, "msg": f"Connected as {gmail_address}"})
-    except smtplib.SMTPAuthenticationError:
-        return jsonify({"error": "Authentication failed. Verify your Gmail address and App Password. Ensure 2-Step Verification is enabled on your Google Account."}), 401
-    except smtplib.SMTPConnectError as e:
-        return jsonify({"error": f"Cannot connect to Gmail SMTP: {e}"}), 503
+        import requests as _req
+        payload = {
+            "action":      "send_email",
+            "to":          test_to,
+            "subject":     subject,
+            "body":        body,
+            "sender_name": get_cfg("SENDER_NAME", ""),
+            "from_email":  get_cfg("SENDER_EMAIL", ""),
+        }
+        r = _req.post(url, json=payload, timeout=30)
+        result = r.json() if r.text else {}
+        if result.get("status") == "ok":
+            return jsonify({
+                "ok": True, "msg": f"Test sent to {test_to}",
+                "subject": subject, "body": body, "spam_check": check
+            })
+        return jsonify({"error": result.get("msg", "Failed")}), 500
     except Exception as e:
-        return jsonify({"error": f"Connection error: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
 
 
 @application.route("/api/sheet_pending", methods=["POST"])

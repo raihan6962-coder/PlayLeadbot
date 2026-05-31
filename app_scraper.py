@@ -18,15 +18,7 @@ from app_state import (
     seen_id, mark_id, seen_email, mark_email,
     in_sheet, register_sheet, push_log
 )
-from app_verify import is_email_safe, verify_email as _verify_email_full_raw
-
-def _verify_email_full(email: str):
-    """Wrapper that returns (valid, confidence, reason) with proper logging."""
-    try:
-        return _verify_email_full_raw(email)
-    except Exception as e:
-        log.warning(f"Email verification error for {email}: {e}")
-        return True, 0.5, "verify_error_assume_ok"
+from app_verify import is_email_safe
 import app_sheets as sheet_manager
 
 log = logging.getLogger(__name__)
@@ -213,7 +205,7 @@ def scrape_keyword(keyword: str, hunter: dict, stop_event) -> list:
 
         # ── Search ────────────────────────────────────────────────────────────
         try:
-            results = search(keyword, lang=lang, country=country, n_hits=30)
+            results = search(keyword, lang=lang, country=country, n_hits=500)
         except Exception as e:
             push_log(f"  ⚠️ Search error ({country}): {e}")
             time.sleep(2)
@@ -263,13 +255,8 @@ def scrape_keyword(keyword: str, hunter: dict, stop_event) -> list:
             if not email:
                 continue
 
-            # Verify email before accepting lead
-            valid, conf, reason = _verify_email_full(email)
-            if not valid:
-                push_log(f"  ⚠️  Skip (email verify failed — {reason}): {email}")
-                continue
-            if conf < 0.3:
-                push_log(f"  ⚠️  Skip (low email confidence {conf:.2f} — {reason}): {email}")
+            if not is_email_safe(email, min_confidence=0.4):
+                push_log(f"  ⚠️  Skip (invalid email): {email}")
                 continue
 
             # Email dedup

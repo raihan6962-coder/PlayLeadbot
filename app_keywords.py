@@ -98,33 +98,33 @@ def _score_keyword(kw: str) -> float:
 
 
 def _build_prompt(original: str, used: list) -> str:
-    return f"""You are a Google Play Store keyword strategist.
+    return f"""You are a senior Google Play Store keyword strategist specializing in app reputation and B2B outreach.
 
-SEED KEYWORD: "{original}"
+CONTEXT:
+You are generating search keywords to find Android app developers who:
+- Need reputation improvement (ratings, reviews)
+- Work in competitive niches where trust and social proof DIRECTLY impact revenue
+- Have real business monetization (subscriptions, in-app purchases, leads, bookings)
+
+ORIGINAL SEED KEYWORD: "{original}"
 ALREADY USED: {json.dumps(used if used else [])}
 
 YOUR TASK:
 Generate exactly 10 NEW search keywords.
 
-RULE 1 — STAY ON TOPIC (MOST IMPORTANT):
-Every keyword MUST be directly and closely related to the seed keyword "{original}".
-Do NOT drift to unrelated categories.
-Examples:
-  Seed "virtual card"  → "virtual debit card app", "prepaid virtual card android", "virtual visa card"
-  Seed "loan app"      → "personal loan android", "instant loan app", "micro loan platform"
-  Seed "VPN"          → "vpn proxy android", "secure vpn app", "fast vpn service"
-NEVER switch to a completely different category like: if seed is "virtual card", do NOT generate "insurance", "dating", "trading" — those are unrelated.
+STRICT RULES:
+1. Only generate keywords for app categories where trust/ratings significantly impact user conversion:
+   GOOD examples: insurance apps, trading platforms, dating apps, fintech tools, VPN services,
+   telemedicine, legal services, loan apps, crypto wallets, edtech, SaaS tools, marketplaces,
+   food delivery, HR software, mental health apps
+2. NEVER generate keywords for: calculator, flashlight, wallpaper, file manager, QR scanner,
+   alarm clock, unit converter, screen cleaner, lock screen, emoji, sticker, drawing, simple games
+3. Each keyword should be 2-4 words long and highly specific to a monetized niche
+4. Keywords should reflect what real developers search for when building these apps
+5. Vary the angle: mix app type + platform context (e.g. "finance tracker app", "trading signal android")
 
-RULE 2 — ONLY HIGH-VALUE NICHES:
-Stay within niches where trust and ratings matter: fintech, crypto, payments, VPN, lending,
-insurance, telemedicine, legal, edtech, dating, SaaS, marketplaces, delivery, HR tools.
-Skip: calculator, flashlight, wallpaper, file manager, QR scanner, alarm, unit converter.
-
-RULE 3 — SPECIFIC, 2-4 WORDS:
-Each keyword must be 2-4 words, specific, realistic search term.
-
-Return ONLY a raw JSON array of 10 strings. No markdown, no explanation.
-Example for seed "crypto wallet": ["crypto wallet android", "bitcoin wallet app", "ethereum mobile wallet", ...]"""
+Return ONLY a raw JSON array of strings. No explanation, no markdown, no extra text.
+Example: ["crypto wallet android", "trading signals app", "loan management platform"]"""
 
 
 def ai_gen_keywords(original: str, used: list) -> List[str]:

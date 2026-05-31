@@ -517,41 +517,18 @@ tbody td:first-child{color:var(--cream)}
       </div>
     </div>
 
-    <!-- Gmail SMTP Connect -->
+    <!-- Sender Identity -->
     <div class="card">
-      <div class="card-title"><span class="icon">📨</span> Gmail SMTP — Email Account <span style="color:var(--green);font-size:9px;margin-left:4px">DIRECT SENDING</span></div>
-      <div class="field-note" style="margin-bottom:14px">Enter your Gmail credentials and click <strong>Connect</strong> to activate email sending. Get an App Password from: Google Account → Security → 2-Step Verification → App Passwords → Generate (16-character password).</div>
-
+      <div class="card-title"><span class="icon">👤</span> Sender Identity</div>
       <div class="field">
-        <label>Sender Name</label>
-        <input type="text" id="senderName" placeholder="Alex Johnson" autocomplete="off"/>
-        <div class="field-note">Your name as it appears in the recipient's inbox</div>
+        <label>Your Name</label>
+        <input type="text" id="senderName" placeholder="Alex Johnson"/>
       </div>
-      <div class="field">
-        <label>Gmail Address</label>
-        <input type="email" id="gmailAddress" placeholder="yourname@gmail.com" autocomplete="off"/>
-        <div class="field-note">The Gmail account emails will be sent from</div>
-      </div>
-      <div class="field">
-        <label>App Password</label>
-        <input type="password" id="appPassword" placeholder="xxxx xxxx xxxx xxxx" autocomplete="new-password"/>
-        <div class="field-note">16-character App Password from Google Account → Security → App Passwords</div>
-      </div>
-
-      <div style="display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap">
-        <button class="btn btn-primary" id="smtpConnectBtn" onclick="connectSmtp()" style="min-width:120px">
-          <span id="smtpConnectLabel">🔌 Connect</span>
-        </button>
-        <span id="smtpStatus" style="font-size:12px;color:var(--slate2)">Not connected</span>
-      </div>
-
-      <div style="border-top:1px solid var(--border);margin:16px 0"></div>
-
       <div class="field">
         <label>Company / Service Name</label>
         <input type="text" id="senderCompany" placeholder="AppRank Solutions"/>
-        <div class="field-note">Used in email signatures and templates</div>
       </div>
+
     </div>
   </div>
 
@@ -722,8 +699,7 @@ const KEYS = {
   groqKey:'ple_groqKey', sheetUrl:'ple_sheetUrl', emailScriptUrls:'ple_emailScriptUrls',
   senderName:'ple_senderName', senderCompany:'ple_senderCompany',
   senderEmail:'ple_senderEmail', appUrl:'ple_appUrl', emailSubject:'ple_emailSubject',
-  emailBody:'ple_emailBody', spamWords:'ple_spamWords', sendProfile:'ple_sendProfile',
-  gmailAddress:'ple_gmailAddress', appPassword:'ple_appPassword'
+  emailBody:'ple_emailBody', spamWords:'ple_spamWords', sendProfile:'ple_sendProfile'
 };
 
 // ── Server-side config helpers (cross-device persistence) ──────────────────
@@ -788,20 +764,7 @@ function loadSettings() {
     }
   }
   // 2. Authoritative load from server (any device, overwrites localStorage)
-  loadConfigFromServer().then(() => {
-    // Restore SMTP connection status indicator if credentials are saved
-    const gAddr = document.getElementById('gmailAddress').value.trim();
-    const gPass = document.getElementById('appPassword').value.trim();
-    const gName = document.getElementById('senderName').value.trim();
-    if (gAddr && gPass && gName) {
-      const label  = document.getElementById('smtpConnectLabel');
-      const status = document.getElementById('smtpStatus');
-      const btn    = document.getElementById('smtpConnectBtn');
-      if (label) label.textContent = '✅ Connected';
-      if (status) { status.style.color = 'var(--green)'; status.textContent = 'Connected as ' + gAddr; }
-      if (btn) btn.style.background = 'var(--green)';
-    }
-  });
+  loadConfigFromServer();
 
   document.getElementById('testFirst').addEventListener('change', function(){
     document.getElementById('testEmailField').style.display = this.checked ? 'block' : 'none';
@@ -828,8 +791,6 @@ function getSettings() {
     sender_name:        document.getElementById('senderName').value.trim(),
     sender_company:     document.getElementById('senderCompany').value.trim(),
     sender_email:       document.getElementById('senderEmail').value.trim(),
-    gmail_address:      document.getElementById('gmailAddress').value.trim(),
-    app_password:       document.getElementById('appPassword').value.trim(),
     app_url:            document.getElementById('appUrl').value.trim(),
     email_subject:      document.getElementById('emailSubject').value.trim(),
     email_body:         document.getElementById('emailBody').value.trim(),
@@ -1043,7 +1004,7 @@ function exportLeadsCSV() {
 // ─────────────────────────────────────────────────────────────────────────────
 async function fetchAndSendPending() {
   const cfg = getSettings();
-  if (!cfg.sheet_url) { alert('Please configure Apps Script Web URL in Settings first.'); return; }
+  if (!cfg.sheet_urls && !cfg.email_script_url) { alert('Configure Settings first'); return; }
   const btn = document.getElementById('sidebarSendPending');
   btn.disabled = true;
 
@@ -1305,73 +1266,17 @@ function refreshPreview() {
 // ─────────────────────────────────────────────────────────────────────────────
 async function sendTestEmail() {
   const to = document.getElementById('testEmail').value.trim();
-  if (!to) { alert('Enter a test email address'); return; }
-  const gmailAddress = document.getElementById('gmailAddress').value.trim();
-  const appPassword  = document.getElementById('appPassword').value.trim();
-  const senderName   = document.getElementById('senderName').value.trim();
-  if (!gmailAddress || !appPassword) {
-    alert('Please connect your Gmail account first (Gmail Address + App Password + Connect)');
-    return;
-  }
-  const btn = document.querySelector('[onclick="sendTestEmail()"]');
-  const origText = btn ? btn.textContent : '';
-  if (btn) { btn.disabled = true; btn.textContent = '⏳ Sending…'; }
+  if (!to) { alert('Enter a test email'); return; }
   const cfg = getSettings();
   try {
-    const r = await fetch('/api/smtp_test', {
+    const r = await fetch('/api/spam_test', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ test_email: to, gmail_address: gmailAddress, app_password: appPassword, sender_name: senderName, ...cfg })
+      body: JSON.stringify({ test_email: to, ...cfg })
     });
     const d = await r.json();
-    if (d.ok) {
-      alert('✅ ' + d.msg + '\nSpam score: ' + (d.spam_check?.score ?? '?') + '/100 (' + (d.spam_check?.verdict ?? '?') + ')');
-    } else {
-      alert('❌ ' + (d.error || 'Send failed'));
-    }
-  } catch(e) { alert('Network error: ' + e); }
-  finally { if (btn) { btn.disabled = false; btn.textContent = origText; } }
-}
-
-async function connectSmtp() {
-  const gmailAddress = document.getElementById('gmailAddress').value.trim();
-  const appPassword  = document.getElementById('appPassword').value.trim();
-  const senderName   = document.getElementById('senderName').value.trim();
-  if (!gmailAddress || !appPassword || !senderName) {
-    alert('Please fill in Sender Name, Gmail Address, and App Password before connecting.');
-    return;
-  }
-  const btn    = document.getElementById('smtpConnectBtn');
-  const label  = document.getElementById('smtpConnectLabel');
-  const status = document.getElementById('smtpStatus');
-  btn.disabled = true;
-  label.textContent = '⏳ Connecting…';
-  status.style.color = 'var(--gold)';
-  status.textContent = 'Verifying credentials…';
-  try {
-    const r = await fetch('/api/smtp_connect', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ gmail_address: gmailAddress, app_password: appPassword, sender_name: senderName })
-    });
-    const d = await r.json();
-    if (d.ok) {
-      label.textContent = '✅ Connected';
-      status.style.color = 'var(--green)';
-      status.textContent = 'Connected as ' + gmailAddress;
-      btn.style.background = 'var(--green)';
-      // Also save to settings
-      saveSettings();
-    } else {
-      label.textContent = '🔌 Connect';
-      status.style.color = 'var(--red, #e74c3c)';
-      status.textContent = '❌ ' + (d.error || 'Connection failed');
-      btn.disabled = false;
-    }
-  } catch(e) {
-    label.textContent = '🔌 Connect';
-    status.style.color = 'var(--red, #e74c3c)';
-    status.textContent = 'Network error: ' + e;
-    btn.disabled = false;
-  }
+    if (d.ok) alert(`✅ Test sent to ${to}\nSpam score: ${d.spam_check?.score||'?'}/100`);
+    else alert('Error: ' + (d.error || 'Failed'));
+  } catch(e) { alert('Error: ' + e); }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
