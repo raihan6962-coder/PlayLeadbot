@@ -493,27 +493,9 @@ tbody td:first-child{color:var(--cream)}
       </div>
 
       <div class="field">
-        <label>App URL <span style="color:var(--slate2);font-size:9px;margin-left:4px">for email open tracking</span></label>
-        <input type="text" id="appUrl" placeholder="https://your-app.up.railway.app"/>
-        <div class="field-note">Your deployed app URL. Used to embed open-tracking pixels in sent emails.</div>
-      </div>
-
-      <div class="field">
-        <label>Apps Script Web URL <span style="color:var(--slate2);font-size:9px;margin-left:4px">(Code.gs)</span></label>
+        <label>Apps Script Web URL <span style="color:var(--slate2);font-size:9px;margin-left:4px">(Code.gs — for Google Sheets logging)</span></label>
         <input type="text" id="sheetUrl" placeholder="https://script.google.com/macros/s/ABC/exec"/>
-        <div class="field-note">Code.gs deploy করার পরে যে একটাই URL পাবে — এখানে বসাও।</div>
-      </div>
-
-      <div class="field">
-        <label>Email Script URLs <span style="color:var(--gold);font-size:9px;margin-left:4px">MULTI-ACCOUNT ROTATION</span></label>
-        <textarea id="emailScriptUrls" placeholder="https://script.google.com/macros/s/ABC/exec&#10;https://script.google.com/macros/s/DEF/exec&#10;https://script.google.com/macros/s/GHI/exec&#10;(প্রতিটা Gmail account-এর EmailSender.gs URL — এক লাইনে একটা)" style="min-height:100px;font-size:11px;font-family:var(--mono)"></textarea>
-        <div class="field-note">একাধিক Gmail account থাকলে প্রতিটার EmailSender.gs URL এখানে দাও। System automatically rotate করবে — daily limit শেষ হলে পরের account-এ চলে যাবে।</div>
-      </div>
-
-      <div class="field">
-        <label>Sending Email Address</label>
-        <input type="email" id="senderEmail" placeholder="yourname@gmail.com"/>
-        <div class="field-note">Gmail address emails are sent from. Use your primary Gmail or a configured "Send mail as" alias. This exact address appears as the sender in recipients' inboxes.</div>
+        <div class="field-note">Code.gs deploy করার পরে যে URL পাবে — এখানে বসাও। Only needed for Google Sheets lead logging.</div>
       </div>
     </div>
 
@@ -719,9 +701,9 @@ let liveSpamTimer = null;
 // Persistence
 // ─────────────────────────────────────────────────────────────────────────────
 const KEYS = {
-  groqKey:'ple_groqKey', sheetUrl:'ple_sheetUrl', emailScriptUrls:'ple_emailScriptUrls',
+  groqKey:'ple_groqKey', sheetUrl:'ple_sheetUrl',
   senderName:'ple_senderName', senderCompany:'ple_senderCompany',
-  senderEmail:'ple_senderEmail', appUrl:'ple_appUrl', emailSubject:'ple_emailSubject',
+  emailSubject:'ple_emailSubject',
   emailBody:'ple_emailBody', spamWords:'ple_spamWords', sendProfile:'ple_sendProfile',
   gmailAddress:'ple_gmailAddress', appPassword:'ple_appPassword'
 };
@@ -822,19 +804,16 @@ function saveSettings() {
 
 function getSettings() {
   return {
-    groq_key:           document.getElementById('groqKey').value.trim(),
-    sheet_url:          document.getElementById('sheetUrl').value.trim(),
-    email_script_urls:  document.getElementById('emailScriptUrls').value.trim(),
-    sender_name:        document.getElementById('senderName').value.trim(),
-    sender_company:     document.getElementById('senderCompany').value.trim(),
-    sender_email:       document.getElementById('senderEmail').value.trim(),
-    gmail_address:      document.getElementById('gmailAddress').value.trim(),
-    app_password:       document.getElementById('appPassword').value.trim(),
-    app_url:            document.getElementById('appUrl').value.trim(),
-    email_subject:      document.getElementById('emailSubject').value.trim(),
-    email_body:         document.getElementById('emailBody').value.trim(),
-    spam_words:         document.getElementById('spamWords').value.trim(),
-    send_profile:       document.getElementById('sendProfile').value,
+    groq_key:      document.getElementById('groqKey').value.trim(),
+    sheet_url:     document.getElementById('sheetUrl').value.trim(),
+    sender_name:   document.getElementById('senderName').value.trim(),
+    sender_company:document.getElementById('senderCompany').value.trim(),
+    gmail_address: document.getElementById('gmailAddress').value.trim(),
+    app_password:  document.getElementById('appPassword').value.trim(),
+    email_subject: document.getElementById('emailSubject').value.trim(),
+    email_body:    document.getElementById('emailBody').value.trim(),
+    spam_words:    document.getElementById('spamWords').value.trim(),
+    send_profile:  document.getElementById('sendProfile').value,
   };
 }
 
