@@ -310,10 +310,25 @@ def _send_via_apps_script(lead: dict, subject: str, body: str,
 
 
 def _send_email(lead: dict, subject: str, body: str) -> bool:
-    """Route email through SMTP (if App Password set) or Apps Script URLs."""
+    """Route email through SMTP (if App Password set) or Apps Script URLs.
+    Performs real-time email verification before sending to reduce bounces.
+    """
+    import app_verify as _ev
     if not lead.get("email"):
         sm.push_log("  ❌ Missing email address")
         return False
+
+    # ── Pre-send email verification ────────────────────────────────────────
+    email = lead["email"]
+    valid, confidence, reason = _ev.verify_email(email)
+    if not valid:
+        sm.push_log(f"  ❌ Skip — email verification failed ({reason}): {email}")
+        return False
+    if confidence < 0.3:
+        sm.push_log(f"  ❌ Skip — email confidence too low ({confidence:.2f}, {reason}): {email}")
+        return False
+    if confidence < 0.6:
+        sm.push_log(f"  ⚠️  Low confidence email ({confidence:.2f}) — sending anyway: {email}")
 
     sender_name   = get_cfg("SENDER_NAME",   "")
     sender_email  = get_cfg("SENDER_EMAIL",  "")
@@ -566,34 +581,48 @@ def api_send_pending():
 
 @application.route("/api/spam_test", methods=["POST"])
 def api_spam_test():
+    """Legacy endpoint — delegates to smtp_test for actual SMTP delivery."""
+    return api_smtp_test()
+
+
+@application.route("/api/smtp_test", methods=["POST"])
+def api_smtp_test():
+    """Send a real test email via Gmail SMTP and return spam analysis."""
     data = request.get_json(silent=True) or {}
-    test_to = (data.get("test_email") or "").strip()
+    test_to       = (data.get("test_email") or "").strip()
+    gmail_address = (data.get("gmail_address") or os.environ.get("GMAIL_ADDRESS", "")).strip()
+    app_password  = (data.get("app_password")  or os.environ.get("APP_PASSWORD",  "")).strip()
+    sender_name   = (data.get("sender_name")   or os.environ.get("SENDER_NAME",   "")).strip()
+
     if not test_to:
         return jsonify({"error": "test_email required"}), 400
+    if not gmail_address:
+        return jsonify({"error": "Gmail address is not configured. Please connect your Gmail account first."}), 400
+    if not app_password:
+        return jsonify({"error": "Gmail App Password is not configured. Please connect your Gmail account first."}), 400
 
     rc = {
-        "GROQ_API_KEY":     data.get("groq_key")        or os.environ.get("GROQ_API_KEY", ""),
-        "EMAIL_SCRIPT_URLS": data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":      data.get("sender_name")     or os.environ.get("SENDER_NAME", ""),
-        "SENDER_COMPANY":   data.get("sender_company")  or os.environ.get("SENDER_COMPANY", ""),
-        "SENDER_EMAIL":     data.get("sender_email")     or os.environ.get("SENDER_EMAIL", ""),
-        "GMAIL_ADDRESS":    data.get("gmail_address")    or os.environ.get("GMAIL_ADDRESS", ""),
-        "APP_PASSWORD":     data.get("app_password")     or os.environ.get("APP_PASSWORD", ""),
-        "APP_URL":          data.get("app_url")          or os.environ.get("APP_URL", ""),
-        "EMAIL_SUBJECT":    data.get("email_subject")   or os.environ.get("EMAIL_SUBJECT", ""),
-        "EMAIL_BODY":       data.get("email_body")      or os.environ.get("EMAIL_BODY", ""),
-        "SPAM_WORDS":       data.get("spam_words")      or os.environ.get("SPAM_WORDS", ""),
+        "GROQ_API_KEY":   data.get("groq_key")      or os.environ.get("GROQ_API_KEY", ""),
+        "SENDER_NAME":    sender_name,
+        "SENDER_COMPANY": data.get("sender_company") or os.environ.get("SENDER_COMPANY", ""),
+        "GMAIL_ADDRESS":  gmail_address,
+        "APP_PASSWORD":   app_password,
+        "APP_URL":        data.get("app_url")        or os.environ.get("APP_URL", ""),
+        "EMAIL_SUBJECT":  data.get("email_subject")  or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":     data.get("email_body")     or os.environ.get("EMAIL_BODY", ""),
+        "SPAM_WORDS":     data.get("spam_words")     or os.environ.get("SPAM_WORDS", ""),
     }
     set_run_cfg(rc)
 
     sample = {
-        "app_name":  data.get("sample_app_name", "FinanceTrack Pro"),
-        "developer": data.get("sample_developer", "Alex Dev"),
+        "app_id":    "com.example.testapp",
+        "app_name":  "FinanceTrack Pro",
+        "developer": "Alex Dev",
         "category":  "Finance",
         "installs":  1200,
-        "score":     data.get("sample_score", 2.1),
+        "score":     2.1,
         "email":     test_to,
-        "url":       "https://play.google.com/store/apps/details?id=com.example.finance",
+        "url":       "https://play.google.com/store/apps/details?id=com.example.testapp",
     }
 
     base_subject = get_cfg("EMAIL_SUBJECT") or email_eng.DEFAULT_SUBJECT
@@ -601,34 +630,82 @@ def api_spam_test():
     subject, body = email_eng.ai_rewrite_email(sample, base_subject, base_body)
     check = email_eng.spam_score(subject, body)
 
-    url = _next_email_url()
-    if not url:
-        return jsonify({
-            "ok": True, "skipped_send": True,
-            "subject": subject, "body": body, "spam_check": check,
-            "msg": "No Email Script URLs configured — add in Settings"
-        })
+    html = _build_html_email(body, gmail_address, sender_name, "")
+    from_addr = f"{sender_name} <{gmail_address}>" if sender_name else gmail_address
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = "[TEST] " + subject
+    msg["From"]    = from_addr
+    msg["To"]      = test_to
+    msg["X-Mailer"] = "PlayLeadBot-Test"
+    msg.attach(MIMEText(body, "plain", "utf-8"))
+    msg.attach(MIMEText(html,  "html",  "utf-8"))
 
     try:
-        import requests as _req
-        payload = {
-            "action":      "send_email",
-            "to":          test_to,
-            "subject":     subject,
-            "body":        body,
-            "sender_name": get_cfg("SENDER_NAME", ""),
-            "from_email":  get_cfg("SENDER_EMAIL", ""),
-        }
-        r = _req.post(url, json=payload, timeout=30)
-        result = r.json() if r.text else {}
-        if result.get("status") == "ok":
-            return jsonify({
-                "ok": True, "msg": f"Test sent to {test_to}",
-                "subject": subject, "body": body, "spam_check": check
-            })
-        return jsonify({"error": result.get("msg", "Failed")}), 500
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(gmail_address, app_password)
+            server.sendmail(gmail_address, test_to, msg.as_string())
+        log.info(f"Test email sent via SMTP to {test_to}")
+        return jsonify({
+            "ok": True,
+            "msg": f"Test email delivered to {test_to} via Gmail SMTP",
+            "subject": subject,
+            "body": body,
+            "spam_check": check
+        })
+    except smtplib.SMTPAuthenticationError:
+        return jsonify({"error": "Gmail authentication failed. Check your Gmail address and App Password. Ensure 2-Step Verification is ON and you are using a valid App Password (16 characters)."}), 401
+    except smtplib.SMTPRecipientsRefused:
+        return jsonify({"error": f"Recipient address refused: {test_to}"}), 400
+    except smtplib.SMTPException as e:
+        return jsonify({"error": f"SMTP error: {str(e)}"}), 500
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        log.error(f"Unexpected error during test email: {e}")
+        return jsonify({"error": f"Failed to send: {str(e)}"}), 500
+
+
+@application.route("/api/smtp_connect", methods=["POST"])
+def api_smtp_connect():
+    """Validate Gmail SMTP credentials by opening a live connection (no email sent)."""
+    data          = request.get_json(silent=True) or {}
+    gmail_address = (data.get("gmail_address") or "").strip()
+    app_password  = (data.get("app_password")  or "").strip()
+    sender_name   = (data.get("sender_name")   or "").strip()
+
+    if not gmail_address:
+        return jsonify({"error": "Gmail address is required"}), 400
+    if not app_password:
+        return jsonify({"error": "App Password is required"}), 400
+    if not sender_name:
+        return jsonify({"error": "Sender name is required"}), 400
+
+    try:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
+            server.ehlo()
+            server.login(gmail_address, app_password)
+        # Persist verified credentials
+        existing = dict(_server_cfg)
+        existing["gmailAddress"] = gmail_address
+        existing["appPassword"]  = app_password
+        existing["senderName"]   = sender_name
+        _save_cfg_to_disk(existing)
+        set_run_cfg({
+            "GMAIL_ADDRESS": gmail_address,
+            "APP_PASSWORD":  app_password,
+            "SENDER_NAME":   sender_name,
+        })
+        log.info(f"SMTP credentials verified for {gmail_address}")
+        return jsonify({"ok": True, "msg": f"Connected as {gmail_address}"})
+    except smtplib.SMTPAuthenticationError:
+        return jsonify({"error": "Authentication failed. Verify your Gmail address and App Password. Ensure 2-Step Verification is enabled on your Google Account."}), 401
+    except smtplib.SMTPConnectError as e:
+        return jsonify({"error": f"Cannot connect to Gmail SMTP: {e}"}), 503
+    except Exception as e:
+        return jsonify({"error": f"Connection error: {str(e)}"}), 500
 
 
 @application.route("/api/sheet_pending", methods=["POST"])
