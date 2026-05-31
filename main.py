@@ -253,9 +253,9 @@ def _send_via_smtp(lead: dict, subject: str, body: str,
     msg.attach(MIMEText(body, "plain", "utf-8"))
     msg.attach(MIMEText(html,  "html",  "utf-8"))
     try:
-        import ssl as _ssl
-        ctx = _ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=30) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
             server.ehlo()
             server.login(gmail_address, app_password)
             server.sendmail(gmail_address, lead["email"], msg.as_string())
@@ -331,19 +331,25 @@ def _send_email(lead: dict, subject: str, body: str) -> bool:
         sm.push_log(f"  ⚠️  Low confidence email ({confidence:.2f}) — sending anyway: {email}")
 
     sender_name   = get_cfg("SENDER_NAME",   "")
+    sender_email  = get_cfg("SENDER_EMAIL",  "")
     gmail_address = get_cfg("GMAIL_ADDRESS", "")
     app_password  = get_cfg("APP_PASSWORD",  "")
+    app_url       = get_cfg("APP_URL",       "").rstrip("/")
+    token         = lead.get("app_id", "unknown")
+    tracking_url  = f"{app_url}/track/open/{token}" if app_url else ""
 
-    # Build HTML email (no tracking pixel — App URL field removed)
-    html = _build_html_email(body, gmail_address, sender_name, "")
+    # Build HTML once (used by both SMTP and Apps Script paths)
+    from_for_html = gmail_address or sender_email or ""
+    html = _build_html_email(body, from_for_html, sender_name, tracking_url)
 
-    # ── Gmail SMTP + App Password (only sending method) ──────────────────────
+    # ── Path 1: Gmail SMTP + App Password (preferred, no daily limits) ─────────
     if gmail_address and app_password:
         return _send_via_smtp(lead, subject, body, html,
                               gmail_address, app_password, sender_name)
 
-    sm.push_log("  ❌ No Gmail credentials configured. Go to Settings → Connect Gmail.")
-    return False
+    # ── Path 2: Apps Script URL rotation (fallback) ────────────────────────────
+    return _send_via_apps_script(lead, subject, body, html,
+                                 sender_email, sender_name, tracking_url)
 
 
 
@@ -447,10 +453,13 @@ def api_start():
     rc = {
         "GROQ_API_KEY":        data.get("groq_key")          or os.environ.get("GROQ_API_KEY", ""),
         "APPS_SCRIPT_WEB_URL":  data.get("sheet_url")          or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "EMAIL_SCRIPT_URLS":    data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
         "SENDER_NAME":         data.get("sender_name")       or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":      data.get("sender_company")    or os.environ.get("SENDER_COMPANY", ""),
+        "SENDER_EMAIL":        data.get("sender_email")       or os.environ.get("SENDER_EMAIL", ""),
         "GMAIL_ADDRESS":       data.get("gmail_address")      or os.environ.get("GMAIL_ADDRESS", ""),
         "APP_PASSWORD":        data.get("app_password")        or os.environ.get("APP_PASSWORD", ""),
+        "APP_URL":             data.get("app_url")            or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")     or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")        or os.environ.get("EMAIL_BODY", ""),
         "SPAM_WORDS":          data.get("spam_words")        or os.environ.get("SPAM_WORDS", ""),
@@ -552,10 +561,13 @@ def api_send_pending():
     rc = {
         "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
         "APPS_SCRIPT_WEB_URL":  data.get("sheet_url")          or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "EMAIL_SCRIPT_URLS":    data.get("email_script_urls") or os.environ.get("EMAIL_SCRIPT_URLS", "") or data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
         "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
         "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
+        "SENDER_EMAIL":        data.get("sender_email")      or os.environ.get("SENDER_EMAIL", ""),
         "GMAIL_ADDRESS":       data.get("gmail_address")     or os.environ.get("GMAIL_ADDRESS", ""),
         "APP_PASSWORD":        data.get("app_password")       or os.environ.get("APP_PASSWORD", ""),
+        "APP_URL":             data.get("app_url")           or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
         "SPAM_WORDS":          data.get("spam_words")       or os.environ.get("SPAM_WORDS", ""),
@@ -595,6 +607,7 @@ def api_smtp_test():
         "SENDER_COMPANY": data.get("sender_company") or os.environ.get("SENDER_COMPANY", ""),
         "GMAIL_ADDRESS":  gmail_address,
         "APP_PASSWORD":   app_password,
+        "APP_URL":        data.get("app_url")        or os.environ.get("APP_URL", ""),
         "EMAIL_SUBJECT":  data.get("email_subject")  or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":     data.get("email_body")     or os.environ.get("EMAIL_BODY", ""),
         "SPAM_WORDS":     data.get("spam_words")     or os.environ.get("SPAM_WORDS", ""),
@@ -628,13 +641,13 @@ def api_smtp_test():
     msg.attach(MIMEText(html,  "html",  "utf-8"))
 
     try:
-        import ssl as _ssl
-        ctx = _ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=30) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=30) as server:
+            server.ehlo()
+            server.starttls()
             server.ehlo()
             server.login(gmail_address, app_password)
             server.sendmail(gmail_address, test_to, msg.as_string())
-        log.info(f"Test email sent via SMTP_SSL to {test_to}")
+        log.info(f"Test email sent via SMTP to {test_to}")
         return jsonify({
             "ok": True,
             "msg": f"Test email delivered to {test_to} via Gmail SMTP",
@@ -669,9 +682,9 @@ def api_smtp_connect():
         return jsonify({"error": "Sender name is required"}), 400
 
     try:
-        import ssl as _ssl
-        ctx = _ssl.create_default_context()
-        with smtplib.SMTP_SSL("smtp.gmail.com", 465, context=ctx, timeout=20) as server:
+        with smtplib.SMTP("smtp.gmail.com", 587, timeout=20) as server:
+            server.ehlo()
+            server.starttls()
             server.ehlo()
             server.login(gmail_address, app_password)
         # Persist verified credentials
@@ -688,11 +701,9 @@ def api_smtp_connect():
         log.info(f"SMTP credentials verified for {gmail_address}")
         return jsonify({"ok": True, "msg": f"Connected as {gmail_address}"})
     except smtplib.SMTPAuthenticationError:
-        return jsonify({"error": "Authentication failed. Check your Gmail address and App Password. Make sure 2-Step Verification is ON and use a 16-character App Password from Google Account → Security → App Passwords."}), 401
+        return jsonify({"error": "Authentication failed. Verify your Gmail address and App Password. Ensure 2-Step Verification is enabled on your Google Account."}), 401
     except smtplib.SMTPConnectError as e:
-        return jsonify({"error": f"Cannot connect to Gmail SMTP (port 465): {e}"}), 503
-    except OSError as e:
-        return jsonify({"error": f"Network error connecting to Gmail: {e}. Please check server network access."}), 503
+        return jsonify({"error": f"Cannot connect to Gmail SMTP: {e}"}), 503
     except Exception as e:
         return jsonify({"error": f"Connection error: {str(e)}"}), 500
 

@@ -192,63 +192,19 @@ Return ONLY valid JSON with exactly two keys, no markdown:
 {{"subject": "...", "body": "..."}}"""
 
 
-def _strip_spam_words(text: str) -> str:
-    """Replace spam trigger words with neutral alternatives in-place."""
-    REPLACEMENTS = {
-        "guaranteed": "proven",
-        "100% free": "completely free to try",
-        "act now": "take a moment",
-        "limited time offer": "special opportunity",
-        "click here": "see more",
-        "buy now": "get started",
-        "order now": "begin today",
-        "special promotion": "opportunity",
-        "make money fast": "grow revenue",
-        "double your": "significantly increase your",
-        "earn extra": "generate additional",
-        "work from home": "remote work",
-        "no obligation": "no commitment required",
-        "risk free": "risk-free trial",
-        "satisfaction guaranteed": "results-focused",
-        "congratulations": "great news",
-        "dear friend": "hello",
-        "free offer": "no-cost option",
-        "free trial": "trial period",
-        "increase sales": "grow your user base",
-        "increase traffic": "boost visibility",
-        "marketing solution": "growth strategy",
-        "amazing offer": "great opportunity",
-    }
-    result = text
-    for spam, safe in REPLACEMENTS.items():
-        result = re.sub(re.escape(spam), safe, result, flags=re.IGNORECASE)
-    # Also replace custom spam words from config with empty/neutral
-    custom = get_cfg("SPAM_WORDS", "")
-    custom_words = [w.strip() for w in custom.replace(",", "\n").splitlines() if w.strip()]
-    for cw in custom_words:
-        result = re.sub(re.escape(cw), "", result, flags=re.IGNORECASE)
-    return result
-
-
 def ai_rewrite_email(lead: dict, base_subject: str, base_body: str) -> Tuple[str, str]:
     """
-    Produce a humanized, personalized version of the email.
-    1. Fill template placeholders with lead data.
-    2. Strip/replace all spam trigger words.
-    3. Use Groq AI to further humanize (if API key is set).
-    Falls back gracefully at each step.
+    Use Groq AI to produce a humanized, personalized version of the email.
+    Falls back to template fill if AI is unavailable.
     """
     api_key = get_cfg("GROQ_API_KEY")
-
-    # Always do template fill + spam word stripping first
-    filled_subject = _strip_spam_words(fill_template(base_subject, lead))
-    filled_body    = _strip_spam_words(fill_template(base_body,    lead))
-
     if not api_key:
-        return filled_subject, filled_body
+        return fill_template(base_subject, lead), fill_template(base_body, lead)
 
-    # Spam words already stripped above; just detect any remaining for AI prompt
-    found_spam = detect_spam_words(filled_subject + " " + filled_body)
+    # Pre-check spam words
+    filled_body    = fill_template(base_body, lead)
+    filled_subject = fill_template(base_subject, lead)
+    found_spam     = detect_spam_words(filled_subject + " " + filled_body)
 
     client = Groq(api_key=api_key)
     prompt = _build_rewrite_prompt(lead, base_subject, base_body, found_spam)
@@ -280,7 +236,7 @@ def ai_rewrite_email(lead: dict, base_subject: str, base_body: str) -> Tuple[str
         except (json.JSONDecodeError, Exception) as e:
             log.warning(f"  AI rewrite error (attempt {attempt + 1}): {e}")
 
-    # Fallback — return spam-stripped template versions
+    # Fallback
     return filled_subject, filled_body
 
 

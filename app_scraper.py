@@ -35,7 +35,6 @@ _EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
 SEARCH_COMBOS = [
     ("en", "us"), ("en", "gb"), ("en", "au"), ("en", "ca"),
-    ("en", "in"), ("en", "de"), ("en", "fr"), ("en", "nl"),
 ]
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -110,21 +109,20 @@ def passes_filter(installs: int, score: Optional[float],
     """
     Apply Hunter or Normal mode filter.
 
-    Hunter mode targets apps with poor ratings:
-      - App MUST have some ratings
-      - installs <= max_installs (default 50,000 — wider net)
-      - score <= max_score (default 3.0) — includes mediocre apps too
+    Hunter mode:
+      - App MUST have ratings (score is not None OR ratings_count > 0)
+      - installs <= max_installs (default 5 000)
+      - score <= max_score (default 2.5) — only bad-rated apps
 
-    Normal mode targets new/unrated apps:
-      - App should have very few or no ratings (≤ 10 ratings)
-      - installs <= 100,000 — much wider to get more leads
+    Normal mode:
+      - App MUST have NO ratings (score is None AND ratings_count == 0)
+      - installs <= 10 000
     """
-    is_rated    = (score is not None) or (ratings_count > 0)
-    few_ratings = ratings_count <= 10  # treat as essentially unrated
+    is_rated = (score is not None) or (ratings_count > 0)
 
     if hunter and hunter.get("active"):
-        max_inst  = int(hunter.get("max_installs") or 50_000)
-        max_score = float(hunter.get("max_score")  or 3.0)
+        max_inst  = int(hunter.get("max_installs") or 5_000)
+        max_score = float(hunter.get("max_score")  or 2.5)
 
         if not is_rated:
             return False, "hunter:no_ratings"
@@ -132,12 +130,14 @@ def passes_filter(installs: int, score: Optional[float],
             return False, f"hunter:too_many_installs({installs})"
         if score is not None and score > max_score:
             return False, f"hunter:score_too_high({score:.1f})"
+        if confidence < 0.5:
+            return False, f"hunter:low_confidence({confidence})"
         return True, "ok"
 
-    # Normal mode — accept unrated apps OR apps with very few ratings
-    if is_rated and not few_ratings:
-        return False, "normal:too_many_ratings"
-    if installs > 100_000:
+    # Normal mode
+    if is_rated:
+        return False, "normal:already_rated"
+    if installs > 10_000:
         return False, f"normal:too_many_installs({installs})"
     return True, "ok"
 
