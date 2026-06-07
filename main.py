@@ -673,110 +673,223 @@ def _unsub_token(email):
 ALL_COMBOS = [
     ("en","us"),("en","gb"),("en","au"),("en","ca"),
     ("en","sg"),("en","nz"),("en","ie"),("en","za"),
+    ("en","us"),("en","gb"),   # duplicates to increase result volume
 ]
 MIN_LEADS_PER_KW = 2
 
 
-def scrape_keyword(keyword, hunter=None, min_leads=MIN_LEADS_PER_KW):
+def _quick_filter_from_search(item, hunter):
+    """
+    Fast pre-filter using search result data only (no extra API call).
+    Eliminates obvious rejects before expensive detail fetch.
+    """
+    installs = item.get("minInstalls") or 0
+    score    = item.get("score") or None
+    if score == 0.0: score = None
+
+    if hunter and hunter.get("active"):
+        max_inst  = int(hunter.get("max_installs") or 50000)
+        max_score = float(hunter.get("max_score") or 3.5)
+        if score is None or score == 0: return False   # hunter needs rating
+        if installs > max_inst:         return False
+        if score > max_score:           return False
+        return True
+
+    # Normal mode: only new apps with no rating
+    if score is not None and score > 0: return False
+    if installs > 10000:                return False
+    return True
+
+
+def _process_one_app(item, hunter, keyword):
+    """
+    Fetch details + validate for a single app.
+    Returns a lead dict or None.
+    """
     global global_seen_ids, global_seen_emails
+
+    app_id = item.get("appId", "")
+    if not app_id: return None
+
+    # Check dedup before slow API call
+    if app_id in global_seen_ids:       return None
+    if is_dup(app_id, ""):
+        global_seen_ids.add(app_id)
+        return None
+
+    # Fetch full details (needed for email + country + description)
+    details = fetch_details(app_id)
+    if not details:
+        global_seen_ids.add(app_id)
+        return None
+
+    installs = details.get("minInstalls") or 0
+    score    = details.get("score") or None
+    if score == 0.0: score = None
+
+    # Re-check filter with accurate data
+    if not passes_filter(installs, score, hunter):
+        global_seen_ids.add(app_id)
+        return None
+
+    if not is_allowed_country(details):
+        global_seen_ids.add(app_id)
+        return None
+
+    # Extract email from all available fields
+    email = (
+        extract_email(details.get("developerEmail", ""))
+        or extract_email(details.get("privacyPolicy", ""))
+        or extract_email(details.get("description", ""))
+        or extract_email(details.get("recentChanges", ""))
+    )
+    if not email:
+        global_seen_ids.add(app_id)
+        return None
+
+    email = email.lower().strip()
+    ok, reason = valid_email(email)
+    if not ok:
+        global_seen_ids.add(app_id)
+        return None
+
+    if email in global_seen_emails or is_dup("", email):
+        global_seen_ids.add(app_id)
+        return None
+
+    lead = {
+        "app_id":      app_id,
+        "app_name":    details.get("title", ""),
+        "developer":   details.get("developer", ""),
+        "email":       email,
+        "category":    details.get("genre", ""),
+        "installs":    installs,
+        "score":       score,
+        "description": (details.get("description") or "")[:250],
+        "url":         f"https://play.google.com/store/apps/details?id={app_id}",
+        "icon":        details.get("icon", ""),
+        "keyword":     keyword,
+        "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
+        "email_sent":  False,
+    }
+
+    # Register immediately (thread-safe via GIL on dict ops)
+    global_seen_ids.add(app_id)
+    global_seen_emails.add(email)
+    register(app_id, email)
+
+    s_str = f"{score:.1f}★" if score else "new"
+    push_log(f"  ✅ {lead['app_name']} | {installs:,} | {s_str} | {email}")
+    return lead
+
+
+def scrape_keyword(keyword, hunter=None, min_leads=MIN_LEADS_PER_KW):
+    """
+    FAST scraper — 3 speed improvements:
+    1. Pre-filter from search results (no API call) — skip obvious rejects
+    2. Parallel detail fetch — 8 threads simultaneously
+    3. Search ALL combos in parallel first, then process results
+    """
+    global global_seen_ids, global_seen_emails
+    from concurrent.futures import ThreadPoolExecutor, as_completed
+
     mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🔍 [{mode}] '{keyword}' (need ≥{min_leads})")
-    leads  = []
+    push_log(f"🔍 [{mode}] '{keyword}' — parallel scrape starting …")
+    leads       = []
+    leads_lock  = threading.Lock()
+
+    # ── Step 1: Collect candidates from multiple regions in parallel ──────────
     combos = list(ALL_COMBOS)
     random.shuffle(combos)
+    all_candidates = {}   # app_id -> item dict (deduped)
 
-    for lang, country in combos:
-        if stop_event.is_set(): break
-        if len(leads) >= max(min_leads * 4, 15): break
-
-        results = []
+    def search_one_region(lang, country):
         for attempt in range(3):
             try:
                 results = _play_search_with_proxy(keyword, lang=lang, country=country, n_hits=250)
-                push_log(f"  [{country}] {len(results)} results")
-                break
+                return country, results
             except Exception as e:
                 err = str(e).lower()
                 if any(x in err for x in ["429","403","rate","blocked","captcha"]):
-                    wait = 20*(attempt+1)+random.uniform(5,10)
-                    push_log(f"  🚦 Rate-limited ({country}) — {wait:.0f}s wait …")
+                    wait = 15*(attempt+1) + random.uniform(3,8)
+                    push_log(f"  🚦 Rate-limit ({country}) — {wait:.0f}s …")
                     time.sleep(wait)
                 elif attempt == 2:
-                    push_log(f"  ⚠️  Search fail ({country}): {e}")
+                    return country, []
                 else:
-                    time.sleep(random.uniform(2,5))
+                    time.sleep(random.uniform(1,3))
+        return country, []
 
-        for item in results:
+    # Search up to 4 regions simultaneously
+    search_combos = combos[:4]
+    with ThreadPoolExecutor(max_workers=4) as ex:
+        futs = {ex.submit(search_one_region, lang, country): (lang, country)
+                for lang, country in search_combos}
+        for fut in as_completed(futs):
             if stop_event.is_set(): break
-            app_id = item.get("appId","")
-            if not app_id or app_id in global_seen_ids: continue
-            if is_dup(app_id,""): global_seen_ids.add(app_id); continue
+            country, results = fut.result()
+            before = len(all_candidates)
+            for item in results:
+                aid = item.get("appId","")
+                if aid and aid not in all_candidates and aid not in global_seen_ids:
+                    # Quick pre-filter — no API call yet
+                    if _quick_filter_from_search(item, hunter):
+                        all_candidates[aid] = item
+            push_log(f"  [{country}] {len(results)} results → {len(all_candidates)-before} candidates")
 
-            # fetch full details
-            details = None
-            for _ in range(2):
-                details = fetch_details(app_id)
-                if details: break
-                time.sleep(random.uniform(1,3))
-            if not details: global_seen_ids.add(app_id); continue
+    if not all_candidates:
+        push_log(f"  📦 '{keyword}' → 0 leads (no candidates)")
+        sheet_log_keyword(keyword, 0)
+        return []
 
-            installs = details.get("minInstalls") or 0
-            score    = details.get("score") or None
-            if score == 0.0: score = None
+    push_log(f"  🎯 {len(all_candidates)} candidates → fetching details (8 threads) …")
 
-            if not passes_filter(installs, score, hunter):
-                global_seen_ids.add(app_id)
-                continue
+    # ── Step 2: Parallel detail fetch + validation ────────────────────────────
+    candidate_list = list(all_candidates.values())
+    random.shuffle(candidate_list)
 
-            if not is_allowed_country(details):
-                global_seen_ids.add(app_id)
-                push_log(f"  🚫 Blocked country: {details.get('title','')}")
-                continue
+    def process_batch(item):
+        if stop_event.is_set():                    return None
+        if len(leads) >= min_leads * 6:            return None  # enough found
+        return _process_one_app(item, hunter, keyword)
 
-            email = (
-                extract_email(details.get("developerEmail",""))
-                or extract_email(details.get("privacyPolicy",""))
-                or extract_email(details.get("description",""))
-                or extract_email(details.get("recentChanges",""))
-            )
-            if not email: global_seen_ids.add(app_id); continue
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        futs = [ex.submit(process_batch, item) for item in candidate_list]
+        for fut in as_completed(futs):
+            if stop_event.is_set(): break
+            lead = fut.result()
+            if lead:
+                with leads_lock:
+                    leads.append(lead)
 
-            ok, reason = valid_email(email)
-            if not ok:
-                global_seen_ids.add(app_id)
-                push_log(f"  ❌ Bad email ({reason}): {email}")
-                continue
+    # ── Step 3: If still not enough, search more regions ─────────────────────
+    if len(leads) < min_leads and not stop_event.is_set():
+        push_log(f"  🔄 Only {len(leads)}/{min_leads} — searching extra regions …")
+        extra_combos = combos[4:]
+        for lang, country in extra_combos:
+            if stop_event.is_set() or len(leads) >= min_leads: break
+            try:
+                results = _play_search_with_proxy(keyword, lang=lang, country=country, n_hits=250)
+                extra_candidates = {}
+                for item in results:
+                    aid = item.get("appId","")
+                    if aid and aid not in global_seen_ids and aid not in all_candidates:
+                        if _quick_filter_from_search(item, hunter):
+                            extra_candidates[aid] = item
 
-            if email.lower() in global_seen_emails or is_dup("", email.lower()):
-                global_seen_ids.add(app_id)
-                push_log(f"  ⏭️  Dup email skip: {email}")
-                continue
-
-            lead = {
-                "app_id":     app_id,
-                "app_name":   details.get("title",""),
-                "developer":  details.get("developer",""),
-                "email":      email,
-                "category":   details.get("genre",""),
-                "installs":   installs,
-                "score":      score,
-                "description":(details.get("description") or "")[:250],
-                "url":        f"https://play.google.com/store/apps/details?id={app_id}",
-                "icon":       details.get("icon",""),
-                "keyword":    keyword,
-                "scraped_at": time.strftime("%Y-%m-%d %H:%M:%S"),
-                "email_sent": False,
-            }
-            leads.append(lead)
-            global_seen_ids.add(app_id)
-            global_seen_emails.add(email)
-            register(app_id, email)
-
-            s_str = f"{score:.1f}★" if score else "new"
-            push_log(f"  ✅ {lead['app_name']} | {installs:,} installs | {s_str} | {email}")
-            time.sleep(random.uniform(0.4, 1.0))
-
-        time.sleep(random.uniform(2, 4))
+                push_log(f"  [{country}] {len(extra_candidates)} new candidates")
+                with ThreadPoolExecutor(max_workers=6) as ex:
+                    futs = [ex.submit(_process_one_app, item, hunter, keyword)
+                            for item in extra_candidates.values()]
+                    for fut in as_completed(futs):
+                        if stop_event.is_set(): break
+                        lead = fut.result()
+                        if lead:
+                            with leads_lock:
+                                leads.append(lead)
+            except Exception as e:
+                push_log(f"  ⚠️  Extra region {country}: {e}")
+            time.sleep(random.uniform(1, 2))
 
     push_log(f"  📦 '{keyword}' → {len(leads)} leads")
     sheet_log_keyword(keyword, len(leads))
