@@ -236,7 +236,7 @@ tbody tr:hover td { background: #13131c; }
     <div class="nav-sep"></div>
     <div class="nav-item" onclick="showSec('setup',this)"><span class="icon">⚙️</span>Setup & Config</div>
     <div class="nav-item" onclick="showSec('proxy',this)"><span class="icon">🔄</span>IP Rotation</div>
-    <div class="nav-item" onclick="showSec('smtp',this)"><span class="icon">📧</span>Email (SMTP)</div>
+    <div class="nav-item" onclick="showSec('smtp',this)"><span class="icon">📧</span>Email Scripts</div>
   </nav>
   <div class="sidebar-send-pending">
     <button class="btn-send-pending" id="btnSendPending" onclick="sendPending()" title="Send emails to all unsent leads">
@@ -670,97 +670,96 @@ http://proxy5.example.com:3128"></textarea>
     </div>
   </section>
 
-  <!-- ══ EMAIL SMTP ══ -->
+  <!-- ══ EMAIL SCRIPTS ══ -->
   <section class="section" id="sec-smtp">
+
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-head">📧 Email Sending — SMTP Configuration</div>
+      <div class="card-head">📧 Email Scripts — Multiple Accounts (Auto-Rotation)</div>
 
       <div class="info-box">
-        <strong>কিভাবে কাজ করে:</strong> Python সরাসরি SMTP দিয়ে email পাঠাবে — HTML email, proper headers, List-Unsubscribe, Message-ID সব সহ।<br>
-        Gmail Apps Script এর দরকার নেই — সরাসরি তোমার email account থেকে যাবে।
+        <strong>কিভাবে কাজ করে:</strong> প্রতিটা Gmail account এ একটা Apps Script deploy করো।
+        প্রথম script দিয়ে শুরু হবে। <strong style="color:var(--gold2);">80টা email পাঠানোর পর</strong> (Gmail daily limit এর আগে)
+        automatically পরের script এ চলে যাবে। যত বেশি script URL দেবে, তত বেশি email পাঠাতে পারবে।<br>
+        <strong>Format:</strong> একটার নিচে একটা — প্রতিটা line এ একটা করে script URL।
       </div>
 
-      <div class="form-row" style="margin-bottom:14px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">SMTP Host</label>
-          <input class="form-input" id="cfg-smtp-host" type="text" placeholder="smtp.gmail.com"/>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">SMTP Port</label>
-          <input class="form-input" id="cfg-smtp-port" type="number" placeholder="587" value="587"/>
-        </div>
-      </div>
-
-      <div class="form-row" style="margin-bottom:14px;">
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Email Address</label>
-          <input class="form-input" id="cfg-smtp-user" type="email" placeholder="you@gmail.com"/>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Password / App Password</label>
-          <div class="pass-wrap">
-            <input class="form-input" id="cfg-smtp-pass" type="password" placeholder="Gmail App Password…"/>
-            <button class="pass-toggle" onclick="togglePass('cfg-smtp-pass',this)">👁</button>
-          </div>
+      <div class="form-group">
+        <label class="form-label">Email Script URLs (একটার নিচে একটা)</label>
+        <textarea class="form-input" id="cfg-emailscripts" rows="8"
+          style="resize:vertical;line-height:2;font-size:12px;font-family:var(--mono);"
+          placeholder="https://script.google.com/macros/s/SCRIPT1_URL.../exec
+https://script.google.com/macros/s/SCRIPT2_URL.../exec
+https://script.google.com/macros/s/SCRIPT3_URL.../exec
+https://script.google.com/macros/s/SCRIPT4_URL.../exec"></textarea>
+        <div class="form-hint" style="margin-top:6px;">
+          💡 প্রতিটা script = আলাদা Gmail account। ৩টা script = ৩ × ৮০ = <strong style="color:var(--gold2);">২৪০ emails/day</strong><br>
+          Script deploy করার পর <strong>"Deploy as web app" → Execute as: Me → Access: Anyone</strong> দিতে হবে
         </div>
       </div>
 
       <div class="form-group">
-        <label class="form-label">Unsubscribe Base URL (তোমার Railway app URL)</label>
+        <label class="form-label">Unsubscribe Base URL (Railway app URL)</label>
         <input class="form-input" id="cfg-unsub-url" type="url" placeholder="https://your-app.railway.app/unsubscribe"/>
-        <div class="form-hint">এটা দিলে প্রতিটা email এ centered Unsubscribe button থাকবে। Railway URL দাও।</div>
+        <div class="form-hint">প্রতিটা email এ centered Unsubscribe button থাকবে।</div>
       </div>
 
       <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-        <button class="btn-primary" onclick="saveSmtpConfig()" style="font-size:12px;padding:10px 22px;">💾 Save SMTP Config</button>
+        <button class="btn-primary" onclick="saveEmailScripts()" style="font-size:12px;padding:10px 22px;">💾 Save Email Scripts</button>
+        <button class="btn-ghost" onclick="checkEmailScriptStatus()">📊 Check Status</button>
         <div class="saved-msg" id="smtpSavedMsg">✅ Saved!</div>
+      </div>
+
+      <!-- Script status panel -->
+      <div id="scriptStatusPanel" style="margin-top:14px;display:none;">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;margin-bottom:10px;">Script Rotation Status</div>
+        <div id="scriptStatusList"></div>
       </div>
     </div>
 
     <div class="card" style="margin-bottom:14px;">
-      <div class="card-head">Popular SMTP Settings</div>
-      <div style="font-size:11.5px;color:var(--slate);line-height:2.4;">
-        <strong style="color:var(--gold2);">Gmail:</strong> Host: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">smtp.gmail.com</code> Port: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">587</code>
-        → Gmail → Settings → Security → 2FA ON → App Passwords → "Mail" → generate<br>
-        <strong style="color:var(--gold2);">Outlook/Hotmail:</strong> Host: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">smtp-mail.outlook.com</code> Port: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">587</code><br>
-        <strong style="color:var(--gold2);">Yahoo:</strong> Host: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">smtp.mail.yahoo.com</code> Port: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">587</code><br>
-        <strong style="color:var(--gold2);">SendGrid (best deliverability):</strong> Host: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">smtp.sendgrid.net</code> Port: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">587</code> User: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--blue)">apikey</code> Pass: SendGrid API key
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-head">Fallback — Google Apps Script Email</div>
-      <div class="form-group">
-        <label class="form-label">Email Apps Script URL (SMTP না থাকলে এটা use করবে)</label>
-        <input class="form-input" id="cfg-emailscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
-        <div class="form-hint">SMTP set করলে এটা ignore হবে। শুধু backup হিসেবে রাখো।</div>
+      <div class="card-head">📋 Apps Script Code — প্রতিটা account এ এটা deploy করো</div>
+      <div style="font-size:11.5px;color:var(--slate);margin-bottom:12px;line-height:1.8;">
+        ১. <a href="https://script.google.com" target="_blank" style="color:var(--gold);">script.google.com</a> → New Project<br>
+        ২. নিচের code paste করো → Save<br>
+        ৩. Deploy → New deployment → Web app → Execute as: <strong style="color:var(--gold2);">Me</strong> → Who has access: <strong style="color:var(--gold2);">Anyone</strong> → Deploy<br>
+        ৪. URL copy করে উপরে paste করো<br>
+        ৫. আলাদা Gmail account দিয়ে আরো বানাও
       </div>
       <div class="as-box">
-        <h4>📧 Email Apps Script (HTML সহ)</h4>
+        <h4>📧 Email Apps Script (HTML Email + Unsubscribe)</h4>
         <div class="code-block" id="emailCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var htmlBody = data.html || data.body;
-    var options = { htmlBody: htmlBody };
-    if (data.list_unsubscribe) {
-      options.replyTo = data.unsubscribe || "";
-    }
+    var options = {
+      htmlBody: htmlBody,
+      name: data.sender_name || "PlayLead"
+    };
     GmailApp.sendEmail(data.to, data.subject, data.body, options);
     return ContentService
       .createTextOutput(JSON.stringify({status: "ok"}))
       .setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
     return ContentService
-      .createTextOutput(JSON.stringify({status:"error",msg:err.toString()}))
+      .createTextOutput(JSON.stringify({status: "error", msg: err.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }</div>
         <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('emailCode')">📋 Copy Script</button>
       </div>
-      <div style="margin-top:14px;">
-        <button class="btn-primary" onclick="saveSmtpConfig()" style="font-size:12px;padding:10px 22px;">💾 Save All Email Config</button>
+    </div>
+
+    <div class="card">
+      <div class="card-head">💡 কতগুলো Script দরকার?</div>
+      <div style="font-size:11.5px;color:var(--slate);line-height:2.4;">
+        <strong style="color:var(--gold2);">Gmail limit:</strong> প্রতিটা Gmail account = ১০০ emails/day (safety এর জন্য আমরা ৮০ তে rotate করি)<br>
+        <strong style="color:var(--gold2);">Target ৩০০ leads:</strong> কমপক্ষে <strong style="color:var(--green);">৪টা script</strong> দরকার (৪ × ৮০ = ৩২০)<br>
+        <strong style="color:var(--gold2);">Target ৫০০ leads:</strong> কমপক্ষে <strong style="color:var(--green);">৭টা script</strong> দরকার (৭ × ৮০ = ৫৬০)<br>
+        <strong style="color:var(--gold2);">Workspace accounts:</strong> Google Workspace (paid) = ২০০০ emails/day per account<br>
+        <strong style="color:var(--gold2);">Free Gmail trick:</strong> Gmail + alias (youremail+1@gmail.com) কাজ করে না — আলাদা account লাগবে
       </div>
     </div>
+
   </section>
 
 </main>
@@ -801,13 +800,9 @@ function loadCfg() {
   // Proxy
   setVal('cfg-proxy-list',        cfg.proxy_list||'');
   setVal('cfg-scraperapi',        cfg.scraperapi||'');
-  // SMTP
-  setVal('cfg-smtp-host',         cfg.smtp_host||'');
-  setVal('cfg-smtp-port',         cfg.smtp_port||587);
-  setVal('cfg-smtp-user',         cfg.smtp_user||'');
-  setVal('cfg-smtp-pass',         cfg.smtp_pass||'');
+  // Email Scripts (no SMTP)
   setVal('cfg-unsub-url',         cfg.unsub_url||'');
-  setVal('cfg-emailscript',       cfg.emailscript||'');
+  setVal('cfg-emailscripts',      cfg.emailscripts||'');
   refreshDerived();
   updateLivePreview();
 }
@@ -824,6 +819,8 @@ function saveConfig() {
     appsscript:         getVal('cfg-appsscript'),
     keepalive_url:      getVal('cfg-keepalive-url'),
     keepalive_interval: parseInt(getVal('cfg-keepalive-interval'))||25,
+    emailscripts:      getVal('cfg-emailscripts'),
+    unsub_url:         getVal('cfg-unsub-url'),
   });
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   showSaved('savedMsg');
@@ -839,17 +836,41 @@ function saveProxyConfig() {
   showSaved('proxySavedMsg');
 }
 
-function saveSmtpConfig() {
+function saveEmailScripts() {
   cfg = Object.assign(cfg, {
-    smtp_host:   getVal('cfg-smtp-host'),
-    smtp_port:   parseInt(getVal('cfg-smtp-port'))||587,
-    smtp_user:   getVal('cfg-smtp-user'),
-    smtp_pass:   getVal('cfg-smtp-pass'),
-    unsub_url:   getVal('cfg-unsub-url'),
-    emailscript: getVal('cfg-emailscript'),
+    emailscripts: getVal('cfg-emailscripts'),
+    unsub_url:    getVal('cfg-unsub-url'),
   });
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   showSaved('smtpSavedMsg');
+}
+
+async function checkEmailScriptStatus() {
+  try {
+    const r = await fetch('/api/email_script_status');
+    const d = await r.json();
+    const panel = document.getElementById('scriptStatusPanel');
+    const list  = document.getElementById('scriptStatusList');
+    panel.style.display = 'block';
+    if (!d.scripts || d.scripts.length === 0) {
+      list.innerHTML = '<div style="color:var(--slate2);font-size:11px;">No scripts loaded — save first and restart automation.</div>';
+      return;
+    }
+    list.innerHTML = d.scripts.map(s => {
+      const color = s.status==='active' ? 'var(--green)' : s.status==='quota' ? 'var(--amber)' : 'var(--red)';
+      const icon  = s.status==='active' ? '✅' : s.status==='quota' ? '⚠️' : '❌';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;">
+        <span style="font-family:var(--mono);color:var(--slate2);min-width:20px;">#${s.index}</span>
+        <span style="font-size:13px;">${icon}</span>
+        <span style="flex:1;color:var(--slate);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.url)}</span>
+        <span style="font-family:var(--mono);color:${color};min-width:60px;">Sent: ${s.sent}/${d.max_per_script}</span>
+        <span style="font-family:var(--mono);color:var(--slate2);min-width:50px;">Fails: ${s.fails}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('scriptStatusPanel').style.display = 'block';
+    document.getElementById('scriptStatusList').innerHTML = '<div style="color:var(--red);font-size:11px;">Error: '+e.message+'</div>';
+  }
 }
 
 function showSaved(id) {
@@ -1050,10 +1071,7 @@ async function startAuto() {
       proxy_list:        cfg.proxy_list||'',
       scraper_api_key:   cfg.scraperapi||'',
       // SMTP config
-      smtp_host:         cfg.smtp_host||'',
-      smtp_port:         cfg.smtp_port||587,
-      smtp_user:         cfg.smtp_user||'',
-      smtp_pass:         cfg.smtp_pass||'',
+      email_script_urls: cfg.emailscripts||'',
       unsubscribe_url:   cfg.unsub_url||'',
     };
     const r = await fetch('/api/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
@@ -1094,10 +1112,7 @@ async function sendPending() {
         sender_company:cfg.sender_company||'',
         email_subject:cfg.email_subject||DEFAULT_SUBJECT,
         email_body:cfg.email_body||DEFAULT_BODY,
-        smtp_host:cfg.smtp_host||'',
-        smtp_port:cfg.smtp_port||587,
-        smtp_user:cfg.smtp_user||'',
-        smtp_pass:cfg.smtp_pass||'',
+        email_script_urls:cfg.emailscripts||'',
         unsubscribe_url:cfg.unsub_url||'',
         proxy_list:cfg.proxy_list||'',
         scraper_api_key:cfg.scraperapi||'',
@@ -1245,10 +1260,7 @@ async function runSpamTest(){
       sender_company:cfg.sender_company||'',
       email_subject:cfg.email_subject||DEFAULT_SUBJECT,
       email_body:cfg.email_body||DEFAULT_BODY,
-      smtp_host:cfg.smtp_host||'',
-      smtp_port:cfg.smtp_port||587,
-      smtp_user:cfg.smtp_user||'',
-      smtp_pass:cfg.smtp_pass||'',
+      email_script_urls:cfg.emailscripts||'',
       unsubscribe_url:cfg.unsub_url||'',
     })});
     const d=await r.json();
