@@ -834,6 +834,8 @@ function saveProxyConfig() {
   });
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
   showSaved('proxySavedMsg');
+  // Also push to server immediately so status check works
+  testProxyStatus();
 }
 
 function saveEmailScripts() {
@@ -909,21 +911,29 @@ async function testProxyStatus() {
   const box = document.getElementById('proxyStatusBox');
   box.className = 'proxy-status'; box.textContent = '⏳ Checking…';
   try {
-    const r = await fetch('/api/proxy_status');
+    // POST the current proxy config so server loads it immediately
+    const r = await fetch('/api/proxy_status', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        proxy_list:     getVal('cfg-proxy-list') || cfg.proxy_list || '',
+        scraper_api_key: getVal('cfg-scraperapi') || cfg.scraperapi || '',
+      })
+    });
     const d = await r.json();
     if (d.scraper_api_mode) {
       box.className = 'proxy-status ok';
-      box.textContent = '✅ ScraperAPI mode active — all requests routed through rotating proxies';
+      box.textContent = '✅ ScraperAPI mode active — all requests route through rotating proxies';
     } else if (d.proxy_pool_total > 0) {
       box.className = d.healthy > 0 ? 'proxy-status ok' : 'proxy-status off';
-      box.textContent = `Proxy pool: ${d.proxy_pool_total} total | ${d.healthy} healthy | ${d.retired} retired`;
+      box.textContent = `✅ Proxy pool: ${d.proxy_pool_total} loaded | ${d.healthy} healthy | ${d.retired} retired`;
     } else {
       box.className = 'proxy-status off';
-      box.textContent = '⚠️ No proxies configured — running direct (may get blocked). Add proxies above and save.';
+      box.textContent = '⚠️ No proxies loaded — paste proxy list above and click Save, then Check again.';
     }
   } catch(e) {
     box.className = 'proxy-status off';
-    box.textContent = '❌ Could not reach server: ' + e.message;
+    box.textContent = '❌ Server error: ' + e.message;
   }
 }
 

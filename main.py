@@ -446,24 +446,30 @@ This catches FAR more leads than before (was: ≤10K installs + NO rating at all
 """
 
 def passes_filter(installs, score, hunter):
+    """
+    HUNTER MODE — apps WITH a rating, within user-set thresholds.
+                  No rating = rejected (hunter targets rated apps only).
+    NORMAL MODE — ONLY brand new apps with NO rating yet.
+                  Apps with any rating = rejected.
+    """
     if hunter and hunter.get("active"):
         max_inst  = int(hunter.get("max_installs") or 50000)
         max_score = float(hunter.get("max_score") or 3.5)
-        if installs > max_inst: return False
-        # if score exists it must be <= max_score; no score = brand new = accept
-        if score and score > max_score: return False
+        # Must HAVE a real rating — hunter targets rated apps
+        if score is None or score == 0:
+            return False
+        if installs > max_inst:
+            return False
+        if score > max_score:
+            return False
         return True
 
-    # Type A: brand new, no rating
-    if installs <= 5000 and (score is None or score == 0):
-        return True
-    # Type B: small app with mediocre/bad rating
-    if installs <= 50000 and score and 0 < score <= 3.5:
-        return True
-    # Type C: medium app with very bad rating
-    if installs <= 100000 and score and 0 < score <= 2.5:
-        return True
-    return False
+    # NORMAL MODE — only brand new apps, no rating at all
+    if score is not None and score > 0:
+        return False          # has rating → skip in normal mode
+    if installs > 10000:
+        return False          # too big for a "new" app
+    return True
 
 
 # ══════════════════════════════════════════════════════════════════════════════
@@ -681,8 +687,10 @@ def scrape_keyword(keyword, hunter=None, min_leads=MIN_LEADS_PER_KW):
                 push_log(f"  ❌ Bad email ({reason}): {email}")
                 continue
 
-            if email in global_seen_emails or is_dup("",email):
-                global_seen_ids.add(app_id); continue
+            if email.lower() in global_seen_emails or is_dup("", email.lower()):
+                global_seen_ids.add(app_id)
+                push_log(f"  ⏭️  Dup email skip: {email}")
+                continue
 
             lead = {
                 "app_id":     app_id,
@@ -1013,13 +1021,29 @@ def api_sheet_pending():
     except Exception as e:
         return jsonify({"error":str(e)}),500
 
-@application.route("/api/proxy_status", methods=["GET"])
+@application.route("/api/proxy_status", methods=["GET","POST"])
 def api_proxy_status():
+    """GET = just status. POST = load proxies from body then return status."""
+    data = {}
+    if request.method == "POST":
+        data = request.get_json(silent=True) or {}
+        # Accept proxy config from dashboard and load immediately
+        if data.get("proxy_list") or data.get("scraper_api_key"):
+            global run_cfg
+            run_cfg["PROXY_LIST"]      = data.get("proxy_list","")
+            run_cfg["SCRAPER_API_KEY"] = data.get("scraper_api_key","")
+            _load_proxy_pool()
+
     sa = get_cfg("SCRAPER_API_KEY","")
     with _proxy_lock:
         total   = len(_proxy_pool)
         healthy = sum(1 for p in _proxy_pool if _proxy_fail_counts.get(p,0)<MAX_PROXY_FAILS)
-    return jsonify({"scraper_api_mode":bool(sa),"proxy_pool_total":total,"healthy":healthy,"retired":total-healthy})
+    return jsonify({
+        "scraper_api_mode": bool(sa),
+        "proxy_pool_total": total,
+        "healthy":          healthy,
+        "retired":          total - healthy,
+    })
 
 @application.route("/api/email_script_status", methods=["GET"])
 def api_email_script_status():
