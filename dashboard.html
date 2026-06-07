@@ -636,9 +636,11 @@ http://proxy5.example.com:3128"></textarea>
 
       <div style="display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap;">
         <button class="btn-primary" onclick="saveProxyConfig()" style="font-size:12px;padding:10px 22px;">💾 Save Proxy Config</button>
-        <button class="btn-ghost" onclick="testProxyStatus()">🔍 Check Proxy Status</button>
+        <button class="btn-ghost" onclick="testProxyStatus()">🔍 Check Status</button>
+        <button class="btn-gold" onclick="changeDirection()" id="btnChangeDir" style="font-size:12px;padding:10px 22px;" title="Randomly reassign a new IP to each email script">🔀 Change Direction</button>
         <div class="saved-msg" id="proxySavedMsg">✅ Saved!</div>
       </div>
+      <div id="directionResult" style="display:none;margin-top:10px;padding:10px 14px;border-radius:6px;font-size:11px;font-family:var(--mono);background:#0a140a;border:1px solid #166534;color:var(--green);line-height:1.8;"></div>
 
       <div class="proxy-status" id="proxyStatusBox">Proxy status: Not checked yet</div>
     </div>
@@ -836,6 +838,30 @@ function saveProxyConfig() {
   showSaved('proxySavedMsg');
   // Also push to server immediately so status check works
   testProxyStatus();
+}
+
+async function changeDirection() {
+  const btn = document.getElementById('btnChangeDir');
+  const res = document.getElementById('directionResult');
+  btn.disabled = true; btn.textContent = '⏳ Reassigning…';
+  res.style.display = 'none';
+  try {
+    const r = await fetch('/api/reassign_proxies', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) {
+      const lines = d.pairs.map(p => `Script #${p.script} → ${p.proxy}`).join('\n');
+      res.style.display = 'block';
+      res.textContent = '✅ New IP assignment:\n' + lines;
+    } else {
+      res.style.display = 'block';
+      res.style.background = '#160a0a'; res.style.borderColor = '#7f1d1d'; res.style.color = 'var(--red)';
+      res.textContent = '❌ ' + (d.error || 'Failed');
+    }
+  } catch(e) {
+    res.style.display = 'block';
+    res.textContent = '❌ ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '🔀 Change Direction';
 }
 
 function saveEmailScripts() {

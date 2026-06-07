@@ -63,6 +63,36 @@ MAX_SCRIPT_FAILS           = 3
 MAX_SENDS_PER_SCRIPT       = 80
 
 
+# Maps each email script URL → a dedicated proxy IP for sending
+_script_proxy_map: dict = {}   # url -> proxy_dict or None
+_script_proxy_lock = threading.Lock()
+
+
+def _assign_proxies_to_scripts(urls: list):
+    """Give each script URL a dedicated proxy from the pool (random assignment)."""
+    global _script_proxy_map
+    with _proxy_lock:
+        available = list(_proxy_pool)
+    with _script_proxy_lock:
+        _script_proxy_map = {}
+        if not available:
+            for u in urls:
+                _script_proxy_map[u] = None   # direct — no proxy
+            push_log("⚠️  No proxies — scripts will send direct")
+            return
+        random.shuffle(available)
+        for i, u in enumerate(urls):
+            proxy_url = available[i % len(available)]
+            _script_proxy_map[u] = {"http": proxy_url, "https": proxy_url}
+        push_log(f"🔗 Assigned proxies: {len(urls)} scripts → {min(len(urls), len(available))} unique IPs")
+
+
+def _get_script_proxy(script_url: str):
+    """Return the dedicated proxy for this script URL."""
+    with _script_proxy_lock:
+        return _script_proxy_map.get(script_url)
+
+
 def _load_email_scripts():
     global _email_scripts, _current_script_idx, _script_fail_counts, _script_sent_counts
     raw = get_cfg("EMAIL_SCRIPT_URLS", "") or get_cfg("EMAIL_SCRIPT_URL", "")
@@ -72,6 +102,7 @@ def _load_email_scripts():
         _current_script_idx = 0
         _script_fail_counts = {u: 0 for u in urls}
         _script_sent_counts = {u: 0 for u in urls}
+    _assign_proxies_to_scripts(urls)
     _refresh_script_stats()
     if urls:
         push_log(f"📧 {len(urls)} email script URL(s) loaded")
@@ -191,6 +222,7 @@ def _mark_proxy_ok(pd):
 
 
 def robust_post(url, timeout=20, retries=3, **kwargs):
+    """General POST with rotating proxy (for sheet/scraping)."""
     for attempt in range(retries):
         proxy = _get_next_proxy()
         try:
@@ -202,6 +234,22 @@ def robust_post(url, timeout=20, retries=3, **kwargs):
             if attempt < retries - 1:
                 time.sleep(2 ** attempt + random.uniform(0, 1))
     return None
+
+
+def _post_with_proxy(url, proxy, timeout=30, retries=2, **kwargs):
+    """POST using a FIXED dedicated proxy (for email scripts — same IP per Gmail account)."""
+    for attempt in range(retries):
+        try:
+            r = requests.post(url, proxies=proxy, timeout=timeout, **kwargs)
+            return r
+        except Exception as e:
+            if attempt < retries - 1:
+                time.sleep(3 + random.uniform(0, 2))
+    # Fallback: try direct if proxy failed
+    try:
+        return requests.post(url, timeout=timeout, **kwargs)
+    except:
+        return None
 
 
 def _play_search_with_proxy(keyword, lang, country, n_hits):
@@ -380,23 +428,31 @@ def extract_email(text):
 # ══════════════════════════════════════════════════════════════════════════════
 # KEYWORD GENERATION — targets trust/review-critical app categories
 # ══════════════════════════════════════════════════════════════════════════════
-KW_SYSTEM = """You are a Google Play Store expert helping find apps that URGENTLY need review management.
+KW_SYSTEM = """You are a Google Play Store keyword specialist.
 
-Target app categories where trust and reviews are CRITICAL to conversions:
-- Fintech, banking, lending, crypto, investment apps (users won't install without trust)
-- E-commerce, marketplace, shopping apps (reviews = sales)
-- Healthcare, medical, fitness, wellness apps (users research before trusting)
-- Education, learning, kids apps (parents need trust signals)
-- Business, SaaS, productivity tools (B2B buyers read reviews)
-- Delivery, logistics, service booking apps (reliability matters)
-- Dating, social, community apps (safety concerns drive review checks)
+Your job: given a seed keyword, generate CLOSELY RELATED search terms that find apps
+in the EXACT SAME niche — apps where user TRUST and REVIEWS directly affect installs.
 
-These apps NEED review services because:
-- Low rating = users don't install = revenue loss
-- New app = no social proof yet
-- Mixed reviews = conversion rate drops
+STRICT RULES:
+1. Stay in the EXACT same niche as the seed. If seed = "crypto wallet", generate:
+   crypto wallet app, bitcoin wallet android, ethereum wallet mobile, crypto exchange app, etc.
+   NOT: crypto calculator, crypto tracker, crypto news — these don't need trust/reviews.
 
-Generate keywords that find REAL apps in these categories on Google Play.
+2. Only generate keywords for HIGH-TRUST niches where reviews matter:
+   - Fintech/payments/lending/crypto (users check reviews before giving money/data)
+   - E-commerce/marketplace/shopping (reviews drive purchases)
+   - Healthcare/medical/mental health (users research carefully)
+   - Education/kids apps (parents vet thoroughly)
+   - Delivery/booking/service apps (reliability = reviews)
+   - Dating/social (safety concerns)
+   - Business/B2B SaaS (buyers read reviews)
+
+3. REJECT utility/tool keywords that don't need trust:
+   - calculators, converters, managers, trackers, widgets, utilities
+   - These apps don't need review services
+
+4. Keywords must be real Play Store search queries (2-5 words).
+
 Return ONLY a JSON array of strings. No markdown, no explanation."""
 
 def ai_gen_keywords(original, used):
@@ -405,11 +461,15 @@ def ai_gen_keywords(original, used):
     try:
         client = Groq(api_key=key)
         prompt = (
-            f"Original keyword: '{original}'\n"
-            f"Already used: {', '.join(used[-20:]) if used else 'none'}\n\n"
-            f"Generate 12 NEW Google Play search keywords to find apps that need review management.\n"
-            f"Focus on: fintech, e-commerce, health, education, business, delivery, dating apps.\n"
-            f"These must be real Play Store search terms (2-5 words each).\n"
+            f"Seed keyword: '{original}'\n"
+            f"Already used (skip these): {', '.join(used[-20:]) if used else 'none'}\n\n"
+            f"Generate 12 NEW Google Play search keywords that are CLOSELY related to '{original}'.\n"
+            f"Rules:\n"
+            f"- Same niche ONLY — if seed is 'crypto wallet', generate wallet/exchange/trading keywords\n"
+            f"- Only apps where trust/reviews DIRECTLY affect whether users install\n"
+            f"- NO utility apps: no calculators, converters, managers, trackers, widgets\n"
+            f"- Real Play Store search terms, 2-5 words each\n"
+            f"- All 12 must be different from already used list\n"
             f"Return ONLY a JSON array of 12 strings."
         )
         resp = client.chat.completions.create(
@@ -754,7 +814,9 @@ def send_email(lead, subject, body):
             return False
 
         try:
-            r = robust_post(url, json={
+            # Use this script's dedicated IP — Google sees consistent IP per Gmail account
+            script_proxy = _get_script_proxy(url)
+            r = _post_with_proxy(url, script_proxy, json={
                 "to":               lead["email"],
                 "subject":          subject,
                 "body":             body,
@@ -1081,6 +1143,23 @@ min-height:100vh;margin:0;background:#f9f9f9;}}
 box-shadow:0 1px 4px rgba(0,0,0,.1);}}h2{{color:#222;}}p{{color:#555;}}</style></head>
 <body><div class="box"><h2>Unsubscribed</h2>
 <p>{email} removed. No more emails from PlayReview.</p></div></body></html>"""
+
+@application.route("/api/reassign_proxies", methods=["POST"])
+def api_reassign_proxies():
+    """Randomly reassign proxy IPs to script URLs (Change Direction)."""
+    with _email_script_lock:
+        urls = list(_email_scripts)
+    if not urls:
+        return jsonify({"error": "No scripts loaded yet"}), 400
+    _assign_proxies_to_scripts(urls)
+    with _script_proxy_lock:
+        pairs = [{"script": i+1, "proxy": (v or {}).get("http","direct")[:40]+"…"
+                  if v and len((v or {}).get("http","")) > 40
+                  else (v or {}).get("http","direct") if v else "direct"}
+                 for i, (k, v) in enumerate(_script_proxy_map.items())]
+    push_log(f"🔀 Proxy directions reassigned for {len(urls)} scripts")
+    return jsonify({"ok": True, "pairs": pairs})
+
 
 if __name__ == "__main__":
     application.run(host="0.0.0.0", port=int(os.environ.get("PORT",5000)), debug=False)
