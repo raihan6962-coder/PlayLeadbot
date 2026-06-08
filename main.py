@@ -362,6 +362,15 @@ def sheet_post(payload):
     except Exception as e:
         push_log(f"  Sheet error: {e}"); return None
 
+def sheet_append_raw(app_id, title, developer, category, installs, score, url, keyword):
+    """Log every app found by search (before qualification filter)."""
+    sheet_post({"action":"append","tab":"Raw Results","row":{
+        "App ID":app_id,"App Name":title,"Developer":developer,
+        "Category":category,"Installs":installs,"Score":score or "",
+        "URL":url,"Keyword":keyword,"Found At":time.strftime("%Y-%m-%d %H:%M:%S"),
+        "Status":"Pending Filter",
+    }})
+
 def sheet_append_lead(lead):
     sheet_post({"action":"append","tab":"All Leads","row":{
         "App Name":lead["app_name"],"Developer":lead["developer"],
@@ -474,11 +483,19 @@ def passes_filter(installs,score,hunter):
 
 # ── Keyword generation ────────────────────────────────────────────────────────
 KW_SYSTEM="""You are a Google Play Store keyword specialist.
-Given a seed keyword, generate CLOSELY related search terms — same niche only.
-Only niches where trust/reviews DIRECTLY affect installs:
-fintech, payments, lending, crypto, e-commerce, healthcare, education, delivery, dating, B2B SaaS.
-REJECT: calculators, converters, managers, trackers, utilities — trust doesn't matter there.
-Return ONLY a JSON array. No markdown."""
+Goal: generate keywords that return 200+ app results on Play Store.
+
+Rules:
+- Use BROAD, HIGH-VOLUME category terms (1-3 words) — not specific app names
+- Same niche as seed keyword
+- Examples of HIGH-VOLUME keywords:
+  seed="crypto wallet" → ["crypto", "bitcoin wallet", "blockchain app", "crypto exchange", "defi app"]
+  seed="loan app" → ["loan", "personal loan", "instant loan", "money lender", "cash advance"]
+  seed="food delivery" → ["food delivery", "restaurant app", "order food", "meal delivery"]
+- Broad terms return MORE apps than specific terms
+- Only niches where trust/reviews affect installs:
+  fintech, crypto, lending, e-commerce, healthcare, education, delivery, dating, B2B
+- Return ONLY a JSON array of 12 strings. No markdown."""
 
 def ai_gen_keywords(original,used):
     key=get_cfg("GROQ_API_KEY")
@@ -487,9 +504,10 @@ def ai_gen_keywords(original,used):
         client=Groq(api_key=key)
         prompt=(
             f"Seed: '{original}'\nUsed: {', '.join(used[-20:]) or 'none'}\n\n"
-            f"Generate 12 NEW Play Store search keywords — SAME niche as '{original}'.\n"
-            f"Same category only. No utilities. 2-5 words each.\n"
-            f"Return ONLY a JSON array of 12 strings."
+            f"Generate 12 broad Play Store search keywords — SAME niche as '{original}'.\n"
+            f"Use SHORT (1-3 word) broad terms that return 200+ apps in Play Store search.\n"
+            f"Broad = more results. Specific = fewer results. Choose broad.\n"
+            f"Same category only. Return ONLY a JSON array of 12 strings."
         )
         resp=client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -694,72 +712,92 @@ def _process_app(item,hunter,keyword):
     return lead
 
 
-def scrape_keyword(keyword,hunter=None,min_leads=MIN_LEADS_PER_KW):
-    global global_seen_ids,global_seen_emails
-    mode="Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🔍 [{mode}] '{keyword}'")
-    leads=[]; leads_lock=threading.Lock()
-    combos=list(ALL_COMBOS); random.shuffle(combos)
+def scrape_keyword(keyword, hunter=None, min_leads=MIN_LEADS_PER_KW):
+    """
+    TWO-PHASE scrape:
+    Phase 1 — Search: collect ALL app IDs from Play Store search results
+              Log everything to "Raw Results" sheet tab
+    Phase 2 — Filter: fetch details, apply requirements, dedup, validate email
+              Qualified leads → "Qualified Leads" + "All Leads" tabs
+    """
+    global global_seen_ids, global_seen_emails
+    mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
+    push_log(f"🔍 [{mode}] PHASE 1 — Searching '{keyword}' …")
 
-    # Search 4 regions in parallel
-    candidates={}
+    # ── PHASE 1: Collect ALL search results across regions ────────────────────
+    all_found = {}   # app_id → item dict (raw search data)
+    combos = list(ALL_COMBOS)
+    random.shuffle(combos)
 
-    def search_region(lang,country):
+    def search_one(lang, country):
         try:
-            results=_play_search(keyword,lang,country,n_hits=250)
-            push_log(f"  [{country}] {len(results)} results")
-            return [(item.get("appId"),item) for item in results
-                    if item.get("appId") and _quick_filter(item,hunter)]
+            results = _play_search(keyword, lang, country, n_hits=250)
+            push_log(f"  [{country}] {len(results)} apps found")
+            return results
         except Exception as e:
-            push_log(f"  [{country}] fail: {str(e)[:60]}")
+            push_log(f"  [{country}] search fail: {str(e)[:60]}")
             return []
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
-        futs={ex.submit(search_region,lang,country):(lang,country) for lang,country in combos[:4]}
+    # Search ALL regions in parallel
+    with ThreadPoolExecutor(max_workers=len(combos)) as ex:
+        futs = {ex.submit(search_one, lang, country): (lang, country)
+                for lang, country in combos}
         for fut in as_completed(futs):
             if stop_event.is_set(): break
-            for aid,item in fut.result():
-                if aid not in candidates and aid not in global_seen_ids:
-                    candidates[aid]=item
+            for item in fut.result():
+                aid = item.get("appId", "")
+                if aid and aid not in all_found:
+                    all_found[aid] = item
 
-    push_log(f"  🎯 {len(candidates)} candidates → detail fetch (8 threads)")
+    total_found = len(all_found)
+    push_log(f"  📋 Phase 1 done — {total_found} unique apps found for '{keyword}'")
+
+    # Log raw results to sheet (all found apps)
+    raw_logged = 0
+    for aid, item in all_found.items():
+        if stop_event.is_set(): break
+        if not is_dup(aid, ""):   # skip already known app IDs
+            sheet_append_raw(
+                app_id   = aid,
+                title    = item.get("title", "") or item.get("appId", ""),
+                developer= item.get("developer", ""),
+                category = item.get("genre", ""),
+                installs = item.get("minInstalls", 0) or 0,
+                score    = item.get("score") or None,
+                url      = f"https://play.google.com/store/apps/details?id={aid}",
+                keyword  = keyword,
+            )
+            raw_logged += 1
+    push_log(f"  📝 {raw_logged} new apps logged to Raw Results sheet")
+
+    # ── PHASE 2: Filter — detail fetch + requirement check + dedup + email ────
+    push_log(f"  🔍 PHASE 2 — Filtering {total_found} apps …")
+    leads      = []
+    leads_lock = threading.Lock()
+
+    # Pre-filter using search result data (no API call needed)
+    candidates = {aid: item for aid, item in all_found.items()
+                  if _quick_filter(item, hunter) and aid not in global_seen_ids
+                  and not is_dup(aid, "")}
+
+    push_log(f"  ✂️  Pre-filter: {len(candidates)}/{total_found} pass quick check → fetching details …")
 
     def process_one(item):
         if stop_event.is_set(): return None
-        with leads_lock:
-            if len(leads)>=min_leads*8: return None
-        return _process_app(item,hunter,keyword)
+        return _process_app(item, hunter, keyword)
 
-    items=list(candidates.values()); random.shuffle(items)
+    items = list(candidates.values())
+    random.shuffle(items)
+
+    # Fetch details in parallel — 8 threads
     with ThreadPoolExecutor(max_workers=8) as ex:
-        for lead in ex.map(process_one,items):
+        for lead in ex.map(process_one, items):
             if lead:
-                with leads_lock: leads.append(lead)
+                with leads_lock:
+                    leads.append(lead)
 
-    # If still need more, search extra regions
-    if len(leads)<min_leads and not stop_event.is_set():
-        push_log(f"  🔄 Need more — searching extra regions …")
-        extra_candidates={}
-        for lang,country in combos[4:]:
-            if stop_event.is_set(): break
-            try:
-                results=_play_search(keyword,lang,country,n_hits=250)
-                for item in results:
-                    aid=item.get("appId")
-                    if aid and aid not in candidates and aid not in global_seen_ids:
-                        if _quick_filter(item,hunter):
-                            extra_candidates[aid]=item
-            except Exception: pass
-            time.sleep(random.uniform(1,2))
-
-        extra_items=list(extra_candidates.values()); random.shuffle(extra_items)
-        with ThreadPoolExecutor(max_workers=6) as ex:
-            for lead in ex.map(process_one,extra_items):
-                if lead:
-                    with leads_lock: leads.append(lead)
-
-    push_log(f"  📦 '{keyword}' → {len(leads)} leads")
-    sheet_log_keyword(keyword,len(leads))
+    push_log(f"  📦 '{keyword}' → Phase 1: {total_found} found | Phase 2: {len(leads)} qualified")
+    sheet_log_keyword(keyword, len(leads))
     return leads
 
 
