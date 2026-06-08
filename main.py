@@ -15,6 +15,22 @@ from google_play_scraper import search, app as gp_app
 from groq import Groq
 import requests as req_lib
 
+def parse_installs(val) -> int:
+    """Convert any install field format to int.
+    Handles: int, "1,000,000+", "1M+", "500K+", None, "Varies"
+    """
+    if val is None: return 0
+    if isinstance(val, (int, float)): return int(val)
+    s = str(val).strip().upper().replace(",", "").replace("+", "").replace(" ", "")
+    if not s or s in ("VARIESWITHDEVICE", "VARIES", ""): return 0
+    try:
+        if s.endswith("B"):   return int(float(s[:-1]) * 1_000_000_000)
+        if s.endswith("M"):   return int(float(s[:-1]) * 1_000_000)
+        if s.endswith("K"):   return int(float(s[:-1]) * 1_000)
+        return int(float(s))
+    except: return 0
+
+
 application = Flask(__name__, static_folder=".")
 app = application
 CORS(application)
@@ -365,10 +381,16 @@ def sheet_post(payload):
 def sheet_append_raw(app_id, title, developer, category, installs, score, url, keyword):
     """Log every app found by search (before qualification filter)."""
     sheet_post({"action":"append","tab":"Raw Results","row":{
-        "App ID":app_id,"App Name":title,"Developer":developer,
-        "Category":category,"Installs":installs,"Score":score or "",
-        "URL":url,"Keyword":keyword,"Found At":time.strftime("%Y-%m-%d %H:%M:%S"),
-        "Status":"Pending Filter",
+        "App ID":   app_id,
+        "App Name": title,
+        "Developer":developer,
+        "Category": category,
+        "Installs": parse_installs(installs),
+        "Score":    score or "",
+        "URL":      url,
+        "Keyword":  keyword,
+        "Found At": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "Status":   "Pending Filter",
     }})
 
 def sheet_append_lead(lead):
@@ -463,21 +485,28 @@ def extract_email(text):
 
 
 # ── FILTER ────────────────────────────────────────────────────────────────────
-def passes_filter(installs,score,hunter):
+def passes_filter(installs, score, hunter):
     """
     HUNTER: apps WITH rating ≤ max_score AND installs ≤ max_installs
     NORMAL: ONLY brand new apps — NO rating at all
     """
+    installs = parse_installs(installs)   # normalize whatever format
+    if score is not None:
+        try: score = float(score)
+        except: score = None
+    if score == 0.0: score = None
+
     if hunter and hunter.get("active"):
-        max_inst =int(hunter.get("max_installs") or 50000)
-        max_score=float(hunter.get("max_score") or 3.5)
-        if score is None or score==0: return False   # must have rating
-        if installs>max_inst:         return False
-        if score>max_score:           return False
+        max_inst  = int(hunter.get("max_installs") or 50000)
+        max_score = float(hunter.get("max_score") or 3.5)
+        if score is None or score == 0: return False
+        if installs > max_inst:         return False
+        if score > max_score:           return False
         return True
+
     # Normal: no rating only
-    if score is not None and score>0: return False
-    if installs>10000:                return False
+    if score is not None and score > 0: return False
+    if installs > 10000:                return False
     return True
 
 
@@ -640,20 +669,34 @@ def _play_detail(app_id,lang="en",country="us"):
     return gp_app(app_id,lang=lang,country=country)
 
 
-def _quick_filter(item,hunter):
-    """Pre-filter from search result (no API call needed)."""
-    installs=item.get("minInstalls") or 0
-    score=item.get("score") or None
-    if score==0.0: score=None
+def _quick_filter(item, hunter):
+    """Pre-filter from search result (no API call needed).
+    Search results have 'installs' as string e.g. '10,000+' — use parse_installs().
+    """
+    # Try all possible install field names from search result
+    raw_installs = (item.get("minInstalls")
+                    or item.get("installs")
+                    or item.get("realInstalls")
+                    or 0)
+    installs = parse_installs(raw_installs)
+
+    score = item.get("score") or None
+    if isinstance(score, str):
+        try: score = float(score)
+        except: score = None
+    if score == 0.0: score = None
+
     if hunter and hunter.get("active"):
-        max_inst=int(hunter.get("max_installs") or 50000)
-        max_score=float(hunter.get("max_score") or 3.5)
-        if score is None or score==0: return False
-        if installs>max_inst:         return False
-        if score>max_score:           return False
+        max_inst  = int(hunter.get("max_installs") or 50000)
+        max_score = float(hunter.get("max_score") or 3.5)
+        if score is None or score == 0: return False   # hunter needs rating
+        if installs > max_inst:         return False
+        if score > max_score:           return False
         return True
-    if score is not None and score>0: return False
-    if installs>10000:                return False
+
+    # Normal mode: no rating, low installs only
+    if score is not None and score > 0: return False
+    if installs > 10000:                return False
     return True
 
 
@@ -676,11 +719,18 @@ def _process_app(item,hunter,keyword):
 
     if not details: global_seen_ids.add(app_id); return None
 
-    installs=details.get("minInstalls") or 0
-    score=details.get("score") or None
-    if score==0.0: score=None
+    raw_inst = (details.get("minInstalls")
+                or details.get("installs")
+                or details.get("realInstalls")
+                or 0)
+    installs = parse_installs(raw_inst)
+    score    = details.get("score") or None
+    if isinstance(score, str):
+        try: score = float(score)
+        except: score = None
+    if score == 0.0: score = None
 
-    if not passes_filter(installs,score,hunter): global_seen_ids.add(app_id); return None
+    if not passes_filter(installs, score, hunter): global_seen_ids.add(app_id); return None
     if not is_allowed_country(details):          global_seen_ids.add(app_id); return None
 
     email=(extract_email(details.get("developerEmail",""))
@@ -756,13 +806,15 @@ def scrape_keyword(keyword, hunter=None, min_leads=MIN_LEADS_PER_KW):
     raw_logged = 0
     for aid, item in all_found.items():
         if stop_event.is_set(): break
-        if not is_dup(aid, ""):   # skip already known app IDs
+        if not is_dup(aid, ""):
+            raw_inst = (item.get("minInstalls") or item.get("installs")
+                        or item.get("realInstalls") or 0)
             sheet_append_raw(
                 app_id   = aid,
-                title    = item.get("title", "") or item.get("appId", ""),
+                title    = item.get("title", "") or aid,
                 developer= item.get("developer", ""),
                 category = item.get("genre", ""),
-                installs = item.get("minInstalls", 0) or 0,
+                installs = parse_installs(raw_inst),
                 score    = item.get("score") or None,
                 url      = f"https://play.google.com/store/apps/details?id={aid}",
                 keyword  = keyword,
