@@ -1,7 +1,7 @@
 """
-PlayLead Engine — v5
+PlayLead Engine -- v5
 ====================
-Key fix: Auto-fetch fresh working proxies from GitHub → test them →
+Key fix: Auto-fetch fresh working proxies from GitHub -> test them ->
 use working ones to monkey-patch google-play-scraper's urllib calls.
 Railway datacenter IPs are blocked by Play Store, so we need real proxies.
 """
@@ -80,7 +80,7 @@ PLAY_HEADERS = {
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# PROXY MANAGER — auto-fetch + test + rotate
+# PROXY MANAGER -- auto-fetch + test + rotate
 # ══════════════════════════════════════════════════════════════════════════════
 _proxy_lock     = threading.Lock()
 _working_proxies: list = []    # tested working proxies: "host:port" strings
@@ -98,7 +98,7 @@ PROXY_SOURCES = [
 
 
 def _fetch_proxy_list_from_github() -> list:
-    """Fetch fresh proxy list from GitHub (Railway allows raw.githubusercontent.com)."""
+    # Fetch fresh proxy list from GitHub (Railway allows raw.githubusercontent.com).
     all_proxies = []
     for url in PROXY_SOURCES:
         try:
@@ -119,7 +119,7 @@ def _fetch_proxy_list_from_github() -> list:
 
 
 def _test_proxy(proxy_addr: str, timeout: int = 6) -> bool:
-    """Test if a proxy can reach Play Store."""
+    # Test if a proxy can reach Play Store.
     try:
         handler  = urllib.request.ProxyHandler({"http": f"http://{proxy_addr}", "https": f"http://{proxy_addr}"})
         opener   = urllib.request.build_opener(handler)
@@ -135,7 +135,7 @@ def _test_proxy(proxy_addr: str, timeout: int = 6) -> bool:
 
 
 def _test_proxy_fast(proxy_addr: str, timeout: int = 5) -> bool:
-    """Faster test — just check TCP + HTTP response code."""
+    # Faster test -- just check TCP + HTTP response code.
     try:
         handler = urllib.request.ProxyHandler({"http": f"http://{proxy_addr}", "https": f"http://{proxy_addr}"})
         opener  = urllib.request.build_opener(handler)
@@ -150,7 +150,7 @@ def _test_proxy_fast(proxy_addr: str, timeout: int = 5) -> bool:
 
 
 def refresh_proxy_pool(force: bool = False):
-    """Fetch + test proxies, keep the working ones."""
+    # Fetch + test proxies, keep the working ones.
     global _working_proxies, _proxy_idx, _last_proxy_refresh
 
     now = time.time()
@@ -166,7 +166,7 @@ def refresh_proxy_pool(force: bool = False):
         # Strip protocol prefix if present
         line = re.sub(r'^https?://', '', line)
         if re.match(r'.+:.+@.+:\d+', line):
-            user_proxies.append(line)   # user:pass@host:port — keep as-is
+            user_proxies.append(line)   # user:pass@host:port -- keep as-is
         elif re.match(r'^\d+\.\d+\.\d+\.\d+:\d+$', line):
             user_proxies.append(line)
 
@@ -195,7 +195,7 @@ def refresh_proxy_pool(force: bool = False):
 
 
 def get_proxy_opener():
-    """Return a urllib opener with the next working proxy."""
+    # Return a urllib opener with the next working proxy.
     global _proxy_idx
 
     # ScraperAPI mode
@@ -222,7 +222,7 @@ def get_proxy_opener():
 
 
 def _urlopen_with_proxy(url_or_req, timeout=20):
-    """Open a URL via rotating proxy using urllib."""
+    # Open a URL via rotating proxy using urllib.
     opener = get_proxy_opener()
     if isinstance(url_or_req, str):
         url_or_req = urllib.request.Request(url_or_req, headers=PLAY_HEADERS)
@@ -235,7 +235,7 @@ import google_play_scraper.utils.request as _gps_req
 _orig_urlopen = urllib.request.urlopen
 
 def _patched_urlopen(url_or_req, *args, **kwargs):
-    """Intercept all urlopen calls from google-play-scraper and route via proxy."""
+    # Intercept all urlopen calls from google-play-scraper and route via proxy.
     kwargs.pop("context", None)   # remove conflicting context
     opener = get_proxy_opener()
     if isinstance(url_or_req, str):
@@ -282,7 +282,7 @@ def _assign_proxies_to_scripts(urls):
         random.shuffle(pool)
         for i, u in enumerate(urls):
             _script_proxy_map[u] = pool[i % len(pool)]
-    push_log(f"🔗 IPs assigned: {len(urls)} scripts → {min(len(urls),len(pool))} unique IPs")
+    push_log(f"🔗 IPs assigned: {len(urls)} scripts -> {min(len(urls),len(pool))} unique IPs")
 
 def _get_script_proxy(script_url):
     with _script_proxy_lock:
@@ -323,7 +323,7 @@ def _mark_script_ok(url):
         if _script_sent_counts[url]>=MAX_SENDS_PER_SCRIPT and url in _email_scripts:
             idx=_email_scripts.index(url)
             _current_script_idx=(idx+1)%len(_email_scripts)
-            push_log(f"  🔄 Script #{idx+1} → {_current_script_idx+1}")
+            push_log(f"  🔄 Script #{idx+1} -> {_current_script_idx+1}")
     _refresh_script_stats()
 
 def _mark_script_failed(url):
@@ -377,21 +377,6 @@ def sheet_post(payload):
         return r.json() if (r and r.text) else {}
     except Exception as e:
         push_log(f"  Sheet error: {e}"); return None
-
-def sheet_append_raw(app_id, title, developer, category, installs, score, url, keyword):
-    """Log every app found by search (before qualification filter)."""
-    sheet_post({"action":"append","tab":"Raw Results","row":{
-        "App ID":   app_id,
-        "App Name": title,
-        "Developer":developer,
-        "Category": category,
-        "Installs": parse_installs(installs),
-        "Score":    score or "",
-        "URL":      url,
-        "Keyword":  keyword,
-        "Found At": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "Status":   "Pending Filter",
-    }})
 
 def sheet_append_lead(lead):
     sheet_post({"action":"append","tab":"All Leads","row":{
@@ -487,44 +472,41 @@ def extract_email(text):
 # ── FILTER ────────────────────────────────────────────────────────────────────
 def passes_filter(installs, score, hunter):
     """
-    HUNTER: apps WITH rating ≤ max_score AND installs ≤ max_installs
-    NORMAL: ONLY brand new apps — NO rating at all
+    HUNTER MODE: installs <= max_installs AND score <= max_score (must have rating)
+    NORMAL MODE: installs <= 10,000 AND no rating at all (brand new apps only)
     """
-    installs = parse_installs(installs)   # normalize whatever format
+    installs = parse_installs(installs)
     if score is not None:
         try: score = float(score)
         except: score = None
     if score == 0.0: score = None
 
     if hunter and hunter.get("active"):
-        max_inst  = int(hunter.get("max_installs") or 50000)
-        max_score = float(hunter.get("max_score") or 3.5)
-        if score is None or score == 0: return False
+        max_inst  = int(hunter.get("max_installs") or 5000)
+        max_score = float(hunter.get("max_score") or 2.5)
         if installs > max_inst:         return False
+        if score is None or score == 0: return False
         if score > max_score:           return False
         return True
 
-    # Normal: no rating only
+    if installs > 10_000:               return False
     if score is not None and score > 0: return False
-    if installs > 10000:                return False
     return True
 
 
 # ── Keyword generation ────────────────────────────────────────────────────────
-KW_SYSTEM="""You are a Google Play Store keyword specialist.
-Goal: generate keywords that return 200+ app results on Play Store.
+KW_SYSTEM="""You are a Google Play Store keyword expert for finding apps needing review management.
 
-Rules:
-- Use BROAD, HIGH-VOLUME category terms (1-3 words) — not specific app names
-- Same niche as seed keyword
-- Examples of HIGH-VOLUME keywords:
-  seed="crypto wallet" → ["crypto", "bitcoin wallet", "blockchain app", "crypto exchange", "defi app"]
-  seed="loan app" → ["loan", "personal loan", "instant loan", "money lender", "cash advance"]
-  seed="food delivery" → ["food delivery", "restaurant app", "order food", "meal delivery"]
-- Broad terms return MORE apps than specific terms
-- Only niches where trust/reviews affect installs:
-  fintech, crypto, lending, e-commerce, healthcare, education, delivery, dating, B2B
-- Return ONLY a JSON array of 12 strings. No markdown."""
+CONTEXT: Target apps with poor ratings (Hunter Mode) or brand new with no ratings (Normal Mode).
+
+STRICT RULES:
+- Stay in the EXACT same niche as the original keyword
+- BAD: "crypto wallet" -> "cryptocurrency calculator"
+- GOOD: "crypto wallet" -> "bitcoin wallet mobile", "ethereum wallet app"
+- Keywords must be 2-5 words, real Play Store search queries
+- Niches: fintech, productivity, business, health, education, food delivery, e-commerce
+
+Return ONLY a valid JSON array. No markdown, no explanation."""
 
 def ai_gen_keywords(original,used):
     key=get_cfg("GROQ_API_KEY")
@@ -532,11 +514,10 @@ def ai_gen_keywords(original,used):
     try:
         client=Groq(api_key=key)
         prompt=(
-            f"Seed: '{original}'\nUsed: {', '.join(used[-20:]) or 'none'}\n\n"
-            f"Generate 12 broad Play Store search keywords — SAME niche as '{original}'.\n"
-            f"Use SHORT (1-3 word) broad terms that return 200+ apps in Play Store search.\n"
-            f"Broad = more results. Specific = fewer results. Choose broad.\n"
-            f"Same category only. Return ONLY a JSON array of 12 strings."
+            f"Original keyword: '{original}'\n"
+            f"Already used (do NOT repeat): {', '.join(used[-20:]) if used else 'none'}\n\n"
+            f"Generate exactly 8 NEW Google Play Store search keywords in the SAME niche as '{original}'.\n"
+            f"Keep intent tightly aligned -- same niche. Return ONLY a JSON array of 8 strings."
         )
         resp=client.chat.completions.create(
             model="llama-3.3-70b-versatile",
@@ -556,18 +537,17 @@ def ai_gen_keywords(original,used):
 # ── Email template ────────────────────────────────────────────────────────────
 SENDER_NAME="PlayReview"
 DEFAULT_EMAIL_SUBJECT="Your {{app_name}} reviews on Google Play"
-DEFAULT_EMAIL_BODY="""Hi {{developer}},
-
-I noticed {{app_name}} on Google Play{{score_line}}.
-
-Apps in your category live or die by their Play Store rating — even a 0.5 star improvement can double install rates.
-
-We help app developers clean up their Play Store presence: removing unfair reviews, building genuine social proof, and protecting their rating long-term.
-
-If you're open to a quick 10-minute call this week, I'd love to show you what we've done for similar apps.
-
-Best,
-PlayReview"""
+DEFAULT_EMAIL_BODY = (
+    "Hi {{developer}},\n\n"
+    "I noticed {{app_name}} on Google Play{{score_line}}.\n\n"
+    "Apps in your category live or die by their Play Store rating -- "
+    "even a 0.5 star improvement can double install rates.\n\n"
+    "We help app developers clean up their Play Store presence: removing unfair reviews, "
+    "building genuine social proof, and protecting their rating long-term.\n\n"
+    "If you are open to a quick 10-minute call this week, "
+    "I would love to show you what we have done for similar apps.\n\n"
+    "Best,\nPlayReview"
+)
 
 def build_html_email(plain_body,lead,unsubscribe_url=""):
     lines=plain_body.strip().split("\n")
@@ -590,7 +570,7 @@ def build_html_email(plain_body,lead,unsubscribe_url=""):
 
 def fill_template(tpl,lead):
     score=lead.get("score")
-    score_line=f" — currently rated {score:.1f}★" if score and score>0 else " (just launched, building reviews)"
+    score_line=f" -- currently rated {score:.1f}★" if score and score>0 else " (just launched, building reviews)"
     return (tpl.replace("{{app_name}}",lead.get("app_name",""))
                .replace("{{developer}}",lead.get("developer",""))
                .replace("{{category}}",lead.get("category",""))
@@ -636,17 +616,16 @@ def _unsub_token(email):
 
 
 # ══════════════════════════════════════════════════════════════════════════════
-# SCRAPER — parallel, proxy-patched, fast
+# SCRAPER -- parallel, proxy-patched, fast
 # ══════════════════════════════════════════════════════════════════════════════
-ALL_COMBOS=[
-    ("en","us"),("en","gb"),("en","au"),("en","ca"),
-    ("en","sg"),("en","nz"),("en","ie"),("en","za"),
+SEARCH_COMBOS = [
+    ("en", "us"), ("en", "gb"), ("en", "au"), ("en", "ca"),
 ]
-MIN_LEADS_PER_KW=2
+MIN_LEADS_PER_KW = 2
 
 
 def _play_search(keyword,lang,country,n_hits=250):
-    """Search Play Store — proxy is injected via monkey-patched urlopen."""
+    # Search Play Store -- proxy is injected via monkey-patched urlopen.
     for attempt in range(3):
         try:
             results=search(keyword,lang=lang,country=country,n_hits=n_hits)
@@ -655,7 +634,7 @@ def _play_search(keyword,lang,country,n_hits=250):
             err=str(e).lower()
             if any(x in err for x in ["429","403","rate","blocked","captcha","gateway"]):
                 wait=15*(attempt+1)+random.uniform(3,8)
-                push_log(f"  🚦 Rate-limit ({country}) — {wait:.0f}s")
+                push_log(f"  🚦 Rate-limit ({country}) -- {wait:.0f}s")
                 time.sleep(wait)
             elif attempt==2:
                 raise
@@ -664,180 +643,138 @@ def _play_search(keyword,lang,country,n_hits=250):
     return []
 
 
-def _play_detail(app_id,lang="en",country="us"):
-    """Fetch app details — proxy injected via monkey-patched urlopen."""
-    return gp_app(app_id,lang=lang,country=country)
-
-
-def _quick_filter(item, hunter):
-    """Pre-filter from search result data only (no extra API call).
-    Reuses passes_filter() so logic is always consistent.
-    """
-    raw = (item.get("minInstalls") or item.get("installs")
-           or item.get("realInstalls") or 0)
-    installs = parse_installs(raw)
-    score    = item.get("score") or None
-    if isinstance(score, str):
-        try: score = float(score)
-        except: score = None
-    if score == 0.0: score = None
-    return passes_filter(installs, score, hunter)
-
-
-def _process_app(item,hunter,keyword):
-    """Full process for one app: detail fetch + filter + email extract."""
-    global global_seen_ids,global_seen_emails
-    app_id=item.get("appId","")
-    if not app_id or app_id in global_seen_ids: return None
-    if is_dup(app_id,""): global_seen_ids.add(app_id); return None
-
-    # Try fetching details from multiple regions
-    details=None
-    for lang,country in [("en","us"),("en","gb")]:
+def fetch_app_details_reliable(app_id: str):
+    # Multi-region detail fetch -- proxy injected via monkey-patched urlopen
+    first_result = None
+    for lang, country in [("en","us"), ("en","gb"), ("en","au")]:
         try:
-            details=_play_detail(app_id,lang,country)
-            if details.get("developerEmail") or details.get("score"):
-                break
+            details = gp_app(app_id, lang=lang, country=country)
+            if first_result is None:
+                first_result = details
+            if details.get("score") is not None and details.get("score", 0) > 0:
+                return details
         except Exception:
-            time.sleep(random.uniform(0.5,1.5))
-
-    if not details: global_seen_ids.add(app_id); return None
-
-    raw_inst = (details.get("minInstalls")
-                or details.get("installs")
-                or details.get("realInstalls")
-                or 0)
-    installs = parse_installs(raw_inst)
-    score    = details.get("score") or None
-    if isinstance(score, str):
-        try: score = float(score)
-        except: score = None
-    if score == 0.0: score = None
-
-    if not passes_filter(installs, score, hunter): global_seen_ids.add(app_id); return None
-    if not is_allowed_country(details):          global_seen_ids.add(app_id); return None
-
-    email=(extract_email(details.get("developerEmail",""))
-           or extract_email(details.get("privacyPolicy",""))
-           or extract_email(details.get("description",""))
-           or extract_email(details.get("recentChanges","")))
-    if not email: global_seen_ids.add(app_id); return None
-
-    email=email.lower().strip()
-    ok,reason=valid_email(email)
-    if not ok: global_seen_ids.add(app_id); return None
-
-    if email in global_seen_emails or is_dup("",email):
-        global_seen_ids.add(app_id); return None
-
-    lead={"app_id":app_id,"app_name":details.get("title",""),
-          "developer":details.get("developer",""),"email":email,
-          "category":details.get("genre",""),"installs":installs,"score":score,
-          "description":(details.get("description") or "")[:250],
-          "url":f"https://play.google.com/store/apps/details?id={app_id}",
-          "icon":details.get("icon",""),"keyword":keyword,
-          "scraped_at":time.strftime("%Y-%m-%d %H:%M:%S"),"email_sent":False}
-
-    global_seen_ids.add(app_id)
-    global_seen_emails.add(email)
-    register(app_id,email)
-    s_str=f"{score:.1f}★" if score else "new"
-    push_log(f"  ✅ {lead['app_name']} | {installs:,} | {s_str} | {email}")
-    return lead
+            time.sleep(random.uniform(0.5, 1.5))
+            continue
+    return first_result
 
 
-def scrape_keyword(keyword, hunter=None, min_leads=MIN_LEADS_PER_KW):
-    """
-    TWO-PHASE scrape:
-    Phase 1 — Search: collect ALL app IDs from Play Store search results
-              Log everything to "Raw Results" sheet tab
-    Phase 2 — Filter: fetch details, apply requirements, dedup, validate email
-              Qualified leads → "Qualified Leads" + "All Leads" tabs
-    """
+def scrape_keyword(keyword: str, hunter: dict = None, min_leads: int = MIN_LEADS_PER_KW) -> list:
+    # Original proven scrape logic -- multi-region, full detail fetch, strict filter
     global global_seen_ids, global_seen_emails
-    mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🔍 [{mode}] PHASE 1 — Searching '{keyword}' …")
+    mode_label = "Hunter" if (hunter and hunter.get("active")) else "Normal"
+    push_log(f"Scraping [{mode_label}]: {keyword}")
+    leads = []
 
-    # ── PHASE 1: Collect ALL search results across regions ────────────────────
-    all_found = {}   # app_id → item dict (raw search data)
-    combos = list(ALL_COMBOS)
-    random.shuffle(combos)
+    for lang, country in SEARCH_COMBOS:
+        if stop_event.is_set():
+            break
 
-    def search_one(lang, country):
-        try:
-            results = _play_search(keyword, lang, country, n_hits=250)
-            push_log(f"  [{country}] {len(results)} apps found")
-            return results
-        except Exception as e:
-            push_log(f"  [{country}] search fail: {str(e)[:60]}")
-            return []
+        # Search with retry
+        results = []
+        for attempt in range(3):
+            try:
+                results = search(keyword, lang=lang, country=country, n_hits=500)
+                push_log(f"  [{country}] {len(results)} results")
+                break
+            except Exception as e:
+                err = str(e).lower()
+                if any(x in err for x in ["429", "403", "rate", "blocked", "captcha", "gateway"]):
+                    wait = 15 * (attempt + 1) + random.uniform(3, 8)
+                    push_log(f"  Rate-limit ({country}) -- {wait:.0f}s wait")
+                    time.sleep(wait)
+                elif attempt == 2:
+                    push_log(f"  Search error ({country}): {str(e)[:60]}")
+                else:
+                    time.sleep(random.uniform(2, 4))
 
-    # Search ALL regions in parallel
-    with ThreadPoolExecutor(max_workers=len(combos)) as ex:
-        futs = {ex.submit(search_one, lang, country): (lang, country)
-                for lang, country in combos}
-        for fut in as_completed(futs):
-            if stop_event.is_set(): break
-            for item in fut.result():
-                aid = item.get("appId", "")
-                if aid and aid not in all_found:
-                    all_found[aid] = item
+        for item in results:
+            if stop_event.is_set():
+                break
 
-    total_found = len(all_found)
-    push_log(f"  📋 Phase 1 done — {total_found} unique apps found for '{keyword}'")
+            app_id = item.get("appId", "")
+            if not app_id or app_id in global_seen_ids:
+                continue
+            if is_dup(app_id, ""):
+                global_seen_ids.add(app_id)
+                continue
 
-    # Log raw results to sheet (all found apps)
-    raw_logged = 0
-    for aid, item in all_found.items():
-        if stop_event.is_set(): break
-        if not is_dup(aid, ""):
-            raw_inst = (item.get("minInstalls") or item.get("installs")
-                        or item.get("realInstalls") or 0)
-            sheet_append_raw(
-                app_id   = aid,
-                title    = item.get("title", "") or aid,
-                developer= item.get("developer", ""),
-                category = item.get("genre", ""),
-                installs = parse_installs(raw_inst),
-                score    = item.get("score") or None,
-                url      = f"https://play.google.com/store/apps/details?id={aid}",
-                keyword  = keyword,
+            # Full detail fetch -- multi-region for reliable rating data
+            details = fetch_app_details_reliable(app_id)
+            if details is None:
+                global_seen_ids.add(app_id)
+                continue
+
+            installs = parse_installs(details.get("minInstalls") or details.get("installs") or 0)
+            score    = details.get("score")
+            if score is not None:
+                try:    score = float(score)
+                except: score = None
+            if score == 0.0:
+                score = None
+
+            if not passes_filter(installs, score, hunter):
+                global_seen_ids.add(app_id)
+                continue
+
+            if not is_allowed_country(details):
+                global_seen_ids.add(app_id)
+                push_log(f"  Blocked country: {details.get('title', app_id)}")
+                continue
+
+            email = (
+                extract_email(details.get("developerEmail", ""))
+                or extract_email(details.get("privacyPolicy", ""))
+                or extract_email(details.get("description", ""))
+                or extract_email(details.get("recentChanges", ""))
             )
-            raw_logged += 1
-    push_log(f"  📝 {raw_logged} new apps logged to Raw Results sheet")
+            if not email:
+                global_seen_ids.add(app_id)
+                continue
 
-    # ── PHASE 2: Filter — detail fetch + requirement check + dedup + email ────
-    push_log(f"  🔍 PHASE 2 — Filtering {total_found} apps …")
-    leads      = []
-    leads_lock = threading.Lock()
+            email = email.lower().strip()
+            ok, reason = valid_email(email)
+            if not ok:
+                global_seen_ids.add(app_id)
+                push_log(f"  Bad email ({reason}): {email}")
+                continue
 
-    # Pre-filter using search result data (no API call needed)
-    candidates = {aid: item for aid, item in all_found.items()
-                  if _quick_filter(item, hunter) and aid not in global_seen_ids
-                  and not is_dup(aid, "")}
+            if email in global_seen_emails or is_dup("", email):
+                global_seen_ids.add(app_id)
+                push_log(f"  Dup email: {email}")
+                continue
 
-    push_log(f"  ✂️  Pre-filter: {len(candidates)}/{total_found} pass quick check → fetching details …")
+            lead = {
+                "app_id":      app_id,
+                "app_name":    details.get("title", ""),
+                "developer":   details.get("developer", ""),
+                "email":       email,
+                "category":    details.get("genre", ""),
+                "installs":    installs,
+                "score":       score,
+                "description": (details.get("description") or "")[:300],
+                "url":         f"https://play.google.com/store/apps/details?id={app_id}",
+                "icon":        details.get("icon", ""),
+                "keyword":     keyword,
+                "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
+                "email_sent":  False,
+            }
+            leads.append(lead)
+            global_seen_ids.add(app_id)
+            global_seen_emails.add(email)
+            register(app_id, email)
 
-    def process_one(item):
-        if stop_event.is_set(): return None
-        return _process_app(item, hunter, keyword)
+            s_str = f"{score:.1f}star" if score else "new"
+            push_log(f"  OK [{mode_label}] {lead['app_name']} | {installs:,} | {s_str} | {email}")
+            time.sleep(0.3)
 
-    items = list(candidates.values())
-    random.shuffle(items)
+        push_log(f"  [{country}] done. Leads so far: {len(leads)}")
+        time.sleep(0.5)
 
-    # Fetch details in parallel — 8 threads
-    with ThreadPoolExecutor(max_workers=8) as ex:
-        for lead in ex.map(process_one, items):
-            if lead:
-                with leads_lock:
-                    leads.append(lead)
-
-    push_log(f"  📦 '{keyword}' → Phase 1: {total_found} found | Phase 2: {len(leads)} qualified")
+    push_log(f"  {len(leads)} new leads from: {keyword}")
     sheet_log_keyword(keyword, len(leads))
     return leads
 
-
-# ── Email send ────────────────────────────────────────────────────────────────
 def send_email(lead,subject,body):
     if not lead.get("email"): return False
     ok,reason=valid_email(lead["email"])
@@ -880,10 +817,10 @@ def send_email(lead,subject,body):
             is_quota=any(x in err_text for x in ["quota","limit","exceeded","gmail","daily","429"])
             if result.get("status")=="ok" or (r.status_code==200 and not is_quota and "error" not in err_text[:60]):
                 _mark_script_ok(url)
-                push_log(f"  📧 Sent → {lead['email']}")
+                push_log(f"  📧 Sent -> {lead['email']}")
                 return True
             if is_quota:
-                push_log("  🔄 Quota hit — next script")
+                push_log("  🔄 Quota hit -- next script")
                 _mark_script_failed(url); _mark_script_failed(url); continue
             push_log(f"  ❌ Script err: {err_text[:60]}")
             _mark_script_failed(url)
@@ -942,7 +879,7 @@ def run_automation(initial_kw,target,hunter=None):
         if not batch:
             empty_streak+=1
             wait=min(45,8*empty_streak)+random.uniform(3,8)
-            push_log(f"  ⚠️  Empty ({empty_streak}) — {wait:.0f}s wait + refreshing proxies")
+            push_log(f"  ⚠️  Empty ({empty_streak}) -- {wait:.0f}s wait + refreshing proxies")
             refresh_proxy_pool()  # refresh proxies on empty streak
             for _ in range(int(wait)):
                 if stop_event.is_set(): break
@@ -1079,7 +1016,7 @@ def api_spam_test():
                            get_cfg("EMAIL_BODY") or DEFAULT_EMAIL_BODY)
     ok=send_email(sample,subj,body)
     if ok: return jsonify({"ok":True,"msg":f"Sent to {test_to}","subject":subj,"body":body})
-    return jsonify({"error":"Send failed — check email script URLs"}),500
+    return jsonify({"error":"Send failed -- check email script URLs"}),500
 
 @application.route("/api/sheet_pending",methods=["POST"])
 def api_sheet_pending():
