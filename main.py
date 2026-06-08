@@ -670,34 +670,18 @@ def _play_detail(app_id,lang="en",country="us"):
 
 
 def _quick_filter(item, hunter):
-    """Pre-filter from search result (no API call needed).
-    Search results have 'installs' as string e.g. '10,000+' — use parse_installs().
+    """Pre-filter from search result data only (no extra API call).
+    Reuses passes_filter() so logic is always consistent.
     """
-    # Try all possible install field names from search result
-    raw_installs = (item.get("minInstalls")
-                    or item.get("installs")
-                    or item.get("realInstalls")
-                    or 0)
-    installs = parse_installs(raw_installs)
-
-    score = item.get("score") or None
+    raw = (item.get("minInstalls") or item.get("installs")
+           or item.get("realInstalls") or 0)
+    installs = parse_installs(raw)
+    score    = item.get("score") or None
     if isinstance(score, str):
         try: score = float(score)
         except: score = None
     if score == 0.0: score = None
-
-    if hunter and hunter.get("active"):
-        max_inst  = int(hunter.get("max_installs") or 50000)
-        max_score = float(hunter.get("max_score") or 3.5)
-        if score is None or score == 0: return False   # hunter needs rating
-        if installs > max_inst:         return False
-        if score > max_score:           return False
-        return True
-
-    # Normal mode: no rating, low installs only
-    if score is not None and score > 0: return False
-    if installs > 10000:                return False
-    return True
+    return passes_filter(installs, score, hunter)
 
 
 def _process_app(item,hunter,keyword):

@@ -279,12 +279,16 @@ tbody tr:hover td { background: #13131c; }
       </div>
       <div class="hunter-fields" id="hunterFields">
         <div>
-          <div class="hf-label">Max Installs</div>
-          <input class="hf-input" id="hf-installs" type="number" placeholder="5000" value="5000"/>
+          <div class="hf-label">Max Installs (এর বেশি হলে বাদ)</div>
+          <input class="hf-input" id="hf-installs" type="number" placeholder="50000" value="50000"
+                 title="এই সংখ্যার বেশি install আছে এমন app collect হবে না"/>
+          <div style="font-size:9px;color:var(--slate2);margin-top:4px;">e.g. 50000 → max 50K install পর্যন্ত</div>
         </div>
         <div>
-          <div class="hf-label">Max Rating</div>
-          <input class="hf-input" id="hf-score" type="number" step="0.1" placeholder="2.5" value="2.5"/>
+          <div class="hf-label">Max Rating (এর বেশি হলে বাদ)</div>
+          <input class="hf-input" id="hf-score" type="number" step="0.1" placeholder="3.5" value="3.5"
+                 title="এই rating এর বেশি app collect হবে না"/>
+          <div style="font-size:9px;color:var(--slate2);margin-top:4px;">e.g. 3.5 → max 3.5★ পর্যন্ত</div>
         </div>
       </div>
     </div>
