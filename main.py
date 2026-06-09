@@ -664,37 +664,56 @@ def ai_gen_keywords(original,used):
 
 # ── Email template ────────────────────────────────────────────────────────────
 SENDER_NAME="PlayReview"
-DEFAULT_EMAIL_SUBJECT="Your {{app_name}} reviews on Google Play"
+DEFAULT_EMAIL_SUBJECT = "Quick note about {{app_name}}"
 DEFAULT_EMAIL_BODY = (
     "Hi {{developer}},\n\n"
-    "I noticed {{app_name}} on Google Play{{score_line}}.\n\n"
-    "Apps in your category live or die by their Play Store rating -- "
-    "even a 0.5 star improvement can double install rates.\n\n"
-    "We help app developers clean up their Play Store presence: removing unfair reviews, "
-    "building genuine social proof, and protecting their rating long-term.\n\n"
-    "If you are open to a quick 10-minute call this week, "
-    "I would love to show you what we have done for similar apps.\n\n"
-    "Best,\nPlayReview"
+    "I came across {{app_name}} on the Play Store{{score_line}}.\n\n"
+    "We work with app developers to improve their Play Store ratings and "
+    "handle unfair reviews professionally.\n\n"
+    "Would you have 10 minutes for a call this week to see if we can help?\n\n"
+    "Best,\n"
+    "PlayReview"
 )
 
-def build_html_email(plain_body,lead,unsubscribe_url=""):
-    lines=plain_body.strip().split("\n")
-    html_lines=[]
-    for line in lines:
-        line=line.strip()
-        if line:
-            html_lines.append(f'<p style="margin:0 0 12px;font-size:14px;line-height:1.6;color:#222;">{line}</p>')
+def build_html_email(plain_body: str, lead: dict, unsubscribe_url: str = "") -> str:
+    """
+    Minimal plain-text-style HTML.
+    Spam filters penalise: heavy CSS, many images, big HTML, tracking pixels,
+    URL shorteners, and mismatched text/HTML content.
+    This template avoids ALL of that.
+    """
+    # Convert plain text to simple HTML — no divs, no tables, no inline colours
+    html_lines = []
+    for line in plain_body.strip().split("\n"):
+        stripped = line.strip()
+        if stripped:
+            # Escape HTML special chars
+            safe = stripped.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
+            html_lines.append(f"<p>{safe}</p>")
         else:
-            html_lines.append('<br>')
-    body_html="\n".join(html_lines)
-    unsub=""
+            html_lines.append("<br>")
+    body_html = "\n".join(html_lines)
+
+    # Tiny unsubscribe footer — plain text style
+    unsub_html = ""
     if unsubscribe_url:
-        unsub=(f'<p style="margin:32px 0 0;font-size:11px;color:#aaa;border-top:1px solid #eee;'
-               f'padding-top:12px;text-align:center;">'
-               f'<a href="{unsubscribe_url}" style="color:#aaa;text-decoration:underline;">Unsubscribe</a></p>')
-    return (f'<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
-            f'<body style="margin:0;padding:20px;font-family:Arial,sans-serif;background:#fff;max-width:580px;">'
-            f'{body_html}{unsub}</body></html>')
+        unsub_html = (
+            f'<p style="font-size:11px;color:#999;margin-top:28px;">'
+            f'<a href="{unsubscribe_url}" style="color:#999;">Unsubscribe</a>'
+            f'</p>'
+        )
+
+    # Bare-minimum HTML — no style tags, no background, no tracking
+    return (
+        "<!DOCTYPE html>\n"
+        "<html>\n"
+        "<head><meta charset=\"UTF-8\"></head>\n"
+        "<body>\n"
+        f"{body_html}\n"
+        f"{unsub_html}\n"
+        "</body>\n"
+        "</html>"
+    )
 
 def fill_template(tpl,lead):
     score=lead.get("score")
@@ -708,35 +727,56 @@ def fill_template(tpl,lead):
                .replace("{{url}}",lead.get("url",""))
                .replace("{{sender_name}}",SENDER_NAME))
 
-def ai_gen_email(lead,base_subject,base_body):
-    key=get_cfg("GROQ_API_KEY")
+def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple:
+    # Generate personalised anti-spam email
+    key = get_cfg("GROQ_API_KEY")
     if not key:
-        return fill_template(base_subject,lead),fill_template(base_body,lead)
-    score=lead.get("score")
-    score_info=f"{score:.1f} stars" if score else "no rating yet (brand new)"
-    install_info=f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
+        return fill_template(base_subject, lead), fill_template(base_body, lead)
+
+    score        = lead.get("score")
+    score_info   = f"{score:.1f} stars" if score else "no rating yet"
+    install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
+
+    prompt = (
+        "You are writing a short cold email to an app developer.\n\n"
+        f"TEMPLATE:\nSubject: {base_subject}\nBody:\n{base_body}\n\n"
+        f"APP: {lead.get('app_name','')} | Dev: {lead.get('developer','')} | "
+        f"Cat: {lead.get('category','')} | {install_info} | {score_info}\n\n"
+        "ANTI-SPAM RULES (must follow all):\n"
+        "1. Under 120 words in body\n"
+        "2. No exclamation marks\n"
+        "3. No ALL CAPS\n"
+        "4. No spam words: free, guarantee, urgent, act now, limited time, click here,\n"
+        "   earn money, cash, prize, offer, deal, discount, congratulations, amazing,\n"
+        "   incredible, opportunity, risk-free, winner, buy now\n"
+        "5. Sound like a real person, not marketing\n"
+        "6. One ask only, no multiple CTAs\n"
+        "7. Subject: max 7 words, no spam words\n\n"
+        'Return ONLY valid JSON: {"subject": "...", "body": "..."}\n'
+        "Use \\n for line breaks. No markdown."
+    )
+
     try:
-        client=Groq(api_key=key)
-        prompt=(f"Personalise this cold email for a specific app developer.\n"
-                f"Short, direct, personal. Max 120 words.\n\n"
-                f"TEMPLATE:\nSubject: {base_subject}\nBody:\n{base_body}\n\n"
-                f"APP: {lead.get('app_name','')} | Dev: {lead.get('developer','')} | "
-                f"Cat: {lead.get('category','')} | {install_info} | {score_info}\n\n"
-                f"Return ONLY JSON: {{\"subject\":\"...\",\"body\":\"...\"}}\nUse \\n for line breaks.")
-        resp=client.chat.completions.create(
+        client = Groq(api_key=key)
+        resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role":"user","content":prompt}],
-            temperature=0.4,max_tokens=400
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.35,
+            max_tokens=400
         )
-        raw=resp.choices[0].message.content.strip()
-        raw=re.sub(r"```[a-z]*","",raw).replace("```","").strip()
-        data=json.loads(raw)
-        subj=data.get("subject") or fill_template(base_subject,lead)
-        body=data.get("body")    or fill_template(base_body,lead)
-        return subj,body.replace("\\n","\n")
+        raw  = resp.choices[0].message.content.strip()
+        raw  = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
+        data = json.loads(raw)
+        subj = data.get("subject") or fill_template(base_subject, lead)
+        body = data.get("body")    or fill_template(base_body, lead)
+        body = body.replace("\\n", "\n")
+        subj = subj.replace("!", "").strip()
+        body = body.replace("!", ".")
+        return subj, body
     except Exception as e:
         push_log(f"  AI email fallback: {e}")
-        return fill_template(base_subject,lead),fill_template(base_body,lead)
+        return fill_template(base_subject, lead), fill_template(base_body, lead)
+
 
 def _unsub_token(email):
     salt=os.environ.get("UNSUB_SALT","playleadbot-2024")
@@ -936,8 +976,15 @@ def send_email(lead,subject,body):
 
         try:
             r=req_lib.post(url,json={
-                "to":lead["email"],"subject":subject,"body":body,"html":html_body,
-                "sender_name":SENDER_NAME,"unsubscribe":unsub_url,"list_unsubscribe":unsub_url,
+                "to":              lead["email"],
+                "subject":         subject,
+                "body":            body,
+                "html":            html_body,
+                "sender_name":     SENDER_NAME,
+                "unsubscribe":     unsub_url,
+                "list_unsubscribe":unsub_url,
+                "reply_to":        get_cfg("SENDER_EMAIL",""),
+                "app_name":        lead.get("app_name",""),
             },proxies=proxies,timeout=30)
             try:    result=r.json()
             except: result={}
