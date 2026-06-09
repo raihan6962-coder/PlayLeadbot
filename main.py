@@ -445,28 +445,156 @@ def register(app_id,email):
 
 
 # ── Email validation ──────────────────────────────────────────────────────────
-DISPOSABLE={"mailinator.com","guerrillamail.com","10minutemail.com","trashmail.com",
-            "yopmail.com","throwam.com","sharklasers.com","spam4.me","tempmail.com",
-            "fakeinbox.com","maildrop.cc","dispostable.com","mailnull.com"}
-EMAIL_RE  =re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
-SYNTAX_RE =re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
+# ── Email validation — strong multi-layer ────────────────────────────────────
+EMAIL_RE  = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
+SYNTAX_RE = re.compile(r'^[a-zA-Z0-9][a-zA-Z0-9._%+\-]*@[a-zA-Z0-9][a-zA-Z0-9.\-]*\.[a-zA-Z]{2,15}$')
 
-def valid_email(email):
-    if not email: return False,"empty"
-    email=email.strip().lower()
-    if not SYNTAX_RE.match(email): return False,"bad_syntax"
-    domain=email.split("@")[-1]
-    if domain in DISPOSABLE: return False,"disposable"
+# Layer 1: Disposable/temp email domains
+DISPOSABLE_DOMAINS = {
+    "mailinator.com","guerrillamail.com","guerrillamail.info","guerrillamail.biz",
+    "guerrillamail.de","guerrillamail.net","guerrillamail.org","10minutemail.com",
+    "trashmail.com","trashmail.me","trashmail.net","trashmail.io","trashmail.at",
+    "yopmail.com","throwam.com","sharklasers.com","spam4.me","tempmail.com",
+    "fakeinbox.com","maildrop.cc","dispostable.com","mailnull.com","spamgourmet.com",
+    "discard.email","getnada.com","tempr.email","33mail.com","spamex.com",
+    "mailexpire.com","spamfree24.org","spamtrail.com","deadaddress.com","spambob.com",
+    "getairmail.com","filzmail.com","jetable.fr.nf","nomail.xl.cx","spamhole.com",
+    "throwam.com","spamthisplease.com","mailnew.com","trashdevil.com","tempemail.net",
+    "mytempemail.com","spamgob.com","binkmail.com","mailscrap.com","tempinbox.com",
+    "throwaway.email","spamherelots.com","mailninja.co.uk","trbvm.com","trbvn.com",
+    "drdrb.com","drdrb.net","yopmail.fr","cool.fr.nf","jetable.fr.nf",
+}
+
+# Layer 2: Role/alias addresses that bounce or are unmonitored
+ROLE_PREFIXES = {
+    "noreply","no-reply","no_reply","donotreply","do-not-reply","do_not_reply",
+    "bounce","bounces","mailer-daemon","mailer_daemon","postmaster","postmaster",
+    "abuse","spam","junk","trash","delete","deleted","remove","removed",
+    "unsubscribe","optout","opt-out","opt_out",
+    "webmaster","hostmaster","usenet","news","uucp","ftp",
+    "notifications","notification","alert","alerts","automated","auto",
+    "system","robot","bot","daemon","service",
+}
+
+# Layer 3: Generic addresses unlikely to be a real developer
+GENERIC_PREFIXES = {
+    "info","contact","hello","hi","hey","help","helpdesk","desk","team",
+    "support","admin","administrator","office","general","enquiries","enquiry",
+    "feedback","mail","email","reply","returns","orders","sales","billing",
+    "accounts","account","finance","legal","hr","jobs","careers","press",
+    "media","marketing","pr","privacy","security","compliance","ops","dev",
+    "developer","developers","app","apps","mobile","web","it","tech",
+}
+
+# Layer 4: Fake/test/placeholder domains
+FAKE_DOMAINS = {
+    "example.com","example.org","example.net","test.com","test.org","test.net",
+    "test.io","testing.com","localhost","domain.com","email.com","yourdomain.com",
+    "yoursite.com","yourcompany.com","company.com","website.com","site.com",
+    "placeholder.com","changeme.com","dummy.com","fake.com","invalid.com",
+    "nowhere.com","noemail.com","notreal.com","notanemail.com","na.com",
+    "n-a.com","none.com","null.com","undefined.com","unknown.com",
+}
+
+# MX record cache to avoid repeated DNS lookups
+_mx_cache: dict = {}
+_mx_cache_lock = threading.Lock()
+
+def _check_mx(domain: str, timeout: int = 5) -> bool:
+    """Check if domain has MX records (can receive email)."""
+    with _mx_cache_lock:
+        if domain in _mx_cache:
+            return _mx_cache[domain]
+
+    result = False
     try:
-        socket.setdefaulttimeout(4)
-        socket.getaddrinfo(domain,None)
-    except: return False,"no_dns"
-    return True,"ok"
+        import dns.resolver
+        dns.resolver.resolve(domain, "MX", lifetime=timeout)
+        result = True
+    except Exception:
+        # Fallback: check A record (some small domains use A record for mail)
+        try:
+            socket.setdefaulttimeout(timeout)
+            socket.getaddrinfo(domain, None)
+            result = True
+        except Exception:
+            result = False
 
-def extract_email(text):
-    if not text: return ""
-    m=EMAIL_RE.search(str(text))
-    return m.group(0) if m else ""
+    with _mx_cache_lock:
+        _mx_cache[domain] = result
+    return result
+
+
+def valid_email(email: str) -> tuple:
+    """
+    6-layer email validation:
+    1. Syntax check (strict regex)
+    2. Length limits
+    3. Disposable domain check
+    4. Fake/placeholder domain check
+    5. Role/noreply prefix check
+    6. Generic alias check (info@, contact@, etc.)
+    7. MX record check (domain can receive email)
+    Returns (is_valid: bool, reason: str)
+    """
+    if not email:
+        return False, "empty"
+
+    email = email.strip().lower()
+
+    # Layer 1: Syntax
+    if not SYNTAX_RE.match(email):
+        return False, "bad_syntax"
+
+    # Layer 2: Length
+    local, domain = email.split("@", 1)
+    if len(local) < 2 or len(local) > 64:
+        return False, "bad_length"
+    if len(domain) < 4 or len(domain) > 253:
+        return False, "bad_domain_length"
+
+    # Layer 3: Disposable domains
+    if domain in DISPOSABLE_DOMAINS:
+        return False, "disposable"
+
+    # Layer 4: Fake/placeholder domains
+    if domain in FAKE_DOMAINS:
+        return False, "fake_domain"
+
+    # Layer 5: Role/noreply prefixes (exact match + common patterns)
+    local_clean = re.split(r"[.+_\-]", local)[0]  # first part before separator
+    if local in ROLE_PREFIXES or local_clean in ROLE_PREFIXES:
+        return False, "role_address"
+
+    # Layer 6: Generic aliases — only reject if EXACTLY matching
+    # (e.g. info@domain.com rejected, but johninfo@domain.com accepted)
+    if local in GENERIC_PREFIXES:
+        return False, "generic_alias"
+
+    # Layer 7: MX record check (domain can actually receive email)
+    if not _check_mx(domain):
+        return False, "no_mx_record"
+
+    return True, "ok"
+
+
+def extract_email(text: str) -> str:
+    if not text:
+        return ""
+    candidates = EMAIL_RE.findall(str(text))
+    if not candidates:
+        return ""
+    # Prefer emails that pass basic checks (not role/noreply/generic)
+    for candidate in candidates:
+        c = candidate.lower().strip()
+        local = c.split("@")[0] if "@" in c else ""
+        local_clean = re.split(r"[.+_\-]", local)[0]
+        if (local not in ROLE_PREFIXES and
+            local_clean not in ROLE_PREFIXES and
+            local not in GENERIC_PREFIXES):
+            return c
+    # fallback: return first found
+    return candidates[0].lower().strip()
 
 
 # ── FILTER ────────────────────────────────────────────────────────────────────
