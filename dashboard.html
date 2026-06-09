@@ -736,31 +736,12 @@ https://script.google.com/macros/s/SCRIPT4_URL.../exec"></textarea>
         <div class="code-block" id="emailCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var plainBody = data.body || "";
-    var htmlBody  = data.html || plainBody;
-
+    var htmlBody = data.html || data.body;
     var options = {
-      htmlBody:  htmlBody,
-      name:      data.sender_name || "PlayReview"
+      htmlBody: htmlBody,
+      name: data.sender_name || "PlayLead"
     };
-
-    // List-Unsubscribe header -- critical for inbox delivery
-    var headers = {};
-    if (data.list_unsubscribe) {
-      headers["List-Unsubscribe"] = "<" + data.list_unsubscribe + ">";
-      headers["List-Unsubscribe-Post"] = "List-Unsubscribe=One-Click";
-    }
-    if (Object.keys(headers).length > 0) {
-      options.headers = headers;
-    }
-
-    // Reply-To if set
-    if (data.reply_to) {
-      options.replyTo = data.reply_to;
-    }
-
-    GmailApp.sendEmail(data.to, data.subject, plainBody, options);
-
+    GmailApp.sendEmail(data.to, data.subject, data.body, options);
     return ContentService
       .createTextOutput(JSON.stringify({status: "ok"}))
       .setMimeType(ContentService.MimeType.JSON);
