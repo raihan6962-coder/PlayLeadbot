@@ -1,11 +1,10 @@
-import os, time, random, threading, json, re, logging, socket
+import os, time, random, threading, json, re, logging, socket, urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google_play_scraper import search, app as gp_app
 from groq import Groq
 import requests
-import urllib.request, urllib.error
 
 # ── Flask setup ───────────────────────────────────────────────────────────────
 application = Flask(__name__, static_folder=".")
@@ -15,21 +14,23 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 log = logging.getLogger(__name__)
 
 # ── Shared state ──────────────────────────────────────────────────────────────
-stop_event = threading.Event()
-state_lock = threading.Lock()
+stop_event  = threading.Event()
+state_lock  = threading.Lock()
 state = {
     "running": False, "phase": "idle", "keyword": "",
     "keywords_used": [], "leads_found": 0, "emails_sent": 0,
     "logs": [], "leads": []
 }
 
-# ── Global duplicate tracker ──────────────────────────────────────────────────
-global_seen_ids:    set = set()
+# ── Global duplicate tracker — persists across runs until clear ───────────────
+# These are populated from in-memory scraping deduplication
+global_seen_ids: set = set()
 global_seen_emails: set = set()
 
-# ── Sheet-based memory ────────────────────────────────────────────────────────
-sheet_memory_ids:    set  = set()
-sheet_memory_emails: set  = set()
+# ── Sheet-based memory — loaded from Google Sheet at automation start ──────────
+# These persist for the entire lifetime of the server process
+sheet_memory_ids: set = set()
+sheet_memory_emails: set = set()
 sheet_memory_loaded: bool = False
 sheet_memory_lock = threading.Lock()
 
@@ -49,49 +50,84 @@ def upd(**kw):
     with state_lock:
         state.update(kw)
 
-# ── Allowed / Blocked developer countries ─────────────────────────────────────
+# ── Allowed developer countries (Rich/large countries only) ──────────────────
+# Apps from developers in poor/small countries are skipped.
+# We check the app's "developerCountry" or "country" field from Play Store.
+# These are ISO-3166-1 alpha-2 country codes for ALLOWED countries.
 ALLOWED_COUNTRIES = {
-    "US","GB","CA","AU","NZ","DE","FR","NL","SE","NO",
-    "DK","FI","CH","AT","BE","IE","SG","JP","KR","IL",
-    "IT","ES","PT","PL","CZ","HU","RO","GR","ZA","AE",
-    "SA","QA","KW","BH","MX","BR","AR","CL","CO",
+    "US", "GB", "CA", "AU", "NZ", "DE", "FR", "NL", "SE", "NO",
+    "DK", "FI", "CH", "AT", "BE", "IE", "SG", "JP", "KR", "IL",
+    "IT", "ES", "PT", "PL", "CZ", "HU", "RO", "GR", "ZA", "AE",
+    "SA", "QA", "KW", "BH", "MX", "BR", "AR", "CL", "CO",
 }
+
+# Countries that are explicitly BLOCKED (poor/small countries)
 BLOCKED_COUNTRIES = {
-    "BD","IN","PK","NG","GH","KE","TZ","UG","ET","EG",
-    "MA","TN","DZ","LY","SD","SO","AO","MZ","ZM","ZW",
-    "MW","RW","SN","CI","CM","CD","MG","MM","KH","LA",
-    "NP","LK","AF","IQ","SY","YE","LB","JO","PS","PH",
-    "ID","VN","TH","MY",
+    "BD", "IN", "PK", "NG", "GH", "KE", "TZ", "UG", "ET", "EG",
+    "MA", "TN", "DZ", "LY", "SD", "SO", "AO", "MZ", "ZM", "ZW",
+    "MW", "RW", "SN", "CI", "CM", "CD", "MG", "MM", "KH", "LA",
+    "NP", "LK", "AF", "IQ", "SY", "YE", "LB", "JO", "PS", "PH",
+    "ID", "VN", "TH", "MY",
 }
 
 def is_allowed_country(details: dict) -> bool:
-    country_code = (details.get("developerCountry") or details.get("country") or "").upper().strip()
+    """
+    Check if the app developer is from an allowed country.
+    google-play-scraper returns 'developerAddress' or 'country' or 'recentChangesHTML'.
+    We use a best-effort approach checking available fields.
+    """
+    # Check explicit country code fields if available
+    country_code = (
+        details.get("developerCountry") or
+        details.get("country") or
+        ""
+    ).upper().strip()
+
     if country_code:
-        if country_code in BLOCKED_COUNTRIES: return False
+        if country_code in BLOCKED_COUNTRIES:
+            return False
+        if country_code in ALLOWED_COUNTRIES:
+            return True
+        # Unknown country — allow by default (don't over-block)
         return True
+
+    # Fallback: check developer address for country name keywords
     dev_address = (details.get("developerAddress") or "").lower()
-    if not dev_address: return True
+    if not dev_address:
+        # No country info at all — allow (we can't determine)
+        return True
+
     blocked_keywords = [
-        "bangladesh","dhaka","chittagong",
-        "india","mumbai","delhi","bangalore","hyderabad","chennai","kolkata","pune",
-        "pakistan","karachi","lahore","islamabad",
-        "nigeria","lagos","abuja",
-        "kenya","nairobi","ghana","accra",
-        "indonesia","jakarta","philippines","manila",
-        "vietnam","hanoi","ho chi minh","myanmar","yangon",
-        "cambodia","phnom penh","nepal","kathmandu",
-        "sri lanka","colombo","ethiopia","addis ababa",
-        "egypt","cairo","morocco","casablanca",
-        "tanzania","dar es salaam","uganda","kampala",
+        "bangladesh", "dhaka", "chittagong",
+        "india", "mumbai", "delhi", "bangalore", "hyderabad", "chennai", "kolkata", "pune",
+        "pakistan", "karachi", "lahore", "islamabad",
+        "nigeria", "lagos", "abuja",
+        "kenya", "nairobi",
+        "ghana", "accra",
+        "indonesia", "jakarta",
+        "philippines", "manila",
+        "vietnam", "hanoi", "ho chi minh",
+        "myanmar", "yangon",
+        "cambodia", "phnom penh",
+        "nepal", "kathmandu",
+        "sri lanka", "colombo",
+        "ethiopia", "addis ababa",
+        "egypt", "cairo",
+        "morocco", "casablanca",
+        "tanzania", "dar es salaam",
+        "uganda", "kampala",
     ]
     for kw in blocked_keywords:
-        if kw in dev_address: return False
+        if kw in dev_address:
+            return False
+
     return True
 
 # ── Google Sheet via Apps Script ──────────────────────────────────────────────
 def sheet_post(payload: dict):
     url = get_cfg("APPS_SCRIPT_WEB_URL")
-    if not url: return None
+    if not url:
+        return None
     try:
         r = requests.post(url, json=payload, timeout=15)
         return r.json() if r.text else {}
@@ -101,22 +137,22 @@ def sheet_post(payload: dict):
 
 def sheet_append_lead(lead: dict):
     sheet_post({"action": "append", "tab": "All Leads", "row": {
-        "App Name":   lead["app_name"],  "Developer": lead["developer"],
-        "Email":      lead["email"],     "Category":  lead["category"],
-        "Installs":   lead["installs"],  "Score":     lead["score"] or "",
-        "URL":        lead["url"],       "Keyword":   lead["keyword"],
-        "Scraped At": lead["scraped_at"],"Email Sent":"No",
-        "App ID":     lead["app_id"],
+        "App Name": lead["app_name"], "Developer": lead["developer"],
+        "Email": lead["email"], "Category": lead["category"],
+        "Installs": lead["installs"], "Score": lead["score"] or "",
+        "URL": lead["url"], "Keyword": lead["keyword"],
+        "Scraped At": lead["scraped_at"], "Email Sent": "No",
+        "App ID": lead["app_id"],
     }})
 
 def sheet_append_qualified(lead: dict):
     sheet_post({"action": "append", "tab": "Qualified Leads", "row": {
-        "App Name":   lead["app_name"],  "Developer": lead["developer"],
-        "Email":      lead["email"],     "Category":  lead["category"],
-        "Installs":   lead["installs"],  "Score":     lead["score"] or "",
-        "URL":        lead["url"],       "Keyword":   lead["keyword"],
-        "Scraped At": lead["scraped_at"],"Email Sent":"Pending",
-        "App ID":     lead["app_id"],
+        "App Name": lead["app_name"], "Developer": lead["developer"],
+        "Email": lead["email"], "Category": lead["category"],
+        "Installs": lead["installs"], "Score": lead["score"] or "",
+        "URL": lead["url"], "Keyword": lead["keyword"],
+        "Scraped At": lead["scraped_at"], "Email Sent": "Pending",
+        "App ID": lead["app_id"],
     }})
 
 def sheet_mark_sent(app_id: str, email: str, app_name: str):
@@ -132,256 +168,162 @@ def sheet_log_keyword(keyword: str, count: int):
         "Logged At": time.strftime("%Y-%m-%d %H:%M:%S"),
     }})
 
-# ── Sheet Memory ──────────────────────────────────────────────────────────────
+# ── Sheet Memory: Load all existing records at startup ─────────────────────────
 def load_sheet_memory():
+    """
+    Fetch ALL existing records from the sheet (All Leads tab) and store
+    app_id and email in memory sets. This prevents duplicates across runs.
+
+    Called once at the start of each automation run.
+    The Apps Script must support {"action": "get_all"} and return:
+    {"records": [{"App ID": "...", "Email": "..."}, ...]}
+    """
     global sheet_memory_ids, sheet_memory_emails, sheet_memory_loaded
+
     url = get_cfg("APPS_SCRIPT_WEB_URL")
     if not url:
         push_log("⚠️  No APPS_SCRIPT_WEB_URL — sheet memory disabled")
-        with sheet_memory_lock: sheet_memory_loaded = True
+        with sheet_memory_lock:
+            sheet_memory_loaded = True
         return
-    push_log("📋 Loading sheet memory …")
+
+    push_log("📋 Loading sheet memory (existing records) …")
     try:
         r = requests.post(url, json={"action": "get_all", "tab": "All Leads"}, timeout=30)
         result = r.json() if r.text else {}
         records = result.get("records", [])
-        new_ids, new_emails = set(), set()
+
+        new_ids    = set()
+        new_emails = set()
         for rec in records:
-            aid = (rec.get("App ID") or "").strip()
-            em  = (rec.get("Email")  or "").strip().lower()
-            if aid: new_ids.add(aid)
-            if em:  new_emails.add(em)
+            app_id = (rec.get("App ID") or "").strip()
+            email  = (rec.get("Email") or "").strip().lower()
+            if app_id:
+                new_ids.add(app_id)
+            if email:
+                new_emails.add(email)
+
         with sheet_memory_lock:
             sheet_memory_ids    = new_ids
             sheet_memory_emails = new_emails
             sheet_memory_loaded = True
-        push_log(f"✅ Sheet memory: {len(new_ids)} IDs, {len(new_emails)} emails")
+
+        push_log(f"✅ Sheet memory loaded: {len(new_ids)} app IDs, {len(new_emails)} emails already in sheet")
     except Exception as e:
-        push_log(f"⚠️  Sheet memory load failed: {e}")
-        with sheet_memory_lock: sheet_memory_loaded = True
+        push_log(f"⚠️  Sheet memory load failed: {e} — continuing without sheet dedup")
+        with sheet_memory_lock:
+            sheet_memory_loaded = True
 
 def is_duplicate_in_sheet(app_id: str, email: str) -> bool:
+    """Check if this app_id or email already exists in the sheet memory."""
     with sheet_memory_lock:
-        if app_id and app_id in sheet_memory_ids:    return True
-        if email  and email.lower() in sheet_memory_emails: return True
+        if app_id and app_id in sheet_memory_ids:
+            return True
+        if email and email.lower() in sheet_memory_emails:
+            return True
     return False
 
 def register_in_sheet_memory(app_id: str, email: str):
+    """Add a newly accepted lead to sheet memory so we don't add it again."""
     with sheet_memory_lock:
-        if app_id: sheet_memory_ids.add(app_id)
-        if email:  sheet_memory_emails.add(email.lower())
+        if app_id:
+            sheet_memory_ids.add(app_id)
+        if email:
+            sheet_memory_emails.add(email.lower())
 
-# ══════════════════════════════════════════════════════════════════════════════
-# EMAIL VALIDATION
-# ══════════════════════════════════════════════════════════════════════════════
-DISPOSABLE_DOMAINS = {
-    "mailinator.com","guerrillamail.com","10minutemail.com","trashmail.com",
-    "yopmail.com","throwam.com","sharklasers.com","guerrillamail.info",
-    "guerrillamail.biz","guerrillamail.de","guerrillamail.net","guerrillamail.org",
-    "spam4.me","tempmail.com","fakeinbox.com","maildrop.cc","dispostable.com",
-    "mailnull.com","spamgourmet.com","discard.email","getnada.com",
-    "tempr.email","33mail.com","spamex.com","mailexpire.com",
-    "spamfree24.org","spamtrail.com","deadaddress.com","spambob.com",
-}
-EMAIL_SYNTAX_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
-
-def verify_email_syntax(email: str) -> bool:
-    if not email or len(email) > 254: return False
-    return bool(EMAIL_SYNTAX_RE.match(email))
-
-def verify_email_domain_dns(domain: str, timeout: int = 5) -> bool:
-    try:
-        socket.setdefaulttimeout(timeout)
-        socket.getaddrinfo(domain, None)
-        return True
-    except (socket.gaierror, socket.timeout, OSError):
-        return False
-
-def is_valid_email(email: str) -> tuple:
-    if not email: return False, "empty"
-    email = email.strip().lower()
-    if not verify_email_syntax(email):    return False, "invalid_syntax"
-    domain = email.split("@")[-1].lower()
-    if domain in DISPOSABLE_DOMAINS:      return False, "disposable_domain"
-    if not verify_email_domain_dns(domain): return False, "domain_not_found"
-    return True, "ok"
-
-# ══════════════════════════════════════════════════════════════════════════════
-# APP DETAIL FETCH — 100% accurate, direct Play Store HTML cross-check
-# ══════════════════════════════════════════════════════════════════════════════
-PLAY_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-}
-
-def _scrape_play_html(app_id: str) -> dict:
-    """Direct Play Store HTML scrape for accurate score + installs."""
-    url = f"https://play.google.com/store/apps/details?id={app_id}&hl=en&gl=us"
-    result = {}
-    try:
-        req = urllib.request.Request(url, headers=PLAY_HEADERS)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html = resp.read(500_000).decode("utf-8", errors="ignore")
-    except Exception:
-        return result
-
-    # Score — try multiple patterns
-    for pat in [
-        r'"starRating"\s*:\s*"?([\d.]+)"?',
-        r'"ratingValue"\s*:\s*"?([\d.]+)"?',
-        r'itemprop="ratingValue"\s+content="([\d.]+)"',
-        r'Rated\s+([\d.]+)\s+(?:stars?|out)',
-    ]:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            try:
-                v = float(m.group(1))
-                if 0 < v <= 5:
-                    result["score"] = round(v, 1)
-                    break
-            except: pass
-
-    # Installs — multiple patterns
-    for pat in [
-        r'"numDownloads"\s*:\s*"([^"]+)"',
-        r'([\d,]+\+?)\s+downloads',
-        r'"([\d,.]+[KMB]?\+?)"\s*,\s*"Installs"',
-    ]:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            raw = m.group(1).replace(",", "").strip()
-            parsed = _parse_installs(raw)
-            if parsed >= 0:
-                result["minInstalls"] = parsed
-                break
-
-    # Developer email from mailto
-    em = re.search(r'href="mailto:([^"?&\s]+)"', html)
-    if em:
-        result["developerEmail"] = em.group(1).strip()
-
-    return result
-
-def _parse_installs(val) -> int:
-    if val is None: return 0
-    s = str(val).strip().replace(",", "").replace("+", "").upper()
-    if not s: return 0
-    try:
-        if s.endswith("B"): return int(float(s[:-1]) * 1_000_000_000)
-        if s.endswith("M"): return int(float(s[:-1]) * 1_000_000)
-        if s.endswith("K"): return int(float(s[:-1]) * 1_000)
-        return int(float(s))
-    except: return 0
-
-def fetch_app_details_reliable(app_id: str) -> dict | None:
-    """
-    Fetch from google-play-scraper (3 regions) then cross-validate
-    with direct HTML scrape. Returns the most accurate combined result.
-    """
-    best = None
-
-    for lang, country in [("en","us"), ("en","gb"), ("en","au")]:
-        try:
-            d = gp_app(app_id, lang=lang, country=country)
-            if d is None: continue
-            sc = d.get("score")
-            try: sc = float(sc) if sc else None
-            except: sc = None
-            if sc == 0.0: sc = None
-
-            if best is None:
-                best = dict(d)
-                best["score"] = sc
-            elif sc is not None and best.get("score") is None:
-                best = dict(d)
-                best["score"] = sc
-
-            if best.get("score") is not None:
-                break
-        except Exception:
-            time.sleep(0.3)
-            continue
-
-    if best is None:
-        return None
-
-    # Cross-validate with HTML scrape for accuracy
-    try:
-        html_data = _scrape_play_html(app_id)
-        if html_data.get("score") and html_data["score"] > 0:
-            best["score"] = html_data["score"]
-        if html_data.get("minInstalls", 0) > 0:
-            api_inst = _parse_installs(best.get("minInstalls") or 0)
-            if api_inst == 0:
-                best["minInstalls"] = html_data["minInstalls"]
-        if html_data.get("developerEmail") and not best.get("developerEmail"):
-            best["developerEmail"] = html_data["developerEmail"]
-    except Exception:
-        pass
-
-    return best
-
-# ══════════════════════════════════════════════════════════════════════════════
-# KEYWORD GENERATION
-# ══════════════════════════════════════════════════════════════════════════════
-KEYWORD_GENERATION_SYSTEM_PROMPT = """You are a Google Play Store keyword expert specializing in finding apps that need review management or reputation improvement services.
-
-CONTEXT: We offer a Play Store review improvement service to app developers. We target apps that either:
-- Have poor ratings (1.0-2.5 stars) and need reputation recovery (Hunter Mode)
-- Are brand new with no ratings yet and need their first reviews (Normal Mode)
-
-YOUR GOAL: Generate search keywords that find REAL apps in the SAME niche as the original keyword, where developers are likely to need and pay for review improvement services.
-
-STRICT RULES:
-- Stay in the EXACT same niche/industry as the original keyword
-- Do NOT drift into tangentially related industries
-- Keywords must be specific enough to find real apps on Play Store
-- Focus on niches: fintech, productivity, business tools, health/fitness, education, food delivery, local services, e-commerce, utilities
-- Each keyword should be a realistic 2-5 word Play Store search query
-- Avoid single-word generic keywords
-
-Return ONLY a valid JSON array of strings. No markdown, no explanation."""
-
+# ── AI keyword generation ─────────────────────────────────────────────────────
 def ai_gen_keywords(original: str, used: list) -> list:
     key = get_cfg("GROQ_API_KEY")
     if not key:
-        push_log("GROQ_API_KEY not set — using fallback keywords")
+        push_log("GROQ_API_KEY not set")
         return []
+    client = Groq(api_key=key)
+    prompt = (
+        f"You are a Google Play Store keyword expert.\n"
+        f"Original keyword: '{original}'\n"
+        f"Already used: {', '.join(used) if used else 'none'}\n"
+        f"Generate 8 NEW semantically similar Play Store search keywords "
+        f"that would find small/new apps in the same niche. "
+        f"Return ONLY a JSON array of strings, nothing else."
+    )
     try:
-        client = Groq(api_key=key)
-        prompt = (
-            f"Original keyword: '{original}'\n"
-            f"Already used (do NOT repeat): {', '.join(used) if used else 'none'}\n\n"
-            f"Generate exactly 10 NEW Google Play Store search keywords in the SAME niche as '{original}'.\n"
-            f"Target small/indie apps that may need review improvement services.\n"
-            f"Return ONLY a JSON array of 10 strings."
-        )
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[
-                {"role": "system", "content": KEYWORD_GENERATION_SYSTEM_PROMPT},
-                {"role": "user",   "content": prompt}
-            ],
-            temperature=0.6, max_tokens=400
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.8, max_tokens=300
         )
         raw = resp.choices[0].message.content.strip()
         raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
         kws = json.loads(raw)
-        valid = [k for k in kws if isinstance(k, str) and k.strip() and k not in used]
-        push_log(f"🤖 AI keywords: {valid}")
-        return valid
+        push_log(f"AI keywords: {kws}")
+        return [k for k in kws if k not in used]
     except Exception as e:
         push_log(f"AI keyword error: {e}")
         return []
 
-# ══════════════════════════════════════════════════════════════════════════════
-# EMAIL TEMPLATE
-# ══════════════════════════════════════════════════════════════════════════════
+# ── AI email generation per lead ──────────────────────────────────────────────
+def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, str]:
+    """Generate a personalized email keeping the template structure intact."""
+    key = get_cfg("GROQ_API_KEY")
+    sender_name    = get_cfg("SENDER_NAME", "Your Name")
+    sender_company = get_cfg("SENDER_COMPANY", "Your Company")
+
+    if not key:
+        subject = fill_template(base_subject, lead)
+        body    = fill_template(base_body, lead)
+        return subject, body
+
+    client = Groq(api_key=key)
+    score_info   = f"{lead['score']:.1f} stars" if lead.get("score") else "no ratings yet (brand new)"
+    install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
+
+    prompt = f"""You are a cold email personalizer. Your only job is to fill in the base template with the real app details — keeping the structure and wording almost identical.
+
+BASE TEMPLATE (follow this EXACTLY):
+Subject: {base_subject}
+Body:
+{base_body}
+
+APP DETAILS:
+- App Name: {lead.get('app_name', '')}
+- Developer: {lead.get('developer', '')}
+- Category: {lead.get('category', '')}
+- Installs: {install_info}
+- Rating: {score_info}
+- Play Store URL: {lead.get('url', '')}
+
+SENDER:
+- Name: {sender_name}
+- Company: {sender_company}
+
+STRICT RULES:
+1. Copy the template EXACTLY — same structure, same sentences, same flow
+2. Only replace placeholder values (app name, developer name, installs, rating, url) with the real app details above
+3. You may change at most 2-3 words in the entire body to naturally fit this specific app — nothing more
+4. Do NOT rewrite sentences, do NOT add new sentences, do NOT remove any sentences
+5. Do NOT change the greeting format, CTA, or sign-off
+6. CRITICAL: Preserve every line break and blank line from the template exactly as-is. Each paragraph must stay as a separate paragraph. Use \\n for newlines inside the JSON string.
+7. Return ONLY valid JSON: {{"subject": "...", "body": "..."}}
+No markdown, no explanation, just the JSON object."""
+
+    try:
+        resp = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3, max_tokens=500
+        )
+        raw = resp.choices[0].message.content.strip()
+        raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
+        data = json.loads(raw)
+        subject = data.get("subject") or fill_template(base_subject, lead)
+        body    = data.get("body")    or fill_template(base_body, lead)
+        body = body.replace("\\n", "\n")
+        return subject, body
+    except Exception as e:
+        push_log(f"  AI email error (using template fallback): {e}")
+        return fill_template(base_subject, lead), fill_template(base_body, lead)
+
+# ── Template fill ─────────────────────────────────────────────────────────────
 DEFAULT_EMAIL_SUBJECT = "Quick question about {{app_name}}"
 DEFAULT_EMAIL_BODY = """Hi {{developer}} team,
 
@@ -398,12 +340,12 @@ Best regards,
 App: {{url}}"""
 
 def fill_template(tpl: str, lead: dict) -> str:
-    sender_name    = get_cfg("SENDER_NAME",    "Your Name")
+    sender_name    = get_cfg("SENDER_NAME", "Your Name")
     sender_company = get_cfg("SENDER_COMPANY", "Your Company")
     return (tpl
-        .replace("{{app_name}}",       lead.get("app_name",  ""))
+        .replace("{{app_name}}",       lead.get("app_name", ""))
         .replace("{{developer}}",      lead.get("developer", ""))
-        .replace("{{category}}",       lead.get("category",  ""))
+        .replace("{{category}}",       lead.get("category", ""))
         .replace("{{installs}}",       str(lead.get("installs", "")))
         .replace("{{score}}",          str(lead.get("score", "") or "N/A"))
         .replace("{{url}}",            lead.get("url", ""))
@@ -411,104 +353,197 @@ def fill_template(tpl: str, lead: dict) -> str:
         .replace("{{sender_company}}", sender_company)
     )
 
-def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple:
-    """
-    Fills placeholders only. Does NOT rewrite the email.
-    AI only used for custom {{placeholders}} the user added.
-    """
-    subject = fill_template(base_subject, lead)
-    body    = fill_template(base_body,    lead)
-
-    remaining = re.findall(r"\{\{(\w+)\}\}", body + subject)
-    key = get_cfg("GROQ_API_KEY")
-    if remaining and key:
-        sc           = lead.get("score")
-        score_info   = f"{sc:.1f} stars" if sc else "no rating yet (brand new)"
-        install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
-        try:
-            client = Groq(api_key=key)
-            prompt = (
-                f"Fill ONLY the {{{{placeholders}}}} in the template below.\n"
-                f"Do NOT change any other word or sentence.\n"
-                f"Placeholders to fill: {remaining}\n\n"
-                f"APP: name={lead.get('app_name','')} | dev={lead.get('developer','')} | "
-                f"cat={lead.get('category','')} | {install_info} | {score_info}\n\n"
-                f"Subject: {subject}\n\nBody:\n{body}\n\n"
-                f"Return ONLY JSON: {{\"subject\":\"...\",\"body\":\"...\"}}\n"
-                f"Use \\n for line breaks in body."
-            )
-            resp = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.2, max_tokens=600
-            )
-            raw  = resp.choices[0].message.content.strip()
-            raw  = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
-            data = json.loads(raw)
-            subject = data.get("subject") or subject
-            body    = (data.get("body") or body).replace("\\n", "\n")
-        except Exception as e:
-            push_log(f"  AI placeholder fill error: {e}")
-
-    return subject, body
-
-def build_html_email(plain_body: str, lead: dict, unsubscribe_url: str = "") -> str:
-    escaped   = plain_body.strip().replace("&","&amp;").replace("<","&lt;").replace(">","&gt;")
-    body_html = escaped.replace("\n", "<br>\n")
-    unsub = ""
-    if unsubscribe_url:
-        unsub = (f'\n<br><br>\n<span style="font-size:11px;color:#999;">'
-                 f'<a href="{unsubscribe_url}" style="color:#999;">Unsubscribe</a></span>')
-    return (
-        f'<!DOCTYPE html><html><head><meta charset="UTF-8"></head>'
-        f'<body style="font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:560px;">'
-        f'{body_html}{unsub}</body></html>'
-    )
-
-# ══════════════════════════════════════════════════════════════════════════════
-# LEAD FILTER
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Play Store scraper ────────────────────────────────────────────────────────
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
 SEARCH_COMBOS = [
-    ("en","us"), ("en","gb"), ("en","au"), ("en","ca"),
-    ("en","nz"), ("en","ie"), ("en","sg"), ("en","za"),
+    ("en", "us"), ("en", "gb"), ("en", "au"), ("en", "ca"),
+    ("en", "nz"), ("en", "ie"), ("en", "sg"), ("en", "za"),
 ]
 
-def extract_email(text: str) -> str:
-    if not text: return ""
+# Extra regions used only for detail cross-validation
+DETAIL_COMBOS = [("en", "us"), ("en", "gb"), ("en", "au")]
+
+PLAY_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/124.0.0.0 Safari/537.36"
+    ),
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+}
+
+# ── Email validation ──────────────────────────────────────────────────────────
+DISPOSABLE_DOMAINS = {
+    "mailinator.com", "guerrillamail.com", "10minutemail.com", "trashmail.com",
+    "yopmail.com", "throwam.com", "sharklasers.com", "spam4.me",
+    "tempmail.com", "fakeinbox.com", "maildrop.cc", "dispostable.com",
+    "mailnull.com", "spamgourmet.com", "discard.email", "getnada.com",
+    "tempr.email", "33mail.com", "spamex.com", "deadaddress.com",
+}
+EMAIL_SYNTAX_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
+
+def _email_syntax_ok(email: str) -> bool:
+    return bool(email) and len(email) <= 254 and bool(EMAIL_SYNTAX_RE.match(email))
+
+def _domain_exists(domain: str) -> bool:
+    try:
+        socket.setdefaulttimeout(5)
+        socket.getaddrinfo(domain, None)
+        return True
+    except (socket.gaierror, socket.timeout, OSError):
+        return False
+
+def is_valid_email(email: str) -> tuple:
+    if not email: return False, "empty"
+    email = email.strip().lower()
+    if not _email_syntax_ok(email): return False, "invalid_syntax"
+    domain = email.split("@")[-1]
+    if domain in DISPOSABLE_DOMAINS: return False, "disposable"
+    if not _domain_exists(domain): return False, "domain_not_found"
+    return True, "ok"
+
+# ── Accurate app detail fetch ─────────────────────────────────────────────────
+def _parse_installs(val) -> int:
+    if val is None: return 0
+    s = str(val).strip().replace(",", "").replace("+", "").upper()
+    if not s: return 0
+    try:
+        if s.endswith("B"): return int(float(s[:-1]) * 1_000_000_000)
+        if s.endswith("M"): return int(float(s[:-1]) * 1_000_000)
+        if s.endswith("K"): return int(float(s[:-1]) * 1_000)
+        return int(float(s))
+    except: return 0
+
+def _html_crosscheck(app_id: str) -> dict:
+    """Direct Play Store HTML scrape for accurate score + installs + email."""
+    url = f"https://play.google.com/store/apps/details?id={app_id}&hl=en&gl=us"
+    out = {}
+    try:
+        req = urllib.request.Request(url, headers=PLAY_HEADERS)
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            html = resp.read(500_000).decode("utf-8", errors="ignore")
+    except Exception:
+        return out
+    # Score
+    for pat in [
+        r'"starRating"\s*:\s*"?([\d.]+)"?',
+        r'"ratingValue"\s*:\s*"?([\d.]+)"?',
+        r'itemprop="ratingValue"\s+content="([\d.]+)"',
+        r'Rated\s+([\d.]+)\s+(?:stars?|out)',
+    ]:
+        m = re.search(pat, html, re.IGNORECASE)
+        if m:
+            try:
+                v = float(m.group(1))
+                if 0 < v <= 5:
+                    out["score"] = round(v, 1)
+                    break
+            except: pass
+    # Installs
+    for pat in [
+        r'"numDownloads"\s*:\s*"([^"]+)"',
+        r'([\d,]+\+?)\s+downloads',
+        r'"([\d,.]+[KMB]?\+?)"\s*,\s*"Installs"',
+    ]:
+        m = re.search(pat, html, re.IGNORECASE)
+        if m:
+            parsed = _parse_installs(m.group(1))
+            if parsed >= 0:
+                out["minInstalls"] = parsed
+                break
+    # Email from mailto
+    em = re.search(r'href="mailto:([^"?&\s]+)"', html)
+    if em:
+        out["developerEmail"] = em.group(1).strip()
+    return out
+
+def fetch_app_details_accurate(app_id: str) -> dict | None:
+    """
+    Fetch from google-play-scraper (3 regions) → pick best result →
+    cross-validate with direct HTML scrape for accurate score/installs.
+    """
+    best = None
+    for lang, country in DETAIL_COMBOS:
+        try:
+            d = gp_app(app_id, lang=lang, country=country)
+            if d is None: continue
+            sc = d.get("score")
+            try: sc = float(sc) if sc else None
+            except: sc = None
+            if sc == 0.0: sc = None
+            d = dict(d)
+            d["score"] = sc
+            if best is None:
+                best = d
+            elif sc is not None and best.get("score") is None:
+                best = d
+            if best.get("score") is not None:
+                break
+        except Exception:
+            time.sleep(0.2)
+            continue
+    if best is None:
+        return None
+    # Cross-validate with HTML
+    try:
+        html = _html_crosscheck(app_id)
+        if html.get("score") and html["score"] > 0:
+            best["score"] = html["score"]
+        if html.get("minInstalls", 0) > 0 and _parse_installs(best.get("minInstalls") or 0) == 0:
+            best["minInstalls"] = html["minInstalls"]
+        if html.get("developerEmail") and not best.get("developerEmail"):
+            best["developerEmail"] = html["developerEmail"]
+    except Exception:
+        pass
+    return best
+
+def extract_email(text):
+    if not text:
+        return ""
     m = EMAIL_RE.search(str(text))
     return m.group(0) if m else ""
 
 def passes_filter(installs: int, score, hunter: dict) -> bool:
     """
-    HUNTER MODE  → installs ≤ max_installs, score > 0 AND score ≤ max_score
-    NORMAL MODE  → installs ≤ 10 000, score is None or 0  (brand-new apps)
+    Filter logic:
+
+    HUNTER MODE (hunter active):
+      - max_installs check (default 5000)
+      - MUST have a rating (score must NOT be None)
+      - score must be <= max_score (default 2.5)
+
+    NORMAL MODE:
+      - installs <= 10,000
+      - MUST NOT have a rating (score must be None)
+        → Normal mode targets brand-new apps with no reviews yet
     """
     if hunter and hunter.get("active"):
         max_inst  = int(hunter.get("max_installs") or 5000)
-        max_score = float(hunter.get("max_score")  or 2.5)
-        if installs > max_inst:            return False
-        if score is None or score == 0:    return False
-        if score > max_score:              return False
+        max_score = float(hunter.get("max_score") or 2.5)
+        if installs > max_inst:
+            return False
+        # Hunter mode: app MUST have a rating (we want apps with bad ratings)
+        if score is None:
+            return False
+        if score > max_score:
+            return False
         return True
 
-    if installs > 10_000:                  return False
-    if score is not None and score > 0:    return False
+    # Normal mode: <=10,000 installs AND no rating (completely new apps)
+    if installs > 10_000:
+        return False
+    # Normal mode: skip apps that already have a rating
+    if score is not None:
+        return False
     return True
 
-# ══════════════════════════════════════════════════════════════════════════════
-# LEAD GENERATION — parallel, no proxies, fast, accurate
-# ══════════════════════════════════════════════════════════════════════════════
-DETAIL_WORKERS = 10   # parallel detail fetches per keyword
-
+# ── Per-app qualification (runs in thread pool) ───────────────────────────────
 def _qualify_one(app_id: str, keyword: str, hunter: dict) -> dict | None:
-    """
-    Full qualification for one app_id.
-    Returns lead dict or None. Thread-safe (reads globals, no writes).
-    """
+    """Fetch full details, filter, validate email. Returns lead dict or None."""
     try:
-        details = fetch_app_details_reliable(app_id)
+        details = fetch_app_details_accurate(app_id)
         if not details:
             return None
 
@@ -535,22 +570,22 @@ def _qualify_one(app_id: str, keyword: str, hunter: dict) -> dict | None:
 
         email = email.lower().strip()
 
-        # Email validation before accepting
+        # Validate email before accepting
         valid, reason = is_valid_email(email)
         if not valid:
             return None
 
         return {
             "app_id":      app_id,
-            "app_name":    details.get("title",      ""),
-            "developer":   details.get("developer",  ""),
+            "app_name":    details.get("title",     ""),
+            "developer":   details.get("developer", ""),
             "email":       email,
-            "category":    details.get("genre",      ""),
+            "category":    details.get("genre",     ""),
             "installs":    installs,
             "score":       score,
             "description": (details.get("description") or "")[:300],
             "url":         f"https://play.google.com/store/apps/details?id={app_id}",
-            "icon":        details.get("icon",        ""),
+            "icon":        details.get("icon",       ""),
             "keyword":     keyword,
             "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
             "email_sent":  False,
@@ -561,19 +596,19 @@ def _qualify_one(app_id: str, keyword: str, hunter: dict) -> dict | None:
 
 def scrape_keyword(keyword: str, hunter: dict = None) -> list:
     """
-    1. Search across all SEARCH_COMBOS → collect unique candidate app IDs
-    2. Sort candidates (lowest installs / no score first — best leads)
-    3. Parallel detail fetch + qualify (DETAIL_WORKERS threads)
-    4. Email-validate → add to leads
+    1. Search all SEARCH_COMBOS → collect unique candidate app IDs
+    2. Sort: lowest installs / no score first (best leads come first)
+    3. Parallel detail fetch + qualify (10 threads, batches of 30)
+    4. Email validate → accept lead
     """
     global global_seen_ids, global_seen_emails
-
     mode_label = "Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🔍 [{mode_label}] Scraping: '{keyword}'")
+    push_log(f"🔍 Scraping [{mode_label}]: '{keyword}'")
+    leads = []
 
-    # ── Step 1: collect candidates ────────────────────────────────────────────
+    # ── Step 1: collect candidate app IDs from all regions ───────────────────
     seen_in_search: set = set()
-    candidates: list    = []   # (app_id, search_item)
+    candidates: list    = []
 
     for lang, country in SEARCH_COMBOS:
         if stop_event.is_set():
@@ -586,14 +621,14 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                 break
             except Exception as e:
                 err = str(e).lower()
-                if any(x in err for x in ["429","403","rate","blocked","captcha"]):
+                if any(x in err for x in ["429", "403", "rate", "blocked", "captcha"]):
                     wait = 20 * (attempt + 1)
                     push_log(f"  ⏳ Rate-limit ({country}), wait {wait}s")
                     time.sleep(wait)
                 elif attempt == 2:
                     push_log(f"  Search error ({country}): {str(e)[:60]}")
                 else:
-                    time.sleep(random.uniform(2, 5))
+                    time.sleep(random.uniform(2, 4))
 
         for item in results:
             aid = item.get("appId", "")
@@ -609,35 +644,39 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
 
     push_log(f"  📋 {len(candidates)} unique candidates")
     if not candidates:
+        push_log(f"  📦 0 new leads from '{keyword}'")
         sheet_log_keyword(keyword, 0)
         return []
 
-    # ── Step 2: sort — lowest installs / no score first ───────────────────────
+    # ── Step 2: sort — no score / lowest installs first ──────────────────────
     def _sort_key(pair):
         _, item = pair
-        sc   = item.get("score") or 0
+        sc = item.get("score") or 0
         try: sc = float(sc)
         except: sc = 0.0
         inst = _parse_installs(item.get("minInstalls") or item.get("installs") or 0)
-        has_score = 0 if sc == 0 else 1
-        return (has_score, inst)
+        return (0 if sc == 0 else 1, inst)
 
     candidates.sort(key=_sort_key)
 
-    # ── Step 3: parallel detail fetch in batches ──────────────────────────────
-    leads  = []
-    BATCH  = 30
+    # ── Step 3: parallel detail fetch in batches of 30 ───────────────────────
+    BATCH = 30
+    WORKERS = 10
 
     for batch_start in range(0, len(candidates), BATCH):
         if stop_event.is_set():
             break
 
-        batch = [aid for aid, _ in candidates[batch_start: batch_start + BATCH]
-                 if aid not in global_seen_ids]
+        batch_ids = [
+            aid for aid, _ in candidates[batch_start: batch_start + BATCH]
+            if aid not in global_seen_ids
+        ]
 
-        with ThreadPoolExecutor(max_workers=DETAIL_WORKERS) as ex:
-            futures = {ex.submit(_qualify_one, aid, keyword, hunter): aid for aid in batch}
-
+        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
+            futures = {
+                ex.submit(_qualify_one, aid, keyword, hunter): aid
+                for aid in batch_ids
+            }
             for fut in as_completed(futures):
                 aid  = futures[fut]
                 lead = None
@@ -652,44 +691,33 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                     continue
 
                 email = lead["email"]
-
-                # Thread-safe final dedup
                 if email in global_seen_emails or is_duplicate_in_sheet("", email):
-                    push_log(f"  ⏭️  Dup email: {email}")
+                    push_log(f"  ⏭️  Skip (email dup): {email}")
                     continue
 
                 leads.append(lead)
                 global_seen_emails.add(email)
                 register_in_sheet_memory(aid, email)
 
-                sc_str = f"{lead['score']:.1f}★" if lead["score"] else "new"
+                score_str = f"{lead['score']:.1f}★" if lead["score"] else "new (no rating)"
                 push_log(
                     f"  ✅ [{mode_label}] {lead['app_name']} | "
-                    f"{lead['installs']:,} installs | {sc_str} | {email}"
+                    f"{lead['installs']:,} installs | {score_str} | {email}"
                 )
 
-        push_log(f"  Batch {batch_start//BATCH+1} done | leads so far: {len(leads)}")
+        push_log(f"  Batch {batch_start//BATCH + 1} done | leads so far: {len(leads)}")
         time.sleep(random.uniform(0.4, 1.0))
 
     push_log(f"  📦 {len(leads)} new leads from '{keyword}'")
     sheet_log_keyword(keyword, len(leads))
     return leads
 
-# ══════════════════════════════════════════════════════════════════════════════
-# EMAIL SEND
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Email send ────────────────────────────────────────────────────────────────
 def send_email(lead: dict, subject: str, body: str) -> bool:
     url = get_cfg("EMAIL_SCRIPT_URL")
     if not url or not lead.get("email"):
         push_log("EMAIL_SCRIPT_URL not set or no email")
         return False
-
-    # Final gate — re-validate before send
-    valid, reason = is_valid_email(lead["email"])
-    if not valid:
-        push_log(f"  ⛔ Send blocked — email invalid ({reason}): {lead['email']}")
-        return False
-
     try:
         r = requests.post(url, json={
             "to":      lead["email"],
@@ -706,9 +734,7 @@ def send_email(lead: dict, subject: str, body: str) -> bool:
         push_log(f"  ❌ Email error: {e}")
         return False
 
-# ══════════════════════════════════════════════════════════════════════════════
-# MASTER AUTOMATION
-# ══════════════════════════════════════════════════════════════════════════════
+# ── Master automation ─────────────────────────────────────────────────────────
 def run_automation(initial_kw: str, target: int, hunter: dict = None):
     global global_seen_ids, global_seen_emails
 
@@ -718,9 +744,10 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
     mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
     push_log(f"🚀 Started | kw='{initial_kw}' | target={target} | mode={mode}")
 
-    push_log("📋 Loading existing sheet records …")
+    # ── Step 0: Load sheet memory to prevent cross-run duplicates ─────────────
+    push_log("📋 Step 0: Loading existing sheet records into memory …")
     load_sheet_memory()
-    push_log(f"   Memory: {len(sheet_memory_ids)} IDs, {len(sheet_memory_emails)} emails")
+    push_log(f"   Memory ready: {len(sheet_memory_ids)} IDs, {len(sheet_memory_emails)} emails")
 
     base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
     base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
@@ -731,6 +758,7 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
 
     upd(phase="scraping")
 
+    # ── Phase 1: Scrape ───────────────────────────────────────────────────────
     while len(all_leads) < target and not stop_event.is_set():
         if not kw_queue:
             push_log("🤖 Requesting AI keywords …")
@@ -749,7 +777,6 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
         all_leads.extend(batch)
         upd(leads_found=len(all_leads), leads=[l.copy() for l in all_leads])
 
-        # Add to sheet immediately after email validation (already validated in scrape_keyword)
         for lead in batch:
             sheet_append_lead(lead)
             sheet_append_qualified(lead)
@@ -762,6 +789,8 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
         return
 
     push_log(f"✅ Scraping done. {len(all_leads)} leads. Starting emails …")
+
+    # ── Phase 2: AI Email + Send ──────────────────────────────────────────────
     upd(phase="emailing")
 
     for i, lead in enumerate(all_leads):
@@ -769,13 +798,14 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
             push_log("🛑 Stopped during email phase.")
             break
 
-        push_log(f"  🤖 Personalizing email for {lead['app_name']} …")
+        push_log(f"  🤖 AI writing email for {lead['app_name']} …")
         subject, body = ai_gen_email(lead, base_subject, base_body)
 
         ok = send_email(lead, subject, body)
         lead["email_sent"] = ok
         with state_lock:
-            if ok: state["emails_sent"] += 1
+            if ok:
+                state["emails_sent"] += 1
             state["leads"] = [l.copy() for l in all_leads]
 
         if ok:
@@ -783,9 +813,10 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
 
         if i < len(all_leads) - 1:
             wait = random.uniform(60, 120)
-            push_log(f"  ⏳ {wait:.0f}s wait … ({i+1}/{len(all_leads)})")
+            push_log(f"  ⏳ Waiting {wait:.0f}s … ({i+1}/{len(all_leads)})")
             for _ in range(int(wait)):
-                if stop_event.is_set(): break
+                if stop_event.is_set():
+                    break
                 time.sleep(1)
 
     if stop_event.is_set():
@@ -806,7 +837,7 @@ def run_send_pending(leads: list):
         if stop_event.is_set():
             push_log("🛑 Stopped.")
             break
-        push_log(f"  🤖 Personalizing email for {lead.get('app_name','')} …")
+        push_log(f"  🤖 AI writing email for {lead.get('app_name','')} …")
         subject, body = ai_gen_email(lead, base_subject, base_body)
         ok = send_email(lead, subject, body)
         if ok:
@@ -816,9 +847,10 @@ def run_send_pending(leads: list):
                 state["emails_sent"] = state.get("emails_sent", 0) + 1
         if i < len(leads) - 1:
             wait = random.uniform(60, 120)
-            push_log(f"  ⏳ {wait:.0f}s … ({i+1}/{len(leads)})")
+            push_log(f"  ⏳ Waiting {wait:.0f}s … ({i+1}/{len(leads)})")
             for _ in range(int(wait)):
-                if stop_event.is_set(): break
+                if stop_event.is_set():
+                    break
                 time.sleep(1)
     push_log(f"✅ Pending done. {sent} sent.")
     upd(running=False, phase="done")
@@ -839,14 +871,15 @@ def api_start():
             return jsonify({"error": "Already running"}), 409
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY",        ""),
+        "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
         "APPS_SCRIPT_WEB_URL": data.get("sheet_url")        or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL",    ""),
-        "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME",         ""),
-        "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY",      ""),
-        "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT",       ""),
-        "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY",          ""),
+        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
     }
+    # Reset in-memory dedup for this new run (sheet memory is re-loaded fresh)
     global global_seen_ids, global_seen_emails
     global_seen_ids    = set()
     global_seen_emails = set()
@@ -869,6 +902,7 @@ def api_status():
 
 @application.route("/api/clear", methods=["POST"])
 def api_clear():
+    """Clear all in-memory state AND duplicate trackers. Sheet is untouched."""
     global global_seen_ids, global_seen_emails, sheet_memory_ids, sheet_memory_emails, sheet_memory_loaded
     with state_lock:
         if state["running"]:
@@ -878,11 +912,11 @@ def api_clear():
             "keywords_used": [], "leads_found": 0, "emails_sent": 0,
             "logs": [], "leads": []
         })
-    global_seen_ids     = set()
-    global_seen_emails  = set()
-    sheet_memory_ids    = set()
-    sheet_memory_emails = set()
-    sheet_memory_loaded = False
+    global_seen_ids      = set()
+    global_seen_emails   = set()
+    sheet_memory_ids     = set()
+    sheet_memory_emails  = set()
+    sheet_memory_loaded  = False
     log.info("History cleared.")
     return jsonify({"ok": True})
 
@@ -901,12 +935,12 @@ def api_send_pending():
         return jsonify({"error": "No leads provided"}), 400
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY",        ""),
-        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL",    ""),
-        "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME",         ""),
-        "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY",      ""),
-        "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT",       ""),
-        "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY",          ""),
+        "GROQ_API_KEY":        data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
+        "EMAIL_SCRIPT_URL":    data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
+        "SENDER_NAME":         data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
         "APPS_SCRIPT_WEB_URL": data.get("sheet_url")        or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
     }
     threading.Thread(target=run_send_pending, args=(leads,), daemon=True).start()
@@ -920,21 +954,21 @@ def api_spam_test():
         return jsonify({"error": "test_email required"}), 400
     global run_cfg
     run_cfg = {
-        "GROQ_API_KEY":     data.get("groq_key")         or os.environ.get("GROQ_API_KEY",     ""),
+        "GROQ_API_KEY":     data.get("groq_key")         or os.environ.get("GROQ_API_KEY", ""),
         "EMAIL_SCRIPT_URL": data.get("email_script_url") or os.environ.get("EMAIL_SCRIPT_URL", ""),
-        "SENDER_NAME":      data.get("sender_name")      or os.environ.get("SENDER_NAME",      ""),
-        "SENDER_COMPANY":   data.get("sender_company")   or os.environ.get("SENDER_COMPANY",   ""),
-        "EMAIL_SUBJECT":    data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT",     ""),
-        "EMAIL_BODY":       data.get("email_body")       or os.environ.get("EMAIL_BODY",        ""),
+        "SENDER_NAME":      data.get("sender_name")      or os.environ.get("SENDER_NAME", ""),
+        "SENDER_COMPANY":   data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
+        "EMAIL_SUBJECT":    data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
+        "EMAIL_BODY":       data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
     }
     sample = {
-        "app_name":  data.get("sample_app_name",  "MyApp Pro"),
-        "developer": data.get("sample_developer", "John Dev"),
-        "category":  "Productivity",
-        "installs":  1500,
-        "score":     data.get("sample_score", 2.1),
-        "email":     test_to,
-        "url":       "https://play.google.com/store/apps/details?id=com.example",
+        "app_name":   data.get("sample_app_name", "MyApp Pro"),
+        "developer":  data.get("sample_developer", "John Dev"),
+        "category":   "Productivity",
+        "installs":   1500,
+        "score":      data.get("sample_score", 2.1),
+        "email":      test_to,
+        "url":        "https://play.google.com/store/apps/details?id=com.example",
     }
     url = get_cfg("EMAIL_SCRIPT_URL")
     if not url:
@@ -951,37 +985,32 @@ def api_spam_test():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── Sheet pending fetch ───────────────────────────────────────────────────────
 @application.route("/api/sheet_pending", methods=["POST"])
 def api_sheet_pending():
-    data      = request.get_json(silent=True) or {}
+    """Fetch leads from Sheet where Email Sent = No, return count + leads list."""
+    data = request.get_json(silent=True) or {}
     sheet_url = data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
     if not sheet_url:
         return jsonify({"error": "sheet_url not set"}), 400
     try:
         r = requests.post(sheet_url, json={"action": "get_pending"}, timeout=20)
         result = r.json() if r.text else {}
-        leads  = result.get("leads", [])
+        leads = result.get("leads", [])
         return jsonify({"ok": True, "count": len(leads), "leads": leads})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# ── Sheet memory status ───────────────────────────────────────────────────────
 @application.route("/api/sheet_memory_status", methods=["GET"])
 def api_sheet_memory_status():
+    """Returns how many records are currently loaded in sheet memory."""
     with sheet_memory_lock:
         return jsonify({
-            "loaded":       sheet_memory_loaded,
-            "ids_count":    len(sheet_memory_ids),
+            "loaded": sheet_memory_loaded,
+            "ids_count": len(sheet_memory_ids),
             "emails_count": len(sheet_memory_emails),
         })
-
-@application.route("/api/verify_email", methods=["POST"])
-def api_verify_email():
-    data  = request.get_json(silent=True) or {}
-    email = (data.get("email") or "").strip()
-    if not email:
-        return jsonify({"error": "email required"}), 400
-    valid, reason = is_valid_email(email)
-    return jsonify({"email": email, "valid": valid, "reason": reason})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

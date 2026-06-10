@@ -807,10 +807,9 @@ tbody tr:hover td { background: #13131c; }
             <div class="code-block" id="asCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var ss   = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
     var action = data.action;
 
-    // ── append: add a row to any tab, auto-create headers on first row ─────
     if (action === "append") {
       var tab = data.tab || "All Leads";
       var sheet = ss.getSheetByName(tab);
@@ -821,106 +820,75 @@ tbody tr:hover td { background: #13131c; }
       }
       sheet.appendRow(Object.values(row));
 
-    // ── mark_sent: update Email Sent column by App ID ──────────────────────
     } else if (action === "mark_sent") {
-      var appId = String(data.app_id || "");
-
-      function markSentInTab(tabName) {
-        var sh = ss.getSheetByName(tabName);
-        if (!sh || sh.getLastRow() < 2) return;
-        var vals = sh.getDataRange().getValues();
-        var headers = vals[0];
-        var appIdCol  = headers.indexOf("App ID");
-        var sentCol   = headers.indexOf("Email Sent");
-        if (appIdCol < 0 || sentCol < 0) return;
+      // Mark in All Leads tab
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet) {
+        var appId = data.app_id;
+        var vals = allSheet.getDataRange().getValues();
         for (var i = 1; i < vals.length; i++) {
-          if (String(vals[i][appIdCol]) === appId) {
-            sh.getRange(i + 1, sentCol + 1).setValue("Yes");
+          if (String(vals[i][vals[i].length - 1]) === appId) {
+            var sentCol = vals[0].indexOf("Email Sent") + 1;
+            if (sentCol > 0) allSheet.getRange(i+1, sentCol).setValue("Yes");
             break;
           }
         }
       }
-      markSentInTab("All Leads");
-      markSentInTab("Qualified Leads");
-
-      // Also log to Email Sent tab
+      // Mark in Qualified Leads tab
+      var qSheet = ss.getSheetByName("Qualified Leads");
+      if (qSheet) {
+        var appId = data.app_id;
+        var vals = qSheet.getDataRange().getValues();
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][vals[i].length - 1]) === appId) {
+            var sentCol = vals[0].indexOf("Email Sent") + 1;
+            if (sentCol > 0) qSheet.getRange(i+1, sentCol).setValue("Yes");
+            break;
+          }
+        }
+      }
+      // Append to Email Sent tab
       var sentSheet = ss.getSheetByName("Email Sent");
       if (!sentSheet) sentSheet = ss.insertSheet("Email Sent");
       if (sentSheet.getLastRow() === 0) {
         sentSheet.appendRow(["App ID","App Name","Email","Sent At"]);
       }
-      sentSheet.appendRow([
-        appId,
-        data.app_name || "",
-        data.email    || "",
-        new Date().toLocaleString()
-      ]);
+      sentSheet.appendRow([data.app_id, data.app_name||"", data.email||"", new Date().toLocaleString()]);
 
-    // ── get_all: return every row from a tab as JSON array ─────────────────
-    } else if (action === "get_all") {
-      var tabName = data.tab || "All Leads";
-      var sh = ss.getSheetByName(tabName);
-      if (!sh || sh.getLastRow() < 2) {
-        return ContentService
-          .createTextOutput(JSON.stringify({status:"ok", records:[]}))
-          .setMimeType(ContentService.MimeType.JSON);
-      }
-      var vals    = sh.getDataRange().getValues();
-      var headers = vals[0];
-      var records = [];
-      for (var i = 1; i < vals.length; i++) {
-        var obj = {};
-        headers.forEach(function(h, j) { obj[h] = vals[i][j]; });
-        records.push(obj);
-      }
-      return ContentService
-        .createTextOutput(JSON.stringify({status:"ok", records:records}))
-        .setMimeType(ContentService.MimeType.JSON);
-
-    // ── get_pending: return All Leads rows where Email Sent != Yes ─────────
     } else if (action === "get_pending") {
-      var sh = ss.getSheetByName("All Leads");
-      if (!sh || sh.getLastRow() < 2) {
+      // Return all rows from All Leads where Email Sent = No
+      var allSheet = ss.getSheetByName("All Leads");
+      if (!allSheet) {
         return ContentService
           .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
           .setMimeType(ContentService.MimeType.JSON);
       }
-      var vals    = sh.getDataRange().getValues();
-      var headers = vals[0];
-      var colIdx  = {};
-      headers.forEach(function(h, i) { colIdx[h] = i; });
-
-      var requiredCols = ["App ID","App Name","Developer","Email","Category",
-                          "Installs","Score","URL","Keyword","Email Sent"];
-      for (var rc = 0; rc < requiredCols.length; rc++) {
-        if (!(requiredCols[rc] in colIdx)) {
-          return ContentService
-            .createTextOutput(JSON.stringify({
-              status: "error",
-              msg: "Missing column: " + requiredCols[rc]
-            }))
-            .setMimeType(ContentService.MimeType.JSON);
-        }
+      var vals = allSheet.getDataRange().getValues();
+      if (vals.length < 2) {
+        return ContentService
+          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
+          .setMimeType(ContentService.MimeType.JSON);
       }
-
+      var headers = vals[0];
+      var colIdx = {};
+      headers.forEach(function(h, i) { colIdx[h] = i; });
       var leads = [];
       for (var i = 1; i < vals.length; i++) {
-        var row       = vals[i];
+        var row = vals[i];
         var emailSent = String(row[colIdx["Email Sent"]] || "").trim().toLowerCase();
-        if (emailSent === "yes") continue;
-        var email = String(row[colIdx["Email"]] || "").trim();
-        if (!email) continue;
-        leads.push({
-          app_id:    String(row[colIdx["App ID"]]    || ""),
-          app_name:  String(row[colIdx["App Name"]]  || ""),
-          developer: String(row[colIdx["Developer"]] || ""),
-          email:     email,
-          category:  String(row[colIdx["Category"]]  || ""),
-          installs:  Number(row[colIdx["Installs"]]  || 0),
-          score:     row[colIdx["Score"]] ? Number(row[colIdx["Score"]]) : null,
-          url:       String(row[colIdx["URL"]]       || ""),
-          keyword:   String(row[colIdx["Keyword"]]   || ""),
-        });
+        if (emailSent === "no" || emailSent === "") {
+          leads.push({
+            app_id:    String(row[colIdx["App ID"]]    || ""),
+            app_name:  String(row[colIdx["App Name"]]  || ""),
+            developer: String(row[colIdx["Developer"]] || ""),
+            email:     String(row[colIdx["Email"]]     || ""),
+            category:  String(row[colIdx["Category"]]  || ""),
+            installs:  Number(row[colIdx["Installs"]]  || 0),
+            score:     row[colIdx["Score"]] ? Number(row[colIdx["Score"]]) : null,
+            url:       String(row[colIdx["URL"]]       || ""),
+            keyword:   String(row[colIdx["Keyword"]]   || ""),
+          });
+        }
       }
       return ContentService
         .createTextOutput(JSON.stringify({status:"ok", leads:leads}))
@@ -930,10 +898,9 @@ tbody tr:hover td { background: #13131c; }
     return ContentService
       .createTextOutput(JSON.stringify({status:"ok"}))
       .setMimeType(ContentService.MimeType.JSON);
-
   } catch(err) {
     return ContentService
-      .createTextOutput(JSON.stringify({status:"error", msg:err.toString()}))
+      .createTextOutput(JSON.stringify({status:"error",msg:err.toString()}))
       .setMimeType(ContentService.MimeType.JSON);
   }
 }</div>
