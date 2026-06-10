@@ -1,5 +1,4 @@
-import os, time, random, threading, json, re, logging, socket, urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import os, time, random, threading, json, re, logging
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google_play_scraper import search, app as gp_app
@@ -358,146 +357,7 @@ EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
 SEARCH_COMBOS = [
     ("en", "us"), ("en", "gb"), ("en", "au"), ("en", "ca"),
-    ("en", "nz"), ("en", "ie"), ("en", "sg"), ("en", "za"),
 ]
-
-# Extra regions used only for detail cross-validation
-DETAIL_COMBOS = [("en", "us"), ("en", "gb"), ("en", "au")]
-
-PLAY_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-}
-
-# ── Email validation ──────────────────────────────────────────────────────────
-DISPOSABLE_DOMAINS = {
-    "mailinator.com", "guerrillamail.com", "10minutemail.com", "trashmail.com",
-    "yopmail.com", "throwam.com", "sharklasers.com", "spam4.me",
-    "tempmail.com", "fakeinbox.com", "maildrop.cc", "dispostable.com",
-    "mailnull.com", "spamgourmet.com", "discard.email", "getnada.com",
-    "tempr.email", "33mail.com", "spamex.com", "deadaddress.com",
-}
-EMAIL_SYNTAX_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
-
-def _email_syntax_ok(email: str) -> bool:
-    return bool(email) and len(email) <= 254 and bool(EMAIL_SYNTAX_RE.match(email))
-
-def _domain_exists(domain: str) -> bool:
-    try:
-        socket.setdefaulttimeout(5)
-        socket.getaddrinfo(domain, None)
-        return True
-    except (socket.gaierror, socket.timeout, OSError):
-        return False
-
-def is_valid_email(email: str) -> tuple:
-    if not email: return False, "empty"
-    email = email.strip().lower()
-    if not _email_syntax_ok(email): return False, "invalid_syntax"
-    domain = email.split("@")[-1]
-    if domain in DISPOSABLE_DOMAINS: return False, "disposable"
-    if not _domain_exists(domain): return False, "domain_not_found"
-    return True, "ok"
-
-# ── Accurate app detail fetch ─────────────────────────────────────────────────
-def _parse_installs(val) -> int:
-    if val is None: return 0
-    s = str(val).strip().replace(",", "").replace("+", "").upper()
-    if not s: return 0
-    try:
-        if s.endswith("B"): return int(float(s[:-1]) * 1_000_000_000)
-        if s.endswith("M"): return int(float(s[:-1]) * 1_000_000)
-        if s.endswith("K"): return int(float(s[:-1]) * 1_000)
-        return int(float(s))
-    except: return 0
-
-def _html_crosscheck(app_id: str) -> dict:
-    """Direct Play Store HTML scrape for accurate score + installs + email."""
-    url = f"https://play.google.com/store/apps/details?id={app_id}&hl=en&gl=us"
-    out = {}
-    try:
-        req = urllib.request.Request(url, headers=PLAY_HEADERS)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html = resp.read(500_000).decode("utf-8", errors="ignore")
-    except Exception:
-        return out
-    # Score
-    for pat in [
-        r'"starRating"\s*:\s*"?([\d.]+)"?',
-        r'"ratingValue"\s*:\s*"?([\d.]+)"?',
-        r'itemprop="ratingValue"\s+content="([\d.]+)"',
-        r'Rated\s+([\d.]+)\s+(?:stars?|out)',
-    ]:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            try:
-                v = float(m.group(1))
-                if 0 < v <= 5:
-                    out["score"] = round(v, 1)
-                    break
-            except: pass
-    # Installs
-    for pat in [
-        r'"numDownloads"\s*:\s*"([^"]+)"',
-        r'([\d,]+\+?)\s+downloads',
-        r'"([\d,.]+[KMB]?\+?)"\s*,\s*"Installs"',
-    ]:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            parsed = _parse_installs(m.group(1))
-            if parsed >= 0:
-                out["minInstalls"] = parsed
-                break
-    # Email from mailto
-    em = re.search(r'href="mailto:([^"?&\s]+)"', html)
-    if em:
-        out["developerEmail"] = em.group(1).strip()
-    return out
-
-def fetch_app_details_accurate(app_id: str) -> dict | None:
-    """
-    Fetch from google-play-scraper (3 regions) → pick best result →
-    cross-validate with direct HTML scrape for accurate score/installs.
-    """
-    best = None
-    for lang, country in DETAIL_COMBOS:
-        try:
-            d = gp_app(app_id, lang=lang, country=country)
-            if d is None: continue
-            sc = d.get("score")
-            try: sc = float(sc) if sc else None
-            except: sc = None
-            if sc == 0.0: sc = None
-            d = dict(d)
-            d["score"] = sc
-            if best is None:
-                best = d
-            elif sc is not None and best.get("score") is None:
-                best = d
-            if best.get("score") is not None:
-                break
-        except Exception:
-            time.sleep(0.2)
-            continue
-    if best is None:
-        return None
-    # Cross-validate with HTML
-    try:
-        html = _html_crosscheck(app_id)
-        if html.get("score") and html["score"] > 0:
-            best["score"] = html["score"]
-        if html.get("minInstalls", 0) > 0 and _parse_installs(best.get("minInstalls") or 0) == 0:
-            best["minInstalls"] = html["minInstalls"]
-        if html.get("developerEmail") and not best.get("developerEmail"):
-            best["developerEmail"] = html["developerEmail"]
-    except Exception:
-        pass
-    return best
 
 def extract_email(text):
     if not text:
@@ -539,174 +399,97 @@ def passes_filter(installs: int, score, hunter: dict) -> bool:
         return False
     return True
 
-# ── Per-app qualification (runs in thread pool) ───────────────────────────────
-def _qualify_one(app_id: str, keyword: str, hunter: dict) -> dict | None:
-    """Fetch full details, filter, validate email. Returns lead dict or None."""
-    try:
-        details = fetch_app_details_accurate(app_id)
-        if not details:
-            return None
-
-        installs = _parse_installs(details.get("minInstalls") or details.get("installs") or 0)
-        score    = details.get("score")
-        try:    score = float(score) if score else None
-        except: score = None
-        if score == 0.0: score = None
-
-        if not passes_filter(installs, score, hunter):
-            return None
-
-        if not is_allowed_country(details):
-            return None
-
-        email = (
-            extract_email(details.get("developerEmail", ""))
-            or extract_email(details.get("privacyPolicy", ""))
-            or extract_email(details.get("description",  ""))
-            or extract_email(details.get("recentChanges",""))
-        )
-        if not email:
-            return None
-
-        email = email.lower().strip()
-
-        # Validate email before accepting
-        valid, reason = is_valid_email(email)
-        if not valid:
-            return None
-
-        return {
-            "app_id":      app_id,
-            "app_name":    details.get("title",     ""),
-            "developer":   details.get("developer", ""),
-            "email":       email,
-            "category":    details.get("genre",     ""),
-            "installs":    installs,
-            "score":       score,
-            "description": (details.get("description") or "")[:300],
-            "url":         f"https://play.google.com/store/apps/details?id={app_id}",
-            "icon":        details.get("icon",       ""),
-            "keyword":     keyword,
-            "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
-            "email_sent":  False,
-        }
-    except Exception:
-        return None
-
-
 def scrape_keyword(keyword: str, hunter: dict = None) -> list:
-    """
-    1. Search all SEARCH_COMBOS → collect unique candidate app IDs
-    2. Sort: lowest installs / no score first (best leads come first)
-    3. Parallel detail fetch + qualify (10 threads, batches of 30)
-    4. Email validate → accept lead
-    """
+    """Scrape across multiple country combos; deduplicate via in-memory + sheet memory."""
     global global_seen_ids, global_seen_emails
-    mode_label = "Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🔍 Scraping [{mode_label}]: '{keyword}'")
+    push_log(f"🔍 Scraping: '{keyword}'")
     leads = []
-
-    # ── Step 1: collect candidate app IDs from all regions ───────────────────
-    seen_in_search: set = set()
-    candidates: list    = []
 
     for lang, country in SEARCH_COMBOS:
         if stop_event.is_set():
             break
-        results = []
-        for attempt in range(3):
-            try:
-                results = search(keyword, lang=lang, country=country, n_hits=500)
-                push_log(f"  [{country}] {len(results)} results")
-                break
-            except Exception as e:
-                err = str(e).lower()
-                if any(x in err for x in ["429", "403", "rate", "blocked", "captcha"]):
-                    wait = 20 * (attempt + 1)
-                    push_log(f"  ⏳ Rate-limit ({country}), wait {wait}s")
-                    time.sleep(wait)
-                elif attempt == 2:
-                    push_log(f"  Search error ({country}): {str(e)[:60]}")
-                else:
-                    time.sleep(random.uniform(2, 4))
+        try:
+            results = search(keyword, lang=lang, country=country, n_hits=500)
+        except Exception as e:
+            push_log(f"  Search error ({country}): {e}")
+            continue
 
         for item in results:
-            aid = item.get("appId", "")
-            if not aid or aid in seen_in_search or aid in global_seen_ids:
+            if stop_event.is_set():
+                break
+            app_id = item.get("appId", "")
+            if not app_id or app_id in global_seen_ids:
                 continue
-            if is_duplicate_in_sheet(aid, ""):
-                global_seen_ids.add(aid)
+
+            # ── Sheet memory check (cross-run dedup) ──────────────────────────
+            if is_duplicate_in_sheet(app_id, ""):
+                global_seen_ids.add(app_id)
+                push_log(f"  ⏭️  Skip (in sheet): {app_id}")
                 continue
-            seen_in_search.add(aid)
-            candidates.append((aid, item))
 
-        time.sleep(random.uniform(0.3, 0.8))
+            try:
+                details = gp_app(app_id, lang="en", country="us")
+            except Exception:
+                global_seen_ids.add(app_id)
+                continue
 
-    push_log(f"  📋 {len(candidates)} unique candidates")
-    if not candidates:
-        push_log(f"  📦 0 new leads from '{keyword}'")
-        sheet_log_keyword(keyword, 0)
-        return []
+            installs = details.get("minInstalls") or 0
+            score    = details.get("score")
 
-    # ── Step 2: sort — no score / lowest installs first ──────────────────────
-    def _sort_key(pair):
-        _, item = pair
-        sc = item.get("score") or 0
-        try: sc = float(sc)
-        except: sc = 0.0
-        inst = _parse_installs(item.get("minInstalls") or item.get("installs") or 0)
-        return (0 if sc == 0 else 1, inst)
+            if not passes_filter(installs, score, hunter):
+                global_seen_ids.add(app_id)
+                continue
 
-    candidates.sort(key=_sort_key)
+            # ── Country filter ─────────────────────────────────────────────────
+            if not is_allowed_country(details):
+                global_seen_ids.add(app_id)
+                mode_name = "Hunter" if (hunter and hunter.get("active")) else "Normal"
+                push_log(f"  🚫 Skip (blocked country): {details.get('title', app_id)}")
+                continue
 
-    # ── Step 3: parallel detail fetch in batches of 30 ───────────────────────
-    BATCH = 30
-    WORKERS = 10
+            email = (
+                extract_email(details.get("developerEmail", ""))
+                or extract_email(details.get("privacyPolicy", ""))
+                or extract_email(details.get("description", ""))
+                or extract_email(details.get("recentChanges", ""))
+            )
+            if not email:
+                global_seen_ids.add(app_id)
+                continue
 
-    for batch_start in range(0, len(candidates), BATCH):
-        if stop_event.is_set():
-            break
+            # ── Email dedup: check both in-memory and sheet memory ─────────────
+            if email in global_seen_emails or is_duplicate_in_sheet("", email):
+                global_seen_ids.add(app_id)
+                push_log(f"  ⏭️  Skip (email dup): {email}")
+                continue
 
-        batch_ids = [
-            aid for aid, _ in candidates[batch_start: batch_start + BATCH]
-            if aid not in global_seen_ids
-        ]
-
-        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futures = {
-                ex.submit(_qualify_one, aid, keyword, hunter): aid
-                for aid in batch_ids
+            lead = {
+                "app_id":      app_id,
+                "app_name":    details.get("title", ""),
+                "developer":   details.get("developer", ""),
+                "email":       email,
+                "category":    details.get("genre", ""),
+                "installs":    installs,
+                "score":       score,
+                "description": (details.get("description") or "")[:300],
+                "url":         f"https://play.google.com/store/apps/details?id={app_id}",
+                "icon":        details.get("icon", ""),
+                "keyword":     keyword,
+                "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
+                "email_sent":  False,
             }
-            for fut in as_completed(futures):
-                aid  = futures[fut]
-                lead = None
-                try:
-                    lead = fut.result()
-                except Exception:
-                    pass
+            leads.append(lead)
+            global_seen_ids.add(app_id)
+            global_seen_emails.add(email)
+            # Register in sheet memory so same run won't add again
+            register_in_sheet_memory(app_id, email)
 
-                global_seen_ids.add(aid)
+            score_str = f"{score:.1f}★" if score else "new (no rating)"
+            push_log(f"  ✅ {lead['app_name']} | {installs:,} installs | {score_str} | {email}")
+            time.sleep(0.25)
 
-                if not lead:
-                    continue
-
-                email = lead["email"]
-                if email in global_seen_emails or is_duplicate_in_sheet("", email):
-                    push_log(f"  ⏭️  Skip (email dup): {email}")
-                    continue
-
-                leads.append(lead)
-                global_seen_emails.add(email)
-                register_in_sheet_memory(aid, email)
-
-                score_str = f"{lead['score']:.1f}★" if lead["score"] else "new (no rating)"
-                push_log(
-                    f"  ✅ [{mode_label}] {lead['app_name']} | "
-                    f"{lead['installs']:,} installs | {score_str} | {email}"
-                )
-
-        push_log(f"  Batch {batch_start//BATCH + 1} done | leads so far: {len(leads)}")
-        time.sleep(random.uniform(0.4, 1.0))
+        push_log(f"  [{country}] done. Leads so far: {len(leads)}")
+        time.sleep(0.5)
 
     push_log(f"  📦 {len(leads)} new leads from '{keyword}'")
     sheet_log_keyword(keyword, len(leads))
