@@ -38,168 +38,61 @@ body {
   min-height: 100vh;
   overflow-x: hidden;
 }
-
-/* ── SIDEBAR ── */
 .sidebar {
   position: fixed; left: 0; top: 0; bottom: 0; width: 230px;
   background: var(--bg2);
   border-right: 1px solid var(--border);
   display: flex; flex-direction: column; z-index: 100;
 }
-.sidebar-logo {
-  padding: 28px 22px 22px;
-  border-bottom: 1px solid var(--border);
-}
-.logo-mark {
-  font-family: var(--serif);
-  font-size: 26px; font-weight: 700;
-  letter-spacing: .5px; color: var(--cream);
-  line-height: 1;
-}
+.sidebar-logo { padding: 28px 22px 22px; border-bottom: 1px solid var(--border); }
+.logo-mark { font-family: var(--serif); font-size: 26px; font-weight: 700; letter-spacing: .5px; color: var(--cream); line-height: 1; }
 .logo-mark span { color: var(--gold2); }
-.logo-sub {
-  font-size: 9px; color: var(--slate2);
-  letter-spacing: 2.5px; text-transform: uppercase;
-  margin-top: 5px; font-family: var(--mono);
-}
+.logo-sub { font-size: 9px; color: var(--slate2); letter-spacing: 2.5px; text-transform: uppercase; margin-top: 5px; font-family: var(--mono); }
 .nav { padding: 18px 12px; flex: 1; }
-.nav-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 14px; border-radius: 6px;
-  cursor: pointer; font-size: 12.5px; font-weight: 500;
-  color: var(--slate); transition: all .15s; margin-bottom: 2px;
-  letter-spacing: .2px;
-}
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 6px; cursor: pointer; font-size: 12.5px; font-weight: 500; color: var(--slate); transition: all .15s; margin-bottom: 2px; letter-spacing: .2px; }
 .nav-item:hover { background: #161622; color: var(--cream); }
-.nav-item.active {
-  background: linear-gradient(135deg, #1a1520, #221a10);
-  color: var(--gold2);
-  border: 1px solid #2a2215;
-}
+.nav-item.active { background: linear-gradient(135deg, #1a1520, #221a10); color: var(--gold2); border: 1px solid #2a2215; }
 .nav-item .icon { font-size: 14px; width: 18px; text-align: center; }
 .nav-sep { height: 1px; background: var(--border); margin: 10px 6px; }
-
-/* ── SEND PENDING BUTTON (sidebar, always visible) ── */
-.sidebar-send-pending {
-  padding: 10px 12px;
-  border-top: 1px solid var(--border);
-}
-.btn-send-pending {
-  width: 100%; display: flex; align-items: center; justify-content: space-between;
-  gap: 8px; padding: 11px 14px; border-radius: 7px;
-  background: linear-gradient(135deg, #161209, #1e1a0d);
-  border: 1px solid #2a2215; cursor: pointer;
-  font-family: var(--sans); font-size: 12px; font-weight: 600;
-  color: var(--gold2); transition: all .18s;
-  letter-spacing: .2px;
-}
+.sidebar-send-pending { padding: 10px 12px; border-top: 1px solid var(--border); }
+.btn-send-pending { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 11px 14px; border-radius: 7px; background: linear-gradient(135deg, #161209, #1e1a0d); border: 1px solid #2a2215; cursor: pointer; font-family: var(--sans); font-size: 12px; font-weight: 600; color: var(--gold2); transition: all .18s; letter-spacing: .2px; }
 .btn-send-pending:hover { background: linear-gradient(135deg,#1e180d,#2a2410); border-color: var(--gold); }
 .btn-send-pending:disabled { opacity: .35; cursor: not-allowed; }
-.pending-badge {
-  background: var(--gold); color: #0a0808;
-  font-size: 10px; font-weight: 700; font-family: var(--mono);
-  padding: 2px 7px; border-radius: 10px; min-width: 22px; text-align: center;
-}
+.pending-badge { background: var(--gold); color: #0a0808; font-size: 10px; font-weight: 700; font-family: var(--mono); padding: 2px 7px; border-radius: 10px; min-width: 22px; text-align: center; }
 .pending-badge.zero { background: var(--slate2); color: var(--bg); }
-
 .sidebar-bottom { padding: 12px; border-top: 1px solid var(--border); }
-.status-pill {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 13px; background: var(--card); border-radius: 6px;
-  font-size: 11px; color: var(--slate);
-  border: 1px solid var(--border);
-}
+.status-pill { display: flex; align-items: center; gap: 8px; padding: 9px 13px; background: var(--card); border-radius: 6px; font-size: 11px; color: var(--slate); border: 1px solid var(--border); }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--slate2); flex-shrink: 0; }
 .dot.live { background: var(--green); box-shadow: 0 0 8px var(--green); animation: blink 1.4s ease-in-out infinite; }
 .dot.done-dot { background: var(--green); }
 .dot.err { background: var(--red); }
 @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:.2;} }
-
-/* ── MAIN ── */
 .main { margin-left: 230px; min-height: 100vh; padding: 28px 32px; }
-.topbar {
-  display: flex; align-items: center; justify-content: space-between;
-  margin-bottom: 26px; gap: 12px; flex-wrap: wrap;
-}
-.page-title {
-  font-family: var(--serif);
-  font-size: 28px; font-weight: 600; letter-spacing: .3px;
-  color: var(--cream);
-}
+.topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 26px; gap: 12px; flex-wrap: wrap; }
+.page-title { font-family: var(--serif); font-size: 28px; font-weight: 600; letter-spacing: .3px; color: var(--cream); }
 .page-title .hi { color: var(--gold2); }
 .topbar-right { display: flex; align-items: center; gap: 8px; }
-.time-badge {
-  font-family: var(--mono); font-size: 11px; color: var(--slate);
-  background: var(--card); padding: 6px 14px;
-  border-radius: 6px; border: 1px solid var(--border);
-}
-
-/* ── KEEPALIVE BADGE ── */
-.ping-badge {
-  font-family: var(--mono); font-size: 10px;
-  padding: 5px 10px; border-radius: 5px;
-  border: 1px solid var(--border); background: var(--card);
-  display: flex; align-items: center; gap: 6px;
-  color: var(--slate2); white-space: nowrap;
-}
+.time-badge { font-family: var(--mono); font-size: 11px; color: var(--slate); background: var(--card); padding: 6px 14px; border-radius: 6px; border: 1px solid var(--border); }
+.ping-badge { font-family: var(--mono); font-size: 10px; padding: 5px 10px; border-radius: 5px; border: 1px solid var(--border); background: var(--card); display: flex; align-items: center; gap: 6px; color: var(--slate2); white-space: nowrap; }
 .ping-badge.ok  { border-color: #1a3a1a; background: #0a140a; color: var(--green); }
 .ping-badge.off { border-color: #2a1a1a; background: #140a0a; color: var(--red); }
-
-/* ── SECTIONS ── */
 .section { display: none; }
 .section.active { display: block; }
-
-/* ── CARD ── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: var(--r);
-  padding: 22px;
-  position: relative; overflow: hidden;
-}
-.card-head {
-  font-size: 9px; font-weight: 600;
-  letter-spacing: 2.5px; text-transform: uppercase;
-  color: var(--slate2); margin-bottom: 18px;
-  display: flex; align-items: center; gap: 10px;
-}
+.card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; position: relative; overflow: hidden; }
+.card-head { font-size: 9px; font-weight: 600; letter-spacing: 2.5px; text-transform: uppercase; color: var(--slate2); margin-bottom: 18px; display: flex; align-items: center; gap: 10px; }
 .card-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-
-/* ── STATS GRID ── */
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-  gap: 14px; margin-bottom: 20px;
-}
-.stat-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 20px 22px; position: relative;
-}
-.stat-card::before {
-  content: ''; position: absolute; inset: 0; border-radius: var(--r);
-  background: linear-gradient(135deg, rgba(201,168,76,.04), transparent);
-  pointer-events: none;
-}
-.stat-label {
-  font-size: 9px; font-weight: 600; letter-spacing: 2px;
-  text-transform: uppercase; color: var(--slate2); margin-bottom: 10px;
-}
-.stat-val {
-  font-family: var(--serif);
-  font-size: 40px; font-weight: 700;
-  letter-spacing: -1px; line-height: 1;
-}
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+.stat-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 20px 22px; position: relative; }
+.stat-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--r); background: linear-gradient(135deg, rgba(201,168,76,.04), transparent); pointer-events: none; }
+.stat-label { font-size: 9px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--slate2); margin-bottom: 10px; }
+.stat-val { font-family: var(--serif); font-size: 40px; font-weight: 700; letter-spacing: -1px; line-height: 1; }
 .stat-sub { font-size: 10px; color: var(--slate2); margin-top: 6px; font-family: var(--mono); }
 .c-gold .stat-val  { color: var(--gold2); }
 .c-green .stat-val { color: var(--green); }
 .c-blue .stat-val  { color: var(--blue); }
 .c-amber .stat-val { color: var(--amber); }
-
-/* ── GRID ── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-
-/* ── PROGRESS ── */
 .prog-row { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
 .prog-lbl { font-size: 11px; color: var(--slate); min-width: 130px; }
 .prog-track { flex: 1; height: 4px; background: #1a1a28; border-radius: 99px; overflow: hidden; }
@@ -209,158 +102,58 @@ body {
 .pf-blue   { background: linear-gradient(90deg, #1e40af, var(--blue)); }
 .pf-amber  { background: linear-gradient(90deg, #92400e, var(--amber)); }
 .prog-pct  { font-family: var(--mono); font-size: 10px; color: var(--slate2); min-width: 36px; text-align: right; }
-
-/* ── PIPELINE ── */
-.pipeline {
-  display: flex; background: var(--card);
-  border: 1px solid var(--border); border-radius: var(--r);
-  overflow: hidden; margin-bottom: 20px;
-}
-.pipe-step {
-  flex: 1; padding: 14px 8px; text-align: center;
-  font-size: 9px; font-weight: 600; letter-spacing: 1px;
-  text-transform: uppercase; color: var(--slate2);
-  border-right: 1px solid var(--border);
-  transition: all .3s; position: relative;
-}
+.pipeline { display: flex; background: var(--card); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; margin-bottom: 20px; }
+.pipe-step { flex: 1; padding: 14px 8px; text-align: center; font-size: 9px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--slate2); border-right: 1px solid var(--border); transition: all .3s; position: relative; }
 .pipe-step:last-child { border-right: none; }
 .pipe-ico { font-size: 16px; display: block; margin-bottom: 5px; }
 .pipe-step.p-active { background: #161209; color: var(--gold2); }
-.pipe-step.p-active::after {
-  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
-  height: 2px; background: var(--gold);
-}
+.pipe-step.p-active::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; background: var(--gold); }
 .pipe-step.p-done  { background: #0a160d; color: var(--green); }
 .pipe-step.p-err   { background: #160a0a; color: var(--red); }
-
-/* ── ACTIVITY FEED ── */
 .act-feed { max-height: 300px; overflow-y: auto; }
 .act-feed::-webkit-scrollbar { width: 2px; }
 .act-feed::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
-.act-item {
-  display: flex; gap: 10px; padding: 6px 8px;
-  border-radius: 5px; font-size: 11.5px; line-height: 1.5;
-}
+.act-item { display: flex; gap: 10px; padding: 6px 8px; border-radius: 5px; font-size: 11.5px; line-height: 1.5; }
 .act-item:hover { background: var(--card2); }
 .act-time { font-family: var(--mono); color: var(--slate2); flex-shrink: 0; font-size: 10px; padding-top: 1px; }
 .act-msg  { color: var(--slate); flex: 1; }
-
-/* ── KW CHIPS ── */
 .kw-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 2px 0; }
-.kw-chip {
-  display: flex; align-items: center; gap: 5px;
-  background: #161209; border: 1px solid #2a2215;
-  border-radius: 4px; padding: 3px 10px;
-  font-size: 10px; color: var(--gold);
-}
+.kw-chip { display: flex; align-items: center; gap: 5px; background: #161209; border: 1px solid #2a2215; border-radius: 4px; padding: 3px 10px; font-size: 10px; color: var(--gold); }
 .kw-idx { font-family: var(--mono); color: var(--slate2); font-size: 9px; }
-
-/* ── RUNNER CARD ── */
-.runner-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 22px; margin-bottom: 18px;
-}
+.runner-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; margin-bottom: 18px; }
 .runner-row { display: flex; gap: 12px; align-items: stretch; flex-wrap: wrap; }
-.kw-input {
-  flex: 1; min-width: 200px; background: #0d0d14;
-  border: 1px solid var(--border); color: var(--cream);
-  font-family: var(--sans); font-size: 14px; font-weight: 400;
-  padding: 13px 18px; border-radius: 7px; outline: none;
-  transition: border .2s, box-shadow .2s;
-}
+.kw-input { flex: 1; min-width: 200px; background: #0d0d14; border: 1px solid var(--border); color: var(--cream); font-family: var(--sans); font-size: 14px; font-weight: 400; padding: 13px 18px; border-radius: 7px; outline: none; transition: border .2s, box-shadow .2s; }
 .kw-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,.1); }
 .kw-input::placeholder { color: var(--slate2); }
-
-/* ── HUNTER MODE ── */
-.hunter-toggle {
-  display: flex; align-items: center; gap: 10px;
-  padding: 10px 16px; background: #0d0d14;
-  border: 1px solid var(--border); border-radius: 7px;
-  cursor: pointer; font-size: 12px; color: var(--slate);
-  transition: all .15s; user-select: none; white-space: nowrap;
-}
+.hunter-toggle { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: #0d0d14; border: 1px solid var(--border); border-radius: 7px; cursor: pointer; font-size: 12px; color: var(--slate); transition: all .15s; user-select: none; white-space: nowrap; }
 .hunter-toggle:hover { border-color: var(--gold); color: var(--gold); }
 .hunter-toggle.active { background: #161209; border-color: var(--gold); color: var(--gold2); }
-.hunter-fields {
-  display: none; margin-top: 12px;
-  background: #0d0d14; border: 1px solid var(--border);
-  border-radius: 7px; padding: 14px;
-  grid-template-columns: 1fr 1fr; gap: 12px;
-}
+.hunter-fields { display: none; margin-top: 12px; background: #0d0d14; border: 1px solid var(--border); border-radius: 7px; padding: 14px; grid-template-columns: 1fr 1fr; gap: 12px; }
 .hunter-fields.show { display: grid; }
 .hf-label { font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--slate2); margin-bottom: 6px; }
-.hf-input {
-  background: var(--bg); border: 1px solid var(--border);
-  color: var(--cream); font-family: var(--mono); font-size: 12px;
-  padding: 8px 12px; border-radius: 5px; outline: none; width: 100%;
-  transition: border .2s;
-}
+.hf-input { background: var(--bg); border: 1px solid var(--border); color: var(--cream); font-family: var(--mono); font-size: 12px; padding: 8px 12px; border-radius: 5px; outline: none; width: 100%; transition: border .2s; }
 .hf-input:focus { border-color: var(--gold); }
-
-/* ── BUTTONS ── */
-.btn-primary {
-  background: linear-gradient(135deg, #8b6914, var(--gold));
-  color: #0a0808; border: none;
-  padding: 12px 28px; border-radius: 7px;
-  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; letter-spacing: .5px; transition: all .18s;
-  white-space: nowrap;
-}
+.btn-primary { background: linear-gradient(135deg, #8b6914, var(--gold)); color: #0a0808; border: none; padding: 12px 28px; border-radius: 7px; font-family: var(--sans); font-size: 12.5px; font-weight: 600; cursor: pointer; letter-spacing: .5px; transition: all .18s; white-space: nowrap; }
 .btn-primary:hover { filter: brightness(1.1); transform: translateY(-1px); }
 .btn-primary:active { transform: translateY(0); }
 .btn-primary:disabled { opacity: .4; cursor: not-allowed; transform: none; filter: none; }
-.btn-danger {
-  background: transparent; color: var(--red);
-  border: 1px solid var(--red); padding: 12px 22px; border-radius: 7px;
-  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all .18s; display: none; white-space: nowrap;
-}
+.btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red); padding: 12px 22px; border-radius: 7px; font-family: var(--sans); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .18s; display: none; white-space: nowrap; }
 .btn-danger.show { display: inline-block; }
 .btn-danger:hover { background: var(--red); color: #fff; }
-.btn-ghost {
-  background: var(--card2); border: 1px solid var(--border);
-  color: var(--slate); padding: 8px 16px; border-radius: 6px;
-  font-size: 11px; cursor: pointer; font-family: var(--mono);
-  transition: all .15s; white-space: nowrap;
-}
+.btn-ghost { background: var(--card2); border: 1px solid var(--border); color: var(--slate); padding: 8px 16px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: var(--mono); transition: all .15s; white-space: nowrap; }
 .btn-ghost:hover { color: var(--cream); border-color: var(--border2); }
-.btn-gold {
-  background: transparent; color: var(--gold);
-  border: 1px solid var(--gold); padding: 10px 22px; border-radius: 7px;
-  font-family: var(--sans); font-size: 12.5px; font-weight: 600;
-  cursor: pointer; transition: all .18s; white-space: nowrap;
-}
+.btn-gold { background: transparent; color: var(--gold); border: 1px solid var(--gold); padding: 10px 22px; border-radius: 7px; font-family: var(--sans); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: all .18s; white-space: nowrap; }
 .btn-gold:hover { background: var(--gold); color: #0a0808; }
 .btn-gold:disabled { opacity: .3; cursor: not-allowed; }
-.btn-clear {
-  background: transparent; color: var(--red);
-  border: 1px solid #3a1414; padding: 8px 16px; border-radius: 6px;
-  font-size: 11px; cursor: pointer; font-family: var(--mono);
-  transition: all .15s; white-space: nowrap;
-}
+.btn-clear { background: transparent; color: var(--red); border: 1px solid #3a1414; padding: 8px 16px; border-radius: 6px; font-size: 11px; cursor: pointer; font-family: var(--mono); transition: all .15s; white-space: nowrap; }
 .btn-clear:hover { background: #1a0808; border-color: var(--red); }
-
-/* ── TABLE ── */
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; font-size: 12px; }
-thead th {
-  padding: 10px 14px; text-align: left;
-  font-size: 9px; font-weight: 600; letter-spacing: 1.5px;
-  text-transform: uppercase; color: var(--slate2);
-  background: #0d0d14; border-bottom: 1px solid var(--border);
-  white-space: nowrap;
-}
-tbody td {
-  padding: 10px 14px; border-bottom: 1px solid #14141e;
-  vertical-align: middle; white-space: nowrap;
-}
+thead th { padding: 10px 14px; text-align: left; font-size: 9px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; color: var(--slate2); background: #0d0d14; border-bottom: 1px solid var(--border); white-space: nowrap; }
+tbody td { padding: 10px 14px; border-bottom: 1px solid #14141e; vertical-align: middle; white-space: nowrap; }
 tbody tr:last-child td { border-bottom: none; }
 tbody tr:hover td { background: #13131c; }
-.bdg {
-  display: inline-flex; align-items: center; gap: 4px;
-  font-size: 9px; font-weight: 600; letter-spacing: .5px;
-  padding: 3px 8px; border-radius: 4px;
-}
+.bdg { display: inline-flex; align-items: center; gap: 4px; font-size: 9px; font-weight: 600; letter-spacing: .5px; padding: 3px 8px; border-radius: 4px; }
 .bdg-sent  { background: #0a160d; color: var(--green); border: 1px solid #166534; }
 .bdg-pend  { background: #161209; color: var(--gold); border: 1px solid #2a2215; }
 .bdg-cat   { background: #111128; color: var(--blue); border: 1px solid #1e3a8a; }
@@ -368,115 +161,71 @@ tbody tr:hover td { background: #13131c; }
 .email-a:hover { text-decoration: underline; }
 .ext-a     { color: var(--slate2); font-size: 14px; text-decoration: none; transition: color .15s; }
 .ext-a:hover { color: var(--gold); }
-
-/* ── FUNNEL ── */
 .funnel { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
 .fn-step { display: flex; align-items: center; gap: 12px; }
 .fn-lbl  { font-size: 10px; color: var(--slate); min-width: 100px; text-align: right; }
 .fn-bar-wrap { flex: 1; height: 28px; background: #0d0d14; border-radius: 5px; overflow: hidden; }
-.fn-bar {
-  height: 100%; border-radius: 5px;
-  display: flex; align-items: center; padding: 0 10px;
-  font-size: 11px; font-weight: 600; color: #0a0808;
-  transition: width .8s cubic-bezier(.4,0,.2,1); min-width: 28px;
-}
+.fn-bar { height: 100%; border-radius: 5px; display: flex; align-items: center; padding: 0 10px; font-size: 11px; font-weight: 600; color: #0a0808; transition: width .8s cubic-bezier(.4,0,.2,1); min-width: 28px; }
 .fn-cnt { font-family: var(--mono); font-size: 11px; color: var(--slate2); min-width: 32px; }
-
-/* ── SETUP FORMS ── */
 .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
 .form-group { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
 .form-label { font-size: 9px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; color: var(--slate2); }
 .form-hint  { font-size: 10.5px; color: var(--slate2); line-height: 1.6; }
-.form-input {
-  background: #0d0d14; border: 1px solid var(--border);
-  color: var(--cream); font-family: var(--mono); font-size: 12px;
-  padding: 11px 14px; border-radius: 6px; outline: none;
-  transition: border .2s, box-shadow .2s; width: 100%;
-}
+.form-input { background: #0d0d14; border: 1px solid var(--border); color: var(--cream); font-family: var(--mono); font-size: 12px; padding: 11px 14px; border-radius: 6px; outline: none; transition: border .2s, box-shadow .2s; width: 100%; }
 .form-input:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(201,168,76,.08); }
 .form-input::placeholder { color: var(--slate2); }
 .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .pass-wrap { position: relative; }
 .pass-wrap .form-input { padding-right: 44px; }
-.pass-toggle {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  background: none; border: none; color: var(--slate2); cursor: pointer; font-size: 13px; padding: 4px;
-}
+.pass-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--slate2); cursor: pointer; font-size: 13px; padding: 4px; }
 .pass-toggle:hover { color: var(--slate); }
-
-/* ── KEEP ALIVE SECTION ── */
-.keepalive-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 22px; margin-bottom: 14px;
-}
+/* ── Proxy status indicator ── */
+.proxy-status { margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); border: 1px solid var(--border); background: #0d0d14; color: var(--slate2); line-height: 1.8; }
+.proxy-status.ok  { border-color: #1a3a1a; background: #0a140a; color: var(--green); }
+.proxy-status.off { border-color: #2a1a1a; background: #140a0a; color: var(--red); }
+/* ── SMTP test result ── */
+.test-result { margin-top: 10px; padding: 10px 14px; border-radius: 6px; font-size: 11px; font-family: var(--mono); border: 1px solid var(--border); background: #0d0d14; display: none; }
+.test-result.ok  { border-color: #1a3a1a; background: #0a140a; color: var(--green); display: block; }
+.test-result.err { border-color: #3a1414; background: #160a0a; color: var(--red); display: block; }
+/* ── Keep alive ── */
+.keepalive-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 22px; margin-bottom: 14px; }
 .ka-row { display: flex; gap: 12px; align-items: flex-end; flex-wrap: wrap; }
-.ka-status {
-  font-family: var(--mono); font-size: 11px;
-  margin-top: 12px; padding: 10px 14px;
-  border-radius: 6px; border: 1px solid var(--border);
-  color: var(--slate2); background: #0d0d14; line-height: 1.8;
-}
+.ka-status { font-family: var(--mono); font-size: 11px; margin-top: 12px; padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border); color: var(--slate2); background: #0d0d14; line-height: 1.8; }
 .ka-status.active { border-color: #1a3a1a; background: #0a140a; color: var(--green); }
 .ka-status.off    { border-color: #2a1a1a; background: #140a0a; color: var(--red); }
-
-/* ── AS BOX ── */
-.as-box {
-  background: #0d0d14; border: 1px solid var(--border);
-  border-radius: 7px; padding: 16px; margin-top: 8px;
-}
+.as-box { background: #0d0d14; border: 1px solid var(--border); border-radius: 7px; padding: 16px; margin-top: 8px; }
 .as-box h4 { font-size: 10px; font-weight: 700; color: var(--gold); margin-bottom: 10px; letter-spacing: .5px; text-transform: uppercase; }
-.code-block {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
-  padding: 12px; font-family: var(--mono); font-size: 10.5px;
-  color: #93c5fd; line-height: 1.7; overflow-x: auto; white-space: pre;
-}
-.env-block {
-  background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
-  padding: 12px; font-family: var(--mono); font-size: 11px;
-  color: #86efac; line-height: 2; white-space: pre;
-}
+.code-block { background: var(--bg); border: 1px solid var(--border); border-radius: 5px; padding: 12px; font-family: var(--mono); font-size: 10.5px; color: #93c5fd; line-height: 1.7; overflow-x: auto; white-space: pre; }
 .saved-msg { display: none; font-size: 11px; color: var(--green); align-items: center; gap: 6px; }
 .saved-msg.show { display: flex; }
-
-/* ── SPAM TEST ── */
-.spam-card {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 24px; margin-bottom: 18px;
-}
-.spam-result {
-  margin-top: 14px; padding: 12px 16px;
-  border-radius: 6px; font-size: 12px; font-family: var(--mono);
-  display: none;
-}
+.spam-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 24px; margin-bottom: 18px; }
+.spam-result { margin-top: 14px; padding: 12px 16px; border-radius: 6px; font-size: 12px; font-family: var(--mono); display: none; }
 .spam-result.ok  { background: #0a160d; border: 1px solid #166534; color: var(--green); display: block; }
 .spam-result.err { background: #160a0a; border: 1px solid #7f1d1d; color: var(--red); display: block; }
-
-/* ── WARN ── */
-.cfg-warn {
-  background: #161209; border: 1px solid #2a2215; border-radius: 7px;
-  padding: 12px 16px; font-size: 11.5px; color: var(--gold);
-  margin-bottom: 18px; display: none; align-items: center; gap: 10px;
-}
+.cfg-warn { background: #161209; border: 1px solid #2a2215; border-radius: 7px; padding: 12px 16px; font-size: 11.5px; color: var(--gold); margin-bottom: 18px; display: none; align-items: center; gap: 10px; }
 .cfg-warn.show { display: flex; }
-
-/* ── EMPTY ── */
 .empty-st { text-align: center; padding: 40px 20px; color: var(--slate2); font-size: 12px; line-height: 2; }
 .empty-ico { font-size: 26px; display: block; margin-bottom: 8px; }
-
-/* ── SHEET LINK ── */
-.sheet-link-btn {
-  display: inline-flex; align-items: center; gap: 6px;
-  background: #161209; border: 1px solid #2a2215;
-  color: var(--gold); padding: 7px 14px; border-radius: 5px;
-  font-size: 11px; font-weight: 600; text-decoration: none;
-  transition: all .15s;
-}
+.sheet-link-btn { display: inline-flex; align-items: center; gap: 6px; background: #161209; border: 1px solid #2a2215; color: var(--gold); padding: 7px 14px; border-radius: 5px; font-size: 11px; font-weight: 600; text-decoration: none; transition: all .15s; }
 .sheet-link-btn:hover { background: #1e180d; }
-
+/* ── Info box ── */
+.info-box { background: #0d1020; border: 1px solid #1e2a50; border-radius: 7px; padding: 14px 16px; margin-bottom: 14px; font-size: 11px; color: var(--blue); line-height: 1.8; }
+.info-box strong { color: var(--gold2); }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
-
+.an-filter {
+  background: #0d0d14; border: 1px solid var(--border); color: var(--cream);
+  font-family: var(--mono); font-size: 11px; padding: 6px 10px; border-radius: 5px;
+  outline: none; transition: border .2s; cursor: pointer;
+}
+.an-filter:focus, .an-filter:hover { border-color: var(--gold); }
+.an-filter option { background: #0d0d14; }
+.bdg-inbox  { background: #0a160d; color: var(--green);  border: 1px solid #166534; }
+.bdg-opened { background: #1a0d2e; color: #a78bfa;       border: 1px solid #4c1d95; }
+.bdg-spam   { background: #160a0a; color: var(--red);    border: 1px solid #7f1d1d; }
+.bdg-bounce { background: #1a1000; color: var(--amber);  border: 1px solid #78350f; }
+.bdg-unsub  { background: #111118; color: var(--slate);  border: 1px solid var(--border2); }
 @media(max-width:900px){
   .sidebar{display:none;} .main{margin-left:0;}
   .grid-2,.grid-3,.setup-grid,.form-row{grid-template-columns:1fr;}
@@ -498,16 +247,15 @@ tbody tr:hover td { background: #13131c; }
     <div class="nav-item" onclick="showSec('spamtest',this)"><span class="icon">🧪</span>Spam Test</div>
     <div class="nav-sep"></div>
     <div class="nav-item" onclick="showSec('setup',this)"><span class="icon">⚙️</span>Setup & Config</div>
+    <div class="nav-item" onclick="showSec('proxy',this)"><span class="icon">🔄</span>IP Rotation</div>
+    <div class="nav-item" onclick="showSec('smtp',this)"><span class="icon">📧</span>Email Scripts</div>
   </nav>
-
-  <!-- ── ALWAYS-VISIBLE SEND PENDING BUTTON ── -->
   <div class="sidebar-send-pending">
     <button class="btn-send-pending" id="btnSendPending" onclick="sendPending()" title="Send emails to all unsent leads">
       <span>📬 Send Pending</span>
       <span class="pending-badge zero" id="pendingBadge">0</span>
     </button>
   </div>
-
   <div class="sidebar-bottom">
     <div class="status-pill">
       <div class="dot" id="sbDot"></div>
@@ -528,7 +276,6 @@ tbody tr:hover td { background: #13131c; }
 
   <!-- ══ AUTOMATION ══ -->
   <section class="section active" id="sec-automation">
-
     <div class="runner-card">
       <div class="card-head">
         Launch Automation
@@ -538,24 +285,25 @@ tbody tr:hover td { background: #13131c; }
       </div>
       <div class="runner-row">
         <input class="kw-input" id="kwInput" type="text" placeholder="Keyword — e.g. budget tracker, meditation app …"/>
-        <div class="hunter-toggle" id="hunterToggle" onclick="toggleHunter()" title="Hunter Mode: target low-rating apps">
-          🎯 Hunter
-        </div>
+        <div class="hunter-toggle" id="hunterToggle" onclick="toggleHunter()" title="Hunter Mode: target low-rating apps">🎯 Hunter</div>
         <button class="btn-primary" id="btnStart" onclick="startAuto()">▶ Start</button>
         <button class="btn-danger" id="btnStop" onclick="stopAuto()">⏹ Stop</button>
       </div>
       <div class="hunter-fields" id="hunterFields">
         <div>
-          <div class="hf-label">Max Installs</div>
-          <input class="hf-input" id="hf-installs" type="number" placeholder="5000" value="5000"/>
+          <div class="hf-label">Max Installs (এর বেশি হলে বাদ)</div>
+          <input class="hf-input" id="hf-installs" type="number" placeholder="50000" value="50000"
+                 title="এই সংখ্যার বেশি install আছে এমন app collect হবে না"/>
+          <div style="font-size:9px;color:var(--slate2);margin-top:4px;">e.g. 50000 → max 50K install পর্যন্ত</div>
         </div>
         <div>
-          <div class="hf-label">Max Rating</div>
-          <input class="hf-input" id="hf-score" type="number" step="0.1" placeholder="2.5" value="2.5"/>
+          <div class="hf-label">Max Rating (এর বেশি হলে বাদ)</div>
+          <input class="hf-input" id="hf-score" type="number" step="0.1" placeholder="3.5" value="3.5"
+                 title="এই rating এর বেশি app collect হবে না"/>
+          <div style="font-size:9px;color:var(--slate2);margin-top:4px;">e.g. 3.5 → max 3.5★ পর্যন্ত</div>
         </div>
       </div>
     </div>
-
     <div class="pipeline">
       <div class="pipe-step" id="pp-scrape"><span class="pipe-ico">🔍</span>Scraping</div>
       <div class="pipe-step" id="pp-ai"><span class="pipe-ico">🤖</span>AI Keywords</div>
@@ -563,14 +311,12 @@ tbody tr:hover td { background: #13131c; }
       <div class="pipe-step" id="pp-email"><span class="pipe-ico">📧</span>AI Email</div>
       <div class="pipe-step" id="pp-done"><span class="pipe-ico">✅</span>Complete</div>
     </div>
-
     <div class="stats-grid">
       <div class="stat-card c-gold"><div class="stat-label">Leads Found</div><div class="stat-val" id="stLeads">0</div><div class="stat-sub">Target: <span id="tgtNum">300</span></div></div>
       <div class="stat-card c-green"><div class="stat-label">Emails Sent</div><div class="stat-val" id="stEmails">0</div><div class="stat-sub">of <span id="tgtLeadsForEmail">0</span> leads</div></div>
       <div class="stat-card c-blue"><div class="stat-label">Keywords Used</div><div class="stat-val" id="stKws">0</div><div class="stat-sub">incl. AI-generated</div></div>
       <div class="stat-card c-amber"><div class="stat-label">Delivery Rate</div><div class="stat-val" id="stRate">—</div><div class="stat-sub">email success %</div></div>
     </div>
-
     <div class="grid-2">
       <div class="card">
         <div class="card-head">Progress</div>
@@ -591,47 +337,321 @@ tbody tr:hover td { background: #13131c; }
 
   <!-- ══ ANALYTICS ══ -->
   <section class="section" id="sec-analytics">
-    <div class="stats-grid">
-      <div class="stat-card c-gold"><div class="stat-label">Total Leads</div><div class="stat-val" id="an-l">0</div><div class="stat-sub">collected</div></div>
-      <div class="stat-card c-green"><div class="stat-label">Emails Sent</div><div class="stat-val" id="an-e">0</div><div class="stat-sub">outreach done</div></div>
-      <div class="stat-card c-blue"><div class="stat-label">Categories</div><div class="stat-val" id="an-c">—</div><div class="stat-sub">unique genres</div></div>
-      <div class="stat-card c-amber"><div class="stat-label">Avg Rating</div><div class="stat-val" id="an-s">—</div><div class="stat-sub">Play Store score</div></div>
+
+    <!-- TOP KPI CARDS -->
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px;">
+      <div class="stat-card c-gold">  <div class="stat-label">Total Leads</div>   <div class="stat-val" id="an-l">0</div>  <div class="stat-sub">collected</div></div>
+      <div class="stat-card c-green"> <div class="stat-label">Emails Sent</div>   <div class="stat-val" id="an-e">0</div>  <div class="stat-sub">outreach</div></div>
+      <div class="stat-card" style="--c:var(--blue)">
+        <div class="stat-label">Inbox Rate</div>
+        <div class="stat-val" id="an-inbox-rate" style="color:var(--blue)">—</div>
+        <div class="stat-sub">delivered to inbox</div>
+      </div>
+      <div class="stat-card" style="--c:#a78bfa">
+        <div class="stat-label">Open Rate</div>
+        <div class="stat-val" id="an-open-rate" style="color:#a78bfa">—</div>
+        <div class="stat-sub">of sent emails</div>
+      </div>
+      <div class="stat-card" style="--c:var(--red)">
+        <div class="stat-label">Spam Rate</div>
+        <div class="stat-val" id="an-spam-rate" style="color:var(--red)">—</div>
+        <div class="stat-sub">flagged as spam</div>
+      </div>
+      <div class="stat-card" style="--c:var(--amber)">
+        <div class="stat-label">Bounce Rate</div>
+        <div class="stat-val" id="an-bounce-rate" style="color:var(--amber)">—</div>
+        <div class="stat-sub">undeliverable</div>
+      </div>
+      <div class="stat-card c-blue">  <div class="stat-label">Categories</div>    <div class="stat-val" id="an-c">—</div>  <div class="stat-sub">unique genres</div></div>
+      <div class="stat-card c-amber"> <div class="stat-label">Avg Rating</div>    <div class="stat-val" id="an-s">—</div>  <div class="stat-sub">Play Store</div></div>
     </div>
+
+    <!-- FILTER BAR -->
+    <div class="card" style="margin-bottom:14px;padding:14px 18px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;white-space:nowrap;">🔍 Filter</span>
+        <select class="an-filter" id="af-status" onchange="renderAnalytics()">
+          <option value="">All Status</option>
+          <option value="sent">✅ Sent</option>
+          <option value="pending">⏳ Pending</option>
+          <option value="inbox">📥 Inbox</option>
+          <option value="opened">👁 Opened</option>
+          <option value="spam">🚫 Spam</option>
+          <option value="bounced">↩️ Bounced</option>
+          <option value="unsubscribed">🚫 Unsubscribed</option>
+        </select>
+        <select class="an-filter" id="af-category" onchange="renderAnalytics()">
+          <option value="">All Categories</option>
+        </select>
+        <select class="an-filter" id="af-keyword" onchange="renderAnalytics()">
+          <option value="">All Keywords</option>
+        </select>
+        <select class="an-filter" id="af-score" onchange="renderAnalytics()">
+          <option value="">All Ratings</option>
+          <option value="new">🆕 New (no rating)</option>
+          <option value="low">⭐ Low (≤2.5)</option>
+          <option value="mid">⭐⭐ Mid (2.5–3.5)</option>
+          <option value="high">⭐⭐⭐ High (3.5+)</option>
+        </select>
+        <select class="an-filter" id="af-installs" onchange="renderAnalytics()">
+          <option value="">All Install Ranges</option>
+          <option value="0">0 installs</option>
+          <option value="1k">1–1K</option>
+          <option value="5k">1K–5K</option>
+          <option value="10k">5K–10K</option>
+          <option value="10k+">10K+</option>
+        </select>
+        <input class="an-filter" id="af-search" type="text" placeholder="Search app / email / dev…" oninput="renderAnalytics()" style="flex:1;min-width:160px;"/>
+        <button class="btn-ghost" onclick="clearAnFilters()" style="font-size:10px;padding:5px 12px;">✕ Clear</button>
+        <button class="btn-ghost" onclick="exportAnCSV()" style="font-size:10px;padding:5px 12px;">⬇ CSV</button>
+        <button class="btn-ghost" onclick="loadAnalyticsFromSheet()" style="font-size:10px;padding:5px 12px;" title="Pull latest data from Google Sheet">🔄 Refresh Sheet</button>
+      </div>
+    </div>
+
+    <!-- MAIN CHARTS ROW -->
     <div class="grid-2" style="margin-bottom:14px;">
+
+      <!-- DELIVERY FUNNEL -->
       <div class="card">
-        <div class="card-head">Conversion Funnel</div>
-        <div class="funnel">
-          <div class="fn-step"><div class="fn-lbl">Scraped</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div><div class="fn-cnt" id="fn1c">0</div></div>
-          <div class="fn-step"><div class="fn-lbl">Has Email</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div><div class="fn-cnt" id="fn2c">0</div></div>
-          <div class="fn-step"><div class="fn-lbl">Email Sent</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn3" style="width:0%;background:linear-gradient(90deg,#166534,var(--green))">0</div></div><div class="fn-cnt" id="fn3c">0</div></div>
+        <div class="card-head">Email Delivery Funnel</div>
+        <div class="funnel" style="gap:8px;">
+          <div class="fn-step"><div class="fn-lbl">Total Leads</div>    <div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div><div class="fn-cnt" id="fn1c">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">Emails Sent</div>    <div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div><div class="fn-cnt" id="fn2c">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">📥 Inbox</div>       <div class="fn-bar-wrap"><div class="fn-bar" id="fn-inbox"  style="width:0%;background:linear-gradient(90deg,#065f46,var(--green))">0</div></div><div class="fn-cnt" id="fn-inboxc">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">👁 Opened</div>      <div class="fn-bar-wrap"><div class="fn-bar" id="fn-opened" style="width:0%;background:linear-gradient(90deg,#4c1d95,#a78bfa)">0</div></div><div class="fn-cnt" id="fn-openedc">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">🚫 Spam</div>        <div class="fn-bar-wrap"><div class="fn-bar" id="fn-spam"   style="width:0%;background:linear-gradient(90deg,#7f1d1d,var(--red))">0</div></div><div class="fn-cnt" id="fn-spamc">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">↩️ Bounced</div>     <div class="fn-bar-wrap"><div class="fn-bar" id="fn-bounce" style="width:0%;background:linear-gradient(90deg,#78350f,var(--amber))">0</div></div><div class="fn-cnt" id="fn-bouncec">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">🚫 Unsubscribed</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn-unsub"  style="width:0%;background:linear-gradient(90deg,#374151,#6b7280)">0</div></div><div class="fn-cnt" id="fn-unsubc">0</div></div>
         </div>
       </div>
+
+      <!-- TOP CATEGORIES -->
       <div class="card">
         <div class="card-head">Top Categories</div>
         <div id="catBreak"><div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div></div>
       </div>
     </div>
-    <div class="grid-3">
+
+    <!-- SECOND CHARTS ROW -->
+    <div class="grid-3" style="margin-bottom:14px;">
       <div class="card">
         <div class="card-head">Install Distribution</div>
         <div id="installBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
       </div>
       <div class="card">
+        <div class="card-head">Rating Distribution</div>
+        <div id="scoreBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
+      </div>
+      <div class="card">
         <div class="card-head">Keyword Performance</div>
         <div id="kwPerf"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
       </div>
+    </div>
+
+    <!-- EMAIL STATUS TIMELINE / DAILY SUMMARY -->
+    <div class="grid-2" style="margin-bottom:14px;">
+      <div class="card">
+        <div class="card-head">Email Status Breakdown</div>
+        <div id="statusBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
+      </div>
       <div class="card">
         <div class="card-head">Session Summary</div>
-        <div style="font-size:11px;color:var(--slate2);line-height:2.4;padding:4px 0;">
-          Start time: <span id="ss-start" style="color:var(--slate)">—</span><br>
-          Duration: <span id="ss-dur" style="color:var(--slate)">—</span><br>
-          Phase: <span id="ss-phase" style="color:var(--gold)">—</span><br>
-          AI calls: <span id="ss-ai" style="color:var(--blue)">0</span><br>
-          Sheet: <span id="ss-sheet" style="color:var(--green)">—</span><br>
-          Status: <span id="ss-st" style="color:var(--slate)">Idle</span>
+        <div style="font-size:11px;color:var(--slate2);line-height:2.6;padding:4px 0;">
+          Start time:     <span id="ss-start" style="color:var(--slate)">—</span><br>
+          Duration:       <span id="ss-dur"   style="color:var(--slate)">—</span><br>
+          Phase:          <span id="ss-phase" style="color:var(--gold)">—</span><br>
+          AI calls:       <span id="ss-ai"    style="color:var(--blue)">0</span><br>
+          Sheet:          <span id="ss-sheet" style="color:var(--green)">—</span><br>
+          Status:         <span id="ss-st"    style="color:var(--slate)">Idle</span><br>
+          Delivery rate:  <span id="ss-deliv" style="color:var(--green)">—</span><br>
+          Inbox rate:     <span id="ss-inbox" style="color:var(--blue)">—</span><br>
+          Open rate:      <span id="ss-open"  style="color:#a78bfa">—</span>
         </div>
       </div>
     </div>
+
+    <!-- FILTERED LEADS TABLE -->
+    <div class="card">
+      <div class="card-head" style="justify-content:space-between;">
+        <span>Filtered Leads &nbsp;<span id="an-filtered-cnt" style="color:var(--gold2);font-family:var(--serif);font-size:18px;font-weight:700">0</span></span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-ghost" onclick="exportAnCSV()" style="font-size:10px;padding:5px 12px;">⬇ Export Filtered CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>App</th><th>Developer</th><th>Email</th>
+            <th>Category</th><th>Installs</th><th>Score</th>
+            <th>Keyword</th><th>Email Status</th><th>Delivery</th><th>Link</th>
+          </tr></thead>
+          <tbody id="an-tbody"><tr><td colspan="11"><div class="empty-st"><span class="empty-ico">📊</span>No data yet.</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SHEET ANALYTICS TAB INFO -->
+    <div class="card" style="margin-top:14px;">
+      <div class="card-head">📋 Google Sheet — Email Analytics Tab Setup</div>
+      <div class="info-box" style="margin-bottom:12px;">
+        Sheet এ <strong style="color:var(--gold2);">Email Analytics</strong> tab automatically তৈরি হবে।
+        Spam / Bounce / Inbox / Opened events এই tab এ log হবে।
+        নিচের Script code টা তোমার <strong>Lead Database Apps Script</strong> এ add করো (existing code replace করো)।
+      </div>
+      <div class="as-box">
+        <h4>📋 Updated Apps Script — Analytics সহ (existing script replace করো)</h4>
+        <div class="code-block" id="analyticsScriptCode">function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = data.action;
+
+    if (action === "append") {
+      var tab = data.tab || "All Leads";
+      var sheet = ss.getSheetByName(tab);
+      if (!sheet) sheet = ss.insertSheet(tab);
+      var row = data.row;
+      if (sheet.getLastRow() === 0) sheet.appendRow(Object.keys(row));
+      sheet.appendRow(Object.values(row));
+
+    } else if (action === "log_email_event") {
+      // Log spam / bounce / inbox / opened events
+      var evSheet = ss.getSheetByName("Email Analytics");
+      if (!evSheet) {
+        evSheet = ss.insertSheet("Email Analytics");
+        evSheet.appendRow(["Timestamp","App ID","App Name","Email","Event","Details","Keyword","Category","Installs","Score"]);
+      }
+      evSheet.appendRow([
+        new Date().toISOString(),
+        data.app_id || "",
+        data.app_name || "",
+        data.email || "",
+        data.event || "",   // inbox / spam / bounced / opened / unsubscribed
+        data.details || "",
+        data.keyword || "",
+        data.category || "",
+        data.installs || "",
+        data.score || ""
+      ]);
+      // Also update status in All Leads tab
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet && data.app_id) {
+        var vals = allSheet.getDataRange().getValues();
+        var headers = vals[0];
+        var appIdCol = headers.indexOf("App ID");
+        var statusCol = headers.indexOf("Email Status");
+        if (statusCol < 0) {
+          allSheet.getRange(1, headers.length + 1).setValue("Email Status");
+          statusCol = headers.length;
+        }
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][appIdCol]) === String(data.app_id)) {
+            allSheet.getRange(i + 1, statusCol + 1).setValue(data.event);
+            break;
+          }
+        }
+      }
+
+    } else if (action === "get_analytics") {
+      var evSheet = ss.getSheetByName("Email Analytics");
+      if (!evSheet) return ContentService.createTextOutput(JSON.stringify({events:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = evSheet.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({events:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0];
+      var events = [];
+      for (var i = 1; i < vals.length; i++) {
+        var obj = {};
+        headers.forEach(function(h, j) { obj[h] = vals[i][j]; });
+        events.push(obj);
+      }
+      return ContentService.createTextOutput(JSON.stringify({events:events})).setMimeType(ContentService.MimeType.JSON);
+
+    } else if (action === "mark_sent") {
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet) {
+        var vals = allSheet.getDataRange().getValues();
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][vals[i].length-1]) === data.app_id) {
+            var col = vals[0].indexOf("Email Sent")+1;
+            if (col > 0) allSheet.getRange(i+1,col).setValue("Yes");
+            break;
+          }
+        }
+      }
+
+    } else if (action === "get_all") {
+      var sh = ss.getSheetByName(data.tab||"All Leads");
+      if (!sh) return ContentService.createTextOutput(JSON.stringify({records:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = sh.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({records:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0]; var records = [];
+      for (var i=1;i<vals.length;i++){var obj={};headers.forEach(function(h,j){obj[h]=vals[i][j];});records.push(obj);}
+      return ContentService.createTextOutput(JSON.stringify({records:records})).setMimeType(ContentService.MimeType.JSON);
+
+    } else if (action === "get_pending") {
+      var sh = ss.getSheetByName("All Leads");
+      if (!sh) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = sh.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0]; var colIdx={};
+      headers.forEach(function(h,i){colIdx[h]=i;});
+      var leads=[];
+      for (var i=1;i<vals.length;i++){
+        var row=vals[i];
+        var sent=String(row[colIdx["Email Sent"]]||"").trim().toLowerCase();
+        if (sent==="no"||sent===""){
+          leads.push({app_id:String(row[colIdx["App ID"]]||""),app_name:String(row[colIdx["App Name"]]||""),developer:String(row[colIdx["Developer"]]||""),email:String(row[colIdx["Email"]]||""),category:String(row[colIdx["Category"]]||""),installs:Number(row[colIdx["Installs"]]||0),score:row[colIdx["Score"]]?Number(row[colIdx["Score"]]):null,url:String(row[colIdx["URL"]]||""),keyword:String(row[colIdx["Keyword"]]||"")});
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:leads})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({status:"ok"})).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status:"error",msg:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}</div>
+        <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('analyticsScriptCode')">📋 Copy Updated Script</button>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--slate2);line-height:2;">
+        <strong style="color:var(--gold2);">Event types যা log হবে:</strong><br>
+        <span style="color:var(--green);">inbox</span> — email successfully delivered to inbox &nbsp;|&nbsp;
+        <span style="color:#a78bfa;">opened</span> — recipient opened the email &nbsp;|&nbsp;
+        <span style="color:var(--red);">spam</span> — flagged as spam &nbsp;|&nbsp;
+        <span style="color:var(--amber);">bounced</span> — email bounced (invalid / full) &nbsp;|&nbsp;
+        <span style="color:#6b7280;">unsubscribed</span> — clicked unsubscribe<br>
+        <strong style="color:var(--gold2);">Note:</strong> Spam/bounce detection automatic হয় Gmail Apps Script থেকে।
+        Manual log করতে হলে নিচের "Log Event" ব্যবহার করো।
+      </div>
+
+      <!-- MANUAL EVENT LOGGER -->
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;margin-bottom:12px;">Manual Event Logger</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap;">
+          <div>
+            <div class="form-label" style="margin-bottom:5px;">App ID or Email</div>
+            <input class="form-input" id="ev-appid" type="text" placeholder="com.example.app or email@dev.com" style="font-size:11px;padding:8px 12px;"/>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:5px;">Event Type</div>
+            <select class="form-input" id="ev-type" style="font-size:11px;padding:8px 12px;">
+              <option value="inbox">📥 Inbox</option>
+              <option value="opened">👁 Opened</option>
+              <option value="spam">🚫 Spam</option>
+              <option value="bounced">↩️ Bounced</option>
+              <option value="unsubscribed">🚫 Unsubscribed</option>
+            </select>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:5px;">Details (optional)</div>
+            <input class="form-input" id="ev-details" type="text" placeholder="notes…" style="font-size:11px;padding:8px 12px;"/>
+          </div>
+          <button class="btn-ghost" onclick="logEmailEvent()" style="white-space:nowrap;padding:8px 14px;font-size:11px;">📝 Log</button>
+        </div>
+        <div id="ev-result" style="margin-top:8px;font-size:11px;display:none;"></div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ══ DATABASE ══ -->
@@ -712,7 +732,7 @@ tbody tr:hover td { background: #13131c; }
               <input class="form-input" id="cfg-groq" type="password" placeholder="gsk_…"/>
               <button class="pass-toggle" onclick="togglePass('cfg-groq',this)">👁</button>
             </div>
-            <div class="form-hint">From <strong style="color:var(--gold)">console.groq.com</strong> — free tier available. Used for AI keywords AND AI email writing.</div>
+            <div class="form-hint">From <strong style="color:var(--gold)">console.groq.com</strong> — free tier available.</div>
           </div>
           <div class="form-group">
             <label class="form-label">Target Leads</label>
@@ -737,21 +757,16 @@ tbody tr:hover td { background: #13131c; }
         <div class="card">
           <div class="card-head">Email Template (AI Base)</div>
           <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:1.7;">
-            AI এই template এর <strong style="color:var(--gold)">value proposition</strong> রেখে প্রতিটা lead এর জন্য unique subject + body লিখবে।
-            Template টা যত ভালো হবে, AI output তত ভালো হবে।
-          </div>
-          <div class="form-group">
-            <label class="form-label">Subject Line Template</label>
-            <input class="form-input" id="cfg-email-subject" type="text" placeholder="Quick question about {{app_name}}"/>
-          </div>
-          <div style="font-size:10px;color:var(--slate2);margin-bottom:8px;">
             Variables: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{app_name}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{developer}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{category}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{score}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{installs}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_name}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_company}}</code>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject Line Template</label>
+            <input class="form-input" id="cfg-email-subject" type="text" placeholder="Quick question about {{app_name}}"/>
           </div>
           <div class="form-group">
             <label class="form-label">Email Body Template</label>
@@ -768,12 +783,12 @@ tbody tr:hover td { background: #13131c; }
         <div class="keepalive-card">
           <div class="card-head">⚡ Keep-Alive (Anti-Sleep)</div>
           <div style="font-size:11px;color:var(--slate);margin-bottom:14px;line-height:1.8;">
-            Render free plan এ server 15 min পরে sleep হয়। নিচে তোমার <strong style="color:var(--gold)">deployed app এর URL</strong> দাও — এই page নিজেই নির্দিষ্ট সময় পর ping করে server কে জাগিয়ে রাখবে।
+            Railway free plan এ server sleep হতে পারে। নিচে তোমার <strong style="color:var(--gold)">deployed app এর URL</strong> দাও।
           </div>
           <div class="ka-row">
             <div class="form-group" style="flex:1;margin-bottom:0;">
               <label class="form-label">Your App URL</label>
-              <input class="form-input" id="cfg-keepalive-url" type="url" placeholder="https://your-app.onrender.com"/>
+              <input class="form-input" id="cfg-keepalive-url" type="url" placeholder="https://your-app.railway.app"/>
             </div>
             <div class="form-group" style="min-width:130px;margin-bottom:0;">
               <label class="form-label">Interval (seconds)</label>
@@ -784,256 +799,266 @@ tbody tr:hover td { background: #13131c; }
             <button class="btn-primary" onclick="startKeepAlive()" id="btnKaStart" style="font-size:11.5px;padding:9px 20px;">▶ Start Keep-Alive</button>
             <button class="btn-clear" onclick="stopKeepAlive()" id="btnKaStop" style="display:none;padding:9px 16px;">⏹ Stop</button>
           </div>
-          <div class="ka-status off" id="kaStatus" style="margin-top:10px;">Keep-Alive: OFF — server may sleep after 15 minutes</div>
+          <div class="ka-status off" id="kaStatus" style="margin-top:10px;">Keep-Alive: OFF</div>
         </div>
 
         <div class="card">
           <div class="card-head">Google Sheet Database</div>
           <div class="form-group">
-            <label class="form-label">Google Sheet URL</label>
+            <label class="form-label">Google Sheet URL (optional — for direct link)</label>
             <input class="form-input" id="cfg-sheeturl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…"/>
             <div id="sheetLinkRowSetup" style="margin-top:8px;"></div>
           </div>
           <div class="form-group">
-            <label class="form-label">Lead Sheet Apps Script URL</label>
+            <label class="form-label">Apps Script URL (Lead Database)</label>
             <input class="form-input" id="cfg-appsscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
             <div class="form-hint">Leads sheet এ data লেখার জন্য</div>
           </div>
           <div class="as-box">
-            <h4>📋 Lead Sheet Apps Script (4 tabs auto-created)</h4>
-            <div style="font-size:10px;color:var(--slate2);line-height:1.9;margin-bottom:10px;">
-              Tabs: <strong style="color:var(--gold)">All Leads</strong> | <strong style="color:var(--gold)">Qualified Leads</strong> | <strong style="color:var(--gold)">Email Sent</strong> | <strong style="color:var(--gold)">Keyword Log</strong>
-            </div>
+            <h4>📋 Apps Script Code (Lead Sheet)</h4>
             <div class="code-block" id="asCode">function doPost(e) {
   try {
-    var payload = JSON.parse(e.postData.contents);
-    var ss      = SpreadsheetApp.getActiveSpreadsheet();
-    var action  = payload.action || "";
-
-    // ── Column headers for each tab ──────────────────────────────────────────
-    var HEADERS = {
-      "All Leads":       ["App Name","Developer","Email","Category","Installs","Score","URL","Keyword","Scraped At","Email Sent","App ID"],
-      "Qualified Leads": ["App Name","Developer","Email","Category","Installs","Score","URL","Keyword","Scraped At","Email Sent","App ID"],
-      "Email Sent":      ["App ID","App Name","Email","Sent At"],
-      "Keyword Log":     ["Keyword","Leads Found","Logged At"],
-      "Unsubscribes":    ["Email","At"]
-    };
-
-    // ── Helper: get or create a sheet with headers ───────────────────────────
-    function getOrCreate(tabName) {
-      var sheet = ss.getSheetByName(tabName);
-      if (!sheet) {
-        sheet = ss.insertSheet(tabName);
-        var hdrs = HEADERS[tabName];
-        if (hdrs && hdrs.length) {
-          sheet.getRange(1, 1, 1, hdrs.length).setValues([hdrs]);
-          sheet.getRange(1, 1, 1, hdrs.length)
-               .setBackground("#1a1a2e").setFontColor("#ffffff").setFontWeight("bold");
-          sheet.setFrozenRows(1);
-        }
-      }
-      return sheet;
-    }
-
-    // ── ACTION: append ────────────────────────────────────────────────────────
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = data.action;
     if (action === "append") {
-      var tabName = payload.tab;
-      var rowData = payload.row || {};
-      var sheet   = getOrCreate(tabName);
-      var hdrs    = HEADERS[tabName];
-
-      // Ensure header row exists even for unknown tabs
-      if (sheet.getLastRow() === 0) {
-        if (hdrs) sheet.appendRow(hdrs);
-        else sheet.appendRow(Object.keys(rowData));
-      }
-
-      // Build row in correct column order
-      var rowArr;
-      if (hdrs) {
-        rowArr = hdrs.map(function(h) {
-          var v = rowData[h];
-          return (v === undefined || v === null) ? "" : v;
-        });
-      } else {
-        rowArr = Object.values(rowData);
-      }
-      sheet.appendRow(rowArr);
-
-    // ── ACTION: mark_sent ─────────────────────────────────────────────────────
+      var tab = data.tab || "All Leads";
+      var sheet = ss.getSheetByName(tab);
+      if (!sheet) sheet = ss.insertSheet(tab);
+      var row = data.row;
+      if (sheet.getLastRow() === 0) sheet.appendRow(Object.keys(row));
+      sheet.appendRow(Object.values(row));
     } else if (action === "mark_sent") {
-      var appId = String(payload.app_id || "").trim();
-
-      function markInTab(tabName, newVal) {
-        var sh = ss.getSheetByName(tabName);
-        if (!sh) return;
-        var data = sh.getDataRange().getValues();
-        if (data.length < 2) return;
-        var hdrs      = data[0];
-        var appIdCol  = hdrs.indexOf("App ID");
-        var sentCol   = hdrs.indexOf("Email Sent");
-        if (appIdCol < 0 || sentCol < 0) return;
-        for (var i = 1; i < data.length; i++) {
-          if (String(data[i][appIdCol]).trim() === appId) {
-            sh.getRange(i + 1, sentCol + 1).setValue(newVal);
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet) {
+        var vals = allSheet.getDataRange().getValues();
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][vals[i].length-1]) === data.app_id) {
+            var col = vals[0].indexOf("Email Sent")+1;
+            if (col > 0) allSheet.getRange(i+1,col).setValue("Yes");
+            break;
           }
         }
       }
-
-      markInTab("All Leads",       "Yes");
-      markInTab("Qualified Leads", "Sent");
-
-    // ── ACTION: get_all ───────────────────────────────────────────────────────
     } else if (action === "get_all") {
-      var tabName = payload.tab || "All Leads";
-      var sh      = ss.getSheetByName(tabName);
-      if (!sh || sh.getLastRow() < 2) {
-        return respond({records: [], count: 0});
-      }
-      var data    = sh.getDataRange().getValues();
-      var hdrs    = data[0];
+      var sh = ss.getSheetByName(data.tab||"All Leads");
+      if (!sh) return ContentService.createTextOutput(JSON.stringify({records:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = sh.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({records:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0];
       var records = [];
-      for (var i = 1; i < data.length; i++) {
-        var obj = {};
-        for (var j = 0; j < hdrs.length; j++) {
-          obj[hdrs[j]] = data[i][j] !== undefined ? String(data[i][j]) : "";
-        }
+      for (var i=1;i<vals.length;i++) {
+        var obj={};
+        headers.forEach(function(h,j){obj[h]=vals[i][j];});
         records.push(obj);
       }
-      return respond({records: records, count: records.length});
-
-    // ── ACTION: get_pending ───────────────────────────────────────────────────
+      return ContentService.createTextOutput(JSON.stringify({records:records})).setMimeType(ContentService.MimeType.JSON);
     } else if (action === "get_pending") {
-      var sh = ss.getSheetByName("Qualified Leads");
-      if (!sh || sh.getLastRow() < 2) return respond({leads: [], count: 0});
-      var data  = sh.getDataRange().getValues();
-      var hdrs  = data[0];
-      var idx   = {};
-      hdrs.forEach(function(h, i) { idx[h] = i; });
-      var leads = [];
-      for (var i = 1; i < data.length; i++) {
-        var sentVal = String(data[i][idx["Email Sent"]] || "").trim().toLowerCase();
-        if (sentVal === "pending" || sentVal === "no" || sentVal === "") {
-          leads.push({
-            app_id:     String(data[i][idx["App ID"]]    || ""),
-            app_name:   String(data[i][idx["App Name"]]  || ""),
-            developer:  String(data[i][idx["Developer"]] || ""),
-            email:      String(data[i][idx["Email"]]     || ""),
-            category:   String(data[i][idx["Category"]]  || ""),
-            installs:   Number(data[i][idx["Installs"]]  || 0),
-            score:      data[i][idx["Score"]] ? Number(data[i][idx["Score"]]) : null,
-            url:        String(data[i][idx["URL"]]       || ""),
-            keyword:    String(data[i][idx["Keyword"]]   || ""),
-            scraped_at: String(data[i][idx["Scraped At"]]|| ""),
-            email_sent: false
-          });
+      var sh = ss.getSheetByName("All Leads");
+      if (!sh) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = sh.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0]; var colIdx={};
+      headers.forEach(function(h,i){colIdx[h]=i;});
+      var leads=[];
+      for (var i=1;i<vals.length;i++) {
+        var row=vals[i];
+        var sent=String(row[colIdx["Email Sent"]]||"").trim().toLowerCase();
+        if (sent==="no"||sent==="") {
+          leads.push({app_id:String(row[colIdx["App ID"]]||""),app_name:String(row[colIdx["App Name"]]||""),developer:String(row[colIdx["Developer"]]||""),email:String(row[colIdx["Email"]]||""),category:String(row[colIdx["Category"]]||""),installs:Number(row[colIdx["Installs"]]||0),score:row[colIdx["Score"]]?Number(row[colIdx["Score"]]):null,url:String(row[colIdx["URL"]]||""),keyword:String(row[colIdx["Keyword"]]||"")});
         }
       }
-      return respond({leads: leads, count: leads.length});
-
-    // ── ACTION: get_analytics ─────────────────────────────────────────────────
-    } else if (action === "get_analytics") {
-      var events = [];
-      var tabs = ["All Leads","Email Sent","Keyword Log","Unsubscribes"];
-      var labels = ["Total Leads","Emails Sent","Keywords Used","Unsubscribes"];
-      tabs.forEach(function(t, i) {
-        var sh = ss.getSheetByName(t);
-        events.push({label: labels[i], value: sh ? Math.max(0, sh.getLastRow()-1) : 0});
-      });
-      return respond({ok: true, events: events});
+      return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:leads})).setMimeType(ContentService.MimeType.JSON);
     }
-
-    return respond({status: "ok"});
+    return ContentService.createTextOutput(JSON.stringify({status:"ok"})).setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
-    return respond({status: "error", msg: err.toString()});
+    return ContentService.createTextOutput(JSON.stringify({status:"error",msg:err.toString()})).setMimeType(ContentService.MimeType.JSON);
   }
-}
-
-function respond(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doGet(e) {
-  return respond({ok: true, msg: "PlayLead Sheet Script is live"});
 }</div>
-            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('asCode')">📋 Copy Lead Script</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="card-head">Email Apps Script</div>
-          <div class="form-group">
-            <label class="form-label">Email Apps Script URL</label>
-            <input class="form-input" id="cfg-emailscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
-            <div class="form-hint">Gmail দিয়ে email পাঠানোর জন্য — আলাদা Script deploy করো</div>
-          </div>
-          <div class="as-box">
-            <h4>📧 Email Apps Script Code</h4>
-            <div class="code-block" id="emailCode">function doPost(e) {
-  try {
-    var data    = JSON.parse(e.postData.contents);
-    var to      = data.to      || "";
-    var subject = data.subject || "";
-    var body    = data.body    || "";
-
-    if (!to || !subject || !body) {
-      return respond({status:"error", msg:"to, subject, body required"});
-    }
-
-    // Plain-text + HTML send
-    var htmlBody = body.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
-                       .replace(/\n/g,"<br>\n");
-    htmlBody = "<!DOCTYPE html><html><body style=\"font-family:Arial,sans-serif;font-size:14px;color:#222;max-width:560px;\">"
-               + htmlBody + "</body></html>";
-
-    GmailApp.sendEmail(to, subject, body, {htmlBody: htmlBody});
-
-    return respond({status: "ok"});
-  } catch(err) {
-    return respond({status: "error", msg: err.toString()});
-  }
-}
-
-function respond(obj) {
-  return ContentService
-    .createTextOutput(JSON.stringify(obj))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doGet(e) {
-  return respond({ok: true, msg: "PlayLead Email Script is live"});
-}</div>
-            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('emailCode')">📋 Copy Email Script</button>
+            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('asCode')">📋 Copy Script</button>
           </div>
         </div>
 
       </div>
     </div>
 
-    <div class="card" style="margin-bottom:18px;">
-      <div class="card-head">Render Environment Variables</div>
-      <div style="font-size:11px;color:var(--slate);margin-bottom:10px;">Copy these to Render → your service → Environment:</div>
-      <div class="env-block" id="envPrev">GROQ_API_KEY=…
-APPS_SCRIPT_WEB_URL=…
-EMAIL_SCRIPT_URL=…
-SENDER_NAME=…
-SENDER_COMPANY=…
-TARGET_LEADS=300</div>
-      <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('envPrev')">📋 Copy ENV Block</button>
-    </div>
-
-    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+    <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:6px;">
       <button class="btn-primary" onclick="saveConfig()">💾 Save Configuration</button>
       <div class="saved-msg" id="savedMsg">✅ Saved!</div>
     </div>
   </section>
+
+  <!-- ══ IP ROTATION ══ -->
+  <section class="section" id="sec-proxy">
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head">🔄 IP Rotation — Proxy Setup</div>
+
+      <div class="info-box">
+        <strong>কিভাবে কাজ করে:</strong> Python কোড নিজেই proxy rotate করে — কোনো external service লাগবে না।<br>
+        প্রতিটা request এ একটা নতুন proxy use করে, fail করলে automatically পরের টা try করে।<br>
+        <strong>Format:</strong> একটার নিচে একটা — <code style="color:var(--gold)">http://user:pass@host:port</code> অথবা <code style="color:var(--gold)">socks5://user:pass@host:port</code>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Proxy List (একটার নিচে একটা)</label>
+        <textarea class="form-input" id="cfg-proxy-list" rows="10"
+          style="resize:vertical;line-height:1.8;font-size:11.5px;font-family:var(--mono);"
+          placeholder="http://user:pass@proxy1.example.com:8080
+http://user:pass@proxy2.example.com:8080
+http://user:pass@proxy3.example.com:8080
+socks5://user:pass@proxy4.example.com:1080
+http://proxy5.example.com:3128"></textarea>
+        <div class="form-hint" style="margin-top:6px;">
+          💡 <strong style="color:var(--gold)">Free proxy sites:</strong> proxy-list.download, proxyscrape.com, free-proxy-list.net (কম reliable)<br>
+          💰 <strong style="color:var(--gold)">Paid (recommended):</strong> Webshare.io ($2/month), Proxyscrape Premium, BrightData, Oxylabs<br>
+          🔑 <strong style="color:var(--gold)">Easiest option:</strong> ScraperAPI key — নিচে দাও, proxy list লাগবে না
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-top:4px;">
+        <label class="form-label">ScraperAPI Key (বিকল্প — এটা দিলে proxy list লাগবে না)</label>
+        <div class="pass-wrap">
+          <input class="form-input" id="cfg-scraperapi" type="password" placeholder="scraperapi key…"/>
+          <button class="pass-toggle" onclick="togglePass('cfg-scraperapi',this)">👁</button>
+        </div>
+        <div class="form-hint">scraperapi.com — 1000 calls/month free। এটা দিলে proxy list ignore হবে।</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;margin-top:4px;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="saveProxyConfig()" style="font-size:12px;padding:10px 22px;">💾 Save Proxy Config</button>
+        <button class="btn-ghost" onclick="testProxyStatus()">🔍 Check Status</button>
+        <button class="btn-gold" onclick="changeDirection()" id="btnChangeDir" style="font-size:12px;padding:10px 22px;" title="Randomly reassign a new IP to each email script">🔀 Change Direction</button>
+        <div class="saved-msg" id="proxySavedMsg">✅ Saved!</div>
+      </div>
+      <div id="directionResult" style="display:none;margin-top:10px;padding:10px 14px;border-radius:6px;font-size:11px;font-family:var(--mono);background:#0a140a;border:1px solid #166534;color:var(--green);line-height:1.8;"></div>
+
+      <div class="proxy-status" id="proxyStatusBox">Proxy status: Not checked yet</div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">Proxy কোথা থেকে পাবে?</div>
+      <div style="font-size:11.5px;color:var(--slate);line-height:2.2;">
+        <div style="margin-bottom:12px;">
+          <strong style="color:var(--gold2);">1. Webshare.io (সবচেয়ে সহজ ও সস্তা)</strong><br>
+          webshare.io তে sign up → Proxy → List → Format: <code style="background:#0d0d14;padding:2px 6px;border-radius:3px;color:var(--blue)">http://user:pass@host:port</code><br>
+          $2.99/month এ 100টা proxy পাবে
+        </div>
+        <div style="margin-bottom:12px;">
+          <strong style="color:var(--gold2);">2. ScraperAPI (সবচেয়ে easy)</strong><br>
+          scraperapi.com → sign up → API key copy → এখানে paste করো<br>
+          1000 requests/month free, তারপর $49/month
+        </div>
+        <div style="margin-bottom:12px;">
+          <strong style="color:var(--gold2);">3. Free proxies (কম reliable)</strong><br>
+          proxy-list.download বা free-proxy-list.net থেকে HTTP proxies copy করো<br>
+          এগুলো often slow বা dead, তাই paid ভালো
+        </div>
+        <div>
+          <strong style="color:var(--gold2);">4. Railway এ env var দিয়ে</strong><br>
+          Railway Dashboard → Variables → <code style="background:#0d0d14;padding:2px 6px;border-radius:3px;color:var(--green)">PROXY_LIST</code> এ newline-separated list দাও<br>
+          অথবা <code style="background:#0d0d14;padding:2px 6px;border-radius:3px;color:var(--green)">SCRAPER_API_KEY</code> দাও
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══ EMAIL SCRIPTS ══ -->
+  <section class="section" id="sec-smtp">
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head">📧 Email Scripts — Multiple Accounts (Auto-Rotation)</div>
+
+      <div class="info-box">
+        <strong>কিভাবে কাজ করে:</strong> প্রতিটা Gmail account এ একটা Apps Script deploy করো।
+        প্রথম script দিয়ে শুরু হবে। <strong style="color:var(--gold2);">80টা email পাঠানোর পর</strong> (Gmail daily limit এর আগে)
+        automatically পরের script এ চলে যাবে। যত বেশি script URL দেবে, তত বেশি email পাঠাতে পারবে।<br>
+        <strong>Format:</strong> একটার নিচে একটা — প্রতিটা line এ একটা করে script URL।
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Email Script URLs (একটার নিচে একটা)</label>
+        <textarea class="form-input" id="cfg-emailscripts" rows="8"
+          style="resize:vertical;line-height:2;font-size:12px;font-family:var(--mono);"
+          placeholder="https://script.google.com/macros/s/SCRIPT1_URL.../exec
+https://script.google.com/macros/s/SCRIPT2_URL.../exec
+https://script.google.com/macros/s/SCRIPT3_URL.../exec
+https://script.google.com/macros/s/SCRIPT4_URL.../exec"></textarea>
+        <div class="form-hint" style="margin-top:6px;">
+          💡 প্রতিটা script = আলাদা Gmail account। ৩টা script = ৩ × ৮০ = <strong style="color:var(--gold2);">২৪০ emails/day</strong><br>
+          Script deploy করার পর <strong>"Deploy as web app" → Execute as: Me → Access: Anyone</strong> দিতে হবে
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Unsubscribe Base URL (Railway app URL)</label>
+        <input class="form-input" id="cfg-unsub-url" type="url" placeholder="https://your-app.railway.app/unsubscribe"/>
+        <div class="form-hint">প্রতিটা email এ centered Unsubscribe button থাকবে।</div>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <button class="btn-primary" onclick="saveEmailScripts()" style="font-size:12px;padding:10px 22px;">💾 Save Email Scripts</button>
+        <button class="btn-ghost" onclick="checkEmailScriptStatus()">📊 Check Status</button>
+        <div class="saved-msg" id="smtpSavedMsg">✅ Saved!</div>
+      </div>
+
+      <!-- Script status panel -->
+      <div id="scriptStatusPanel" style="margin-top:14px;display:none;">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;margin-bottom:10px;">Script Rotation Status</div>
+        <div id="scriptStatusList"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:14px;">
+      <div class="card-head">📋 Apps Script Code — প্রতিটা account এ এটা deploy করো</div>
+      <div style="font-size:11.5px;color:var(--slate);margin-bottom:12px;line-height:1.8;">
+        ১. <a href="https://script.google.com" target="_blank" style="color:var(--gold);">script.google.com</a> → New Project<br>
+        ২. নিচের code paste করো → Save<br>
+        ৩. Deploy → New deployment → Web app → Execute as: <strong style="color:var(--gold2);">Me</strong> → Who has access: <strong style="color:var(--gold2);">Anyone</strong> → Deploy<br>
+        ৪. URL copy করে উপরে paste করো<br>
+        ৫. আলাদা Gmail account দিয়ে আরো বানাও
+      </div>
+      <div class="as-box">
+        <h4>📧 Email Apps Script (HTML Email + Unsubscribe)</h4>
+        <div class="code-block" id="emailCode">function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var htmlBody = data.html || data.body;
+    var options = {
+      htmlBody: htmlBody,
+      name: data.sender_name || "PlayLead"
+    };
+    GmailApp.sendEmail(data.to, data.subject, data.body, options);
+    return ContentService
+      .createTextOutput(JSON.stringify({status: "ok"}))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({status: "error", msg: err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</div>
+        <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('emailCode')">📋 Copy Script</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-head">💡 কতগুলো Script দরকার?</div>
+      <div style="font-size:11.5px;color:var(--slate);line-height:2.4;">
+        <strong style="color:var(--gold2);">Gmail limit:</strong> প্রতিটা Gmail account = ১০০ emails/day (safety এর জন্য আমরা ৮০ তে rotate করি)<br>
+        <strong style="color:var(--gold2);">Target ৩০০ leads:</strong> কমপক্ষে <strong style="color:var(--green);">৪টা script</strong> দরকার (৪ × ৮০ = ৩২০)<br>
+        <strong style="color:var(--gold2);">Target ৫০০ leads:</strong> কমপক্ষে <strong style="color:var(--green);">৭টা script</strong> দরকার (৭ × ৮০ = ৫৬০)<br>
+        <strong style="color:var(--gold2);">Workspace accounts:</strong> Google Workspace (paid) = ২০০০ emails/day per account<br>
+        <strong style="color:var(--gold2);">Free Gmail trick:</strong> Gmail + alias (youremail+1@gmail.com) কাজ করে না — আলাদা account লাগবে
+      </div>
+    </div>
+
+  </section>
+
 </main>
 
 <script>
 // ════ CONFIG ════
-const CFG_KEY = 'playlead_v5';
+const CFG_KEY = 'playlead_v6';
 let cfg = {};
 
 const DEFAULT_SUBJECT = 'Quick question about {{app_name}}';
@@ -1062,15 +1087,20 @@ function loadCfg() {
   setVal('cfg-email-body',        cfg.email_body||DEFAULT_BODY);
   setVal('cfg-sheeturl',          cfg.sheeturl||'');
   setVal('cfg-appsscript',        cfg.appsscript||'');
-  setVal('cfg-emailscript',       cfg.emailscript||'');
   setVal('cfg-keepalive-url',     cfg.keepalive_url||'');
   setVal('cfg-keepalive-interval',cfg.keepalive_interval||25);
+  // Proxy
+  setVal('cfg-proxy-list',        cfg.proxy_list||'');
+  setVal('cfg-scraperapi',        cfg.scraperapi||'');
+  // Email Scripts (no SMTP)
+  setVal('cfg-unsub-url',         cfg.unsub_url||'');
+  setVal('cfg-emailscripts',      cfg.emailscripts||'');
   refreshDerived();
   updateLivePreview();
 }
 
 function saveConfig() {
-  cfg = {
+  cfg = Object.assign(cfg, {
     groq:               getVal('cfg-groq'),
     target:             parseInt(getVal('cfg-target'))||300,
     sender_name:        getVal('cfg-sender-name'),
@@ -1079,20 +1109,95 @@ function saveConfig() {
     email_body:         getVal('cfg-email-body'),
     sheeturl:           getVal('cfg-sheeturl'),
     appsscript:         getVal('cfg-appsscript'),
-    emailscript:        getVal('cfg-emailscript'),
     keepalive_url:      getVal('cfg-keepalive-url'),
     keepalive_interval: parseInt(getVal('cfg-keepalive-interval'))||25,
-  };
+    emailscripts:      getVal('cfg-emailscripts'),
+    unsub_url:         getVal('cfg-unsub-url'),
+  });
   localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
-  const m = document.getElementById('savedMsg');
-  m.classList.add('show'); setTimeout(()=>m.classList.remove('show'), 3000);
+  showSaved('savedMsg');
   refreshDerived(); checkWarn(); updateLivePreview();
+}
+
+function saveProxyConfig() {
+  cfg = Object.assign(cfg, {
+    proxy_list: getVal('cfg-proxy-list'),
+    scraperapi: getVal('cfg-scraperapi'),
+  });
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  showSaved('proxySavedMsg');
+  // Also push to server immediately so status check works
+  testProxyStatus();
+}
+
+async function changeDirection() {
+  const btn = document.getElementById('btnChangeDir');
+  const res = document.getElementById('directionResult');
+  btn.disabled = true; btn.textContent = '⏳ Reassigning…';
+  res.style.display = 'none';
+  try {
+    const r = await fetch('/api/reassign_proxies', {method:'POST'});
+    const d = await r.json();
+    if (d.ok) {
+      const lines = d.pairs.map(p => `Script #${p.script} → ${p.proxy}`).join('\n');
+      res.style.display = 'block';
+      res.textContent = '✅ New IP assignment:\n' + lines;
+    } else {
+      res.style.display = 'block';
+      res.style.background = '#160a0a'; res.style.borderColor = '#7f1d1d'; res.style.color = 'var(--red)';
+      res.textContent = '❌ ' + (d.error || 'Failed');
+    }
+  } catch(e) {
+    res.style.display = 'block';
+    res.textContent = '❌ ' + e.message;
+  }
+  btn.disabled = false; btn.textContent = '🔀 Change Direction';
+}
+
+function saveEmailScripts() {
+  cfg = Object.assign(cfg, {
+    emailscripts: getVal('cfg-emailscripts'),
+    unsub_url:    getVal('cfg-unsub-url'),
+  });
+  localStorage.setItem(CFG_KEY, JSON.stringify(cfg));
+  showSaved('smtpSavedMsg');
+}
+
+async function checkEmailScriptStatus() {
+  try {
+    const r = await fetch('/api/email_script_status');
+    const d = await r.json();
+    const panel = document.getElementById('scriptStatusPanel');
+    const list  = document.getElementById('scriptStatusList');
+    panel.style.display = 'block';
+    if (!d.scripts || d.scripts.length === 0) {
+      list.innerHTML = '<div style="color:var(--slate2);font-size:11px;">No scripts loaded — save first and restart automation.</div>';
+      return;
+    }
+    list.innerHTML = d.scripts.map(s => {
+      const color = s.status==='active' ? 'var(--green)' : s.status==='quota' ? 'var(--amber)' : 'var(--red)';
+      const icon  = s.status==='active' ? '✅' : s.status==='quota' ? '⚠️' : '❌';
+      return `<div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border);font-size:11px;">
+        <span style="font-family:var(--mono);color:var(--slate2);min-width:20px;">#${s.index}</span>
+        <span style="font-size:13px;">${icon}</span>
+        <span style="flex:1;color:var(--slate);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.url)}</span>
+        <span style="font-family:var(--mono);color:${color};min-width:60px;">Sent: ${s.sent}/${d.max_per_script}</span>
+        <span style="font-family:var(--mono);color:var(--slate2);min-width:50px;">Fails: ${s.fails}</span>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    document.getElementById('scriptStatusPanel').style.display = 'block';
+    document.getElementById('scriptStatusList').innerHTML = '<div style="color:var(--red);font-size:11px;">Error: '+e.message+'</div>';
+  }
+}
+
+function showSaved(id) {
+  const m = document.getElementById(id);
+  m.classList.add('show'); setTimeout(()=>m.classList.remove('show'), 2500);
 }
 
 function refreshDerived() {
   document.getElementById('tgtNum').textContent = cfg.target||300;
-  document.getElementById('envPrev').textContent =
-    `GROQ_API_KEY=${cfg.groq||'…'}\nAPPS_SCRIPT_WEB_URL=${cfg.appsscript||'…'}\nEMAIL_SCRIPT_URL=${cfg.emailscript||'…'}\nSENDER_NAME=${cfg.sender_name||'…'}\nSENDER_COMPANY=${cfg.sender_company||'…'}\nTARGET_LEADS=${cfg.target||300}`;
   const url = cfg.sheeturl||'';
   const lh = url ? `<a class="sheet-link-btn" href="${esc(url)}" target="_blank">📊 Open Sheet ↗</a>` : '';
   ['sheetLinkRowSetup','sheetLinkWrap'].forEach(id=>{ const e=document.getElementById(id); if(e) e.innerHTML=lh; });
@@ -1100,7 +1205,7 @@ function refreshDerived() {
 }
 
 function checkWarn() {
-  const bad = !cfg.groq || !cfg.emailscript || !cfg.appsscript;
+  const bad = !cfg.groq;
   document.getElementById('cfgWarn').classList.toggle('show', bad);
 }
 
@@ -1117,9 +1222,39 @@ function togglePass(id, btn) {
   btn.textContent = el.type==='password' ? '👁' : '🙈';
 }
 
+// Proxy status check
+async function testProxyStatus() {
+  const box = document.getElementById('proxyStatusBox');
+  box.className = 'proxy-status'; box.textContent = '⏳ Checking…';
+  try {
+    // POST the current proxy config so server loads it immediately
+    const r = await fetch('/api/proxy_status', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        proxy_list:     getVal('cfg-proxy-list') || cfg.proxy_list || '',
+        scraper_api_key: getVal('cfg-scraperapi') || cfg.scraperapi || '',
+      })
+    });
+    const d = await r.json();
+    if (d.scraper_api_mode) {
+      box.className = 'proxy-status ok';
+      box.textContent = '✅ ScraperAPI mode active — all requests route through rotating proxies';
+    } else if (d.proxy_pool_total > 0) {
+      box.className = d.healthy > 0 ? 'proxy-status ok' : 'proxy-status off';
+      box.textContent = `✅ Proxy pool: ${d.proxy_pool_total} loaded | ${d.healthy} healthy | ${d.retired} retired`;
+    } else {
+      box.className = 'proxy-status off';
+      box.textContent = '⚠️ No proxies loaded — paste proxy list above and click Save, then Check again.';
+    }
+  } catch(e) {
+    box.className = 'proxy-status off';
+    box.textContent = '❌ Server error: ' + e.message;
+  }
+}
+
 // ════ KEEP-ALIVE ════
 let kaTmr = null;
-
 function startKeepAlive() {
   const url = getVal('cfg-keepalive-url') || cfg.keepalive_url;
   if(!url) { alert('Enter your App URL first!'); return; }
@@ -1131,16 +1266,14 @@ function startKeepAlive() {
   document.getElementById('btnKaStop').style.display  = 'inline-block';
   setKaStatus('Pinging…', null);
 }
-
 function stopKeepAlive() {
   if(kaTmr) { clearInterval(kaTmr); kaTmr = null; }
   document.getElementById('btnKaStart').style.display = 'inline-block';
   document.getElementById('btnKaStop').style.display  = 'none';
-  setKaStatus('OFF — server may sleep after 15 minutes', false);
+  setKaStatus('OFF — server may sleep', false);
   document.getElementById('pingBadge').className = 'ping-badge off';
   document.getElementById('pingBadge').textContent = '⚡ Keep-Alive: OFF';
 }
-
 async function doPing(url) {
   try {
     const pingUrl = url.replace(/\/$/, '') + '/api/ping';
@@ -1148,22 +1281,20 @@ async function doPing(url) {
     const r = await fetch(pingUrl, {method:'GET', cache:'no-cache'});
     const ms = Date.now() - start;
     if(r.ok) {
-      const kaLastPing = new Date().toLocaleTimeString();
-      const interval = parseInt(getVal('cfg-keepalive-interval'))||25;
-      setKaStatus(`✅ Active — last ping: ${kaLastPing} (${ms}ms) | every ${interval}s`, true);
+      const t = new Date().toLocaleTimeString();
+      const iv = parseInt(getVal('cfg-keepalive-interval'))||25;
+      setKaStatus(`✅ Active — last ping: ${t} (${ms}ms) | every ${iv}s`, true);
       document.getElementById('pingBadge').className = 'ping-badge ok';
-      document.getElementById('pingBadge').textContent = `⚡ Alive ${kaLastPing}`;
+      document.getElementById('pingBadge').textContent = `⚡ Alive ${t}`;
     } else {
-      setKaStatus(`⚠️ Ping returned ${r.status} — check URL`, false);
-      document.getElementById('pingBadge').className = 'ping-badge off';
+      setKaStatus(`⚠️ Ping returned ${r.status}`, false);
     }
   } catch(e) {
-    setKaStatus(`❌ Ping failed: ${e.message} — CORS or wrong URL`, false);
+    setKaStatus(`❌ Ping failed: ${e.message}`, false);
     document.getElementById('pingBadge').className = 'ping-badge off';
     document.getElementById('pingBadge').textContent = '⚡ Ping failed';
   }
 }
-
 function setKaStatus(msg, ok) {
   const el = document.getElementById('kaStatus');
   el.textContent = 'Keep-Alive: ' + msg;
@@ -1177,6 +1308,8 @@ const pgTitles = {
   database:   '🗄️ <span class="hi">Database</span>',
   spamtest:   '🧪 <span class="hi">Spam Test</span>',
   setup:      '⚙️ <span class="hi">Setup & Config</span>',
+  proxy:      '🔄 <span class="hi">IP Rotation</span>',
+  smtp:       '📧 <span class="hi">Email (SMTP)</span>',
 };
 function showSec(name, el) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -1196,92 +1329,82 @@ function toggleHunter() {
   document.getElementById('hunterFields').classList.toggle('show', hunterActive);
 }
 
-// ════ UPDATE PENDING BADGE — fetches from Sheet ════
+// ════ SHEET PENDING ════
 async function refreshSheetPending() {
   const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) {
-    updatePendingBadge(0, false);
-    return;
-  }
+  if (!sheetUrl) { updatePendingBadge(0, false); return; }
   try {
-    const r = await fetch('/api/sheet_pending', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
+    const r = await fetch('/api/sheet_pending', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({sheet_url:sheetUrl})});
     const d = await r.json();
-    if (d.ok) {
-      updatePendingBadge(d.count, false);
-    }
+    if (d.ok) updatePendingBadge(d.count, false);
   } catch(e) {}
 }
-
 function updatePendingBadge(count, running) {
   const badge = document.getElementById('pendingBadge');
   const btn   = document.getElementById('btnSendPending');
   badge.textContent = count;
-  if(count > 0) {
-    badge.classList.remove('zero');
-  } else {
-    badge.classList.add('zero');
-  }
+  badge.classList.toggle('zero', count===0);
   btn.disabled = running;
 }
 
 // ════ CLEAR HISTORY ════
 async function clearHistory() {
-  if(!confirm('⚠️ Dashboard history tamam clear hobe — leads, logs, sob kisu. Sheet e kono change hobe na. Continue?')) return;
+  if(!confirm('⚠️ Dashboard history clear হবে। Sheet এ কোনো change হবে না। Continue?')) return;
   try {
     const r = await fetch('/api/clear', {method:'POST'});
     const d = await r.json();
     if(!r.ok) { alert(d.error||'Cannot clear while running'); return; }
-    allLeads = []; lastLogLen = 0; startTime = null; aiCalls = 0;
+    allLeads=[]; lastLogLen=0; startTime=null; aiCalls=0;
     renderDB([]);
-    document.getElementById('actFeed').innerHTML = '<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>';
-    document.getElementById('kwChips').innerHTML = '<span style="color:var(--slate2);font-size:11px;">None yet</span>';
+    document.getElementById('actFeed').innerHTML='<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>';
+    document.getElementById('kwChips').innerHTML='<span style="color:var(--slate2);font-size:11px;">None yet</span>';
     ['stLeads','stEmails','stKws'].forEach(id=>setText(id,'0'));
     document.getElementById('stRate').textContent='—';
     setBar('pfLeads','ppLeads',0,'0%'); setBar('pfEmail','ppEmail',0,'0%'); setBar('pfAI','ppAI',0,'0');
     document.getElementById('dbCnt').textContent='0';
-    updatePendingBadge(0, false);
-    refreshSheetPending();
-    ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'].forEach(id=>{
-      const e=document.getElementById(id); if(e) e.className='pipe-step';
-    });
+    updatePendingBadge(0,false);
+    ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'].forEach(id=>{const e=document.getElementById(id);if(e)e.className='pipe-step';});
     alert('✅ History cleared!');
   } catch(e) { alert('Error: '+e.message); }
 }
 
 // ════ AUTOMATION ════
-let pollTmr = null, lastLogLen = 0, startTime = null, allLeads = [], aiCalls = 0;
+let pollTmr=null, lastLogLen=0, startTime=null, allLeads=[], aiCalls=0;
 
 async function startAuto() {
   const kw = document.getElementById('kwInput').value.trim();
   if(!kw) { alert('Enter a keyword first!'); return; }
   checkWarn();
   const hunter = hunterActive ? {
-    active: true,
+    active:true,
     max_installs: parseInt(document.getElementById('hf-installs').value)||5000,
     max_score:    parseFloat(document.getElementById('hf-score').value)||2.5,
-  } : { active: false };
+  } : {active:false};
 
   try {
     const body = {
-      keyword:          kw,
-      groq_key:         cfg.groq,
-      sheet_url:        cfg.appsscript,
-      email_script_url: cfg.emailscript,
-      target:           cfg.target||300,
-      sender_name:      cfg.sender_name||'',
-      sender_company:   cfg.sender_company||'',
-      email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-      email_body:       cfg.email_body||DEFAULT_BODY,
-      hunter:           hunter,
+      keyword:           kw,
+      groq_key:          cfg.groq,
+      sheet_url:         cfg.appsscript,
+      email_script_url:  cfg.emailscript||'',
+      target:            cfg.target||300,
+      sender_name:       cfg.sender_name||'',
+      sender_company:    cfg.sender_company||'',
+      email_subject:     cfg.email_subject||DEFAULT_SUBJECT,
+      email_body:        cfg.email_body||DEFAULT_BODY,
+      hunter:            hunter,
+      // Proxy config
+      proxy_list:        cfg.proxy_list||'',
+      scraper_api_key:   cfg.scraperapi||'',
+      // SMTP config
+      email_script_urls: cfg.emailscripts||'',
+      unsubscribe_url:   cfg.unsub_url||'',
     };
     const r = await fetch('/api/start', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)});
     const d = await r.json();
     if(!r.ok) { alert(d.error||'Error starting'); return; }
-    startTime = new Date(); aiCalls = 0;
-    document.getElementById('btnStart').disabled = true;
+    startTime=new Date(); aiCalls=0;
+    document.getElementById('btnStart').disabled=true;
     document.getElementById('btnStop').classList.add('show');
     startPoll();
   } catch(e) { alert('Cannot reach server: '+e.message); }
@@ -1293,36 +1416,32 @@ async function stopAuto() {
 
 async function sendPending() {
   const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) { alert('Sheet URL not set in Setup & Config!'); return; }
-
-  // Step 1: fetch pending leads from Sheet
-  let pending = [];
+  if (!sheetUrl) { alert('Sheet URL not set!'); return; }
+  let pending=[];
   try {
-    const r = await fetch('/api/sheet_pending', {
-      method: 'POST', headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({ sheet_url: sheetUrl })
-    });
+    const r = await fetch('/api/sheet_pending', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({sheet_url:sheetUrl})});
     const d = await r.json();
-    if (!r.ok || !d.ok) { alert('Error fetching from sheet: ' + (d.error||'unknown')); return; }
-    pending = d.leads || [];
-  } catch(e) { alert('Network error: ' + e.message); return; }
-
-  if (!pending.length) { alert('✅ No pending leads in sheet — all already sent!'); return; }
-  if (!confirm(`📬 Sheet এ ${pending.length}টা pending lead আছে। সবগুলোতে email পাঠাবো?`)) return;
-
-  // Step 2: send
+    if(!r.ok||!d.ok) { alert('Error: '+(d.error||'unknown')); return; }
+    pending=d.leads||[];
+  } catch(e) { alert('Network error: '+e.message); return; }
+  if(!pending.length) { alert('✅ No pending leads — all already sent!'); return; }
+  if(!confirm(`📬 ${pending.length}টা pending lead আছে। সবগুলোতে email পাঠাবো?`)) return;
   try {
     const r = await fetch('/api/send_pending', {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        leads:            pending,
-        groq_key:         cfg.groq,
-        email_script_url: cfg.emailscript,
-        sheet_url:        cfg.appsscript,
-        sender_name:      cfg.sender_name||'',
-        sender_company:   cfg.sender_company||'',
-        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-        email_body:       cfg.email_body||DEFAULT_BODY,
+      body:JSON.stringify({
+        leads:pending,
+        groq_key:cfg.groq,
+        email_script_url:cfg.emailscript||'',
+        sheet_url:cfg.appsscript,
+        sender_name:cfg.sender_name||'',
+        sender_company:cfg.sender_company||'',
+        email_subject:cfg.email_subject||DEFAULT_SUBJECT,
+        email_body:cfg.email_body||DEFAULT_BODY,
+        email_script_urls:cfg.emailscripts||'',
+        unsubscribe_url:cfg.unsub_url||'',
+        proxy_list:cfg.proxy_list||'',
+        scraper_api_key:cfg.scraperapi||'',
       })
     });
     const d = await r.json();
@@ -1333,265 +1452,506 @@ async function sendPending() {
 
 function startPoll() {
   if(pollTmr) clearInterval(pollTmr);
-  pollTmr = setInterval(fetchSt, 2000);
+  pollTmr=setInterval(fetchSt, 2000);
   fetchSt();
 }
-
 async function fetchSt() {
-  try { const r = await fetch('/api/status'); const d = await r.json(); renderSt(d); } catch(e) {}
+  try { const r=await fetch('/api/status'); const d=await r.json(); renderSt(d); } catch(e) {}
 }
-
 function renderSt(d) {
-  const running = d.running, phase = d.phase||'idle';
-  const leads = d.leads_found||0, emails = d.emails_sent||0;
-  const target = cfg.target||300;
-  const kws = d.keywords_used||[];
-  allLeads = d.leads||[];
-
-  const dot = document.getElementById('sbDot'), sl = document.getElementById('sbStatus');
+  const running=d.running, phase=d.phase||'idle';
+  const leads=d.leads_found||0, emails=d.emails_sent||0;
+  const target=cfg.target||300;
+  const kws=d.keywords_used||[];
+  allLeads=d.leads||[];
+  const dot=document.getElementById('sbDot'), sl=document.getElementById('sbStatus');
   if(running)              { dot.className='dot live';     sl.textContent='Running'; }
   else if(phase==='done')  { dot.className='dot done-dot'; sl.textContent='Done ✓'; }
   else if(phase==='stopped'){ dot.className='dot err';     sl.textContent='Stopped'; }
   else                     { dot.className='dot';          sl.textContent='Idle'; }
-
-  document.getElementById('btnStart').disabled = running;
-  document.getElementById('btnStop').classList.toggle('show', running);
-
-  // Badge: disable during run, but count comes from refreshSheetPending
-  document.getElementById('btnSendPending').disabled = running;
-
-  setText('stLeads', leads);
-  setText('stEmails', emails);
-  setText('stKws', kws.length);
-  setText('tgtLeadsForEmail', leads);
-  document.getElementById('stRate').textContent = leads>0 ? Math.round((emails/leads)*100)+'%' : '—';
-
-  const lp = Math.min(100, Math.round((leads/target)*100));
-  const ep = leads>0 ? Math.min(100, Math.round((emails/leads)*100)) : 0;
-  const ap = Math.min(100, Math.round((kws.length-1)/4*100));
-  setBar('pfLeads','ppLeads', lp, lp+'%');
-  setBar('pfEmail','ppEmail', ep, ep+'%');
-  setBar('pfAI','ppAI', ap, Math.max(0,kws.length-1)+' kws');
-
-  renderPipeline(phase, running);
-
-  const cc = document.getElementById('kwChips');
-  cc.innerHTML = kws.length
-    ? kws.map((k,i)=>`<div class="kw-chip"><span class="kw-idx">#${i+1}</span>${esc(k)}</div>`).join('')
-    : '<span style="color:var(--slate2);font-size:11px;">None yet</span>';
-
-  const logs = d.logs||[];
-  if(logs.length!==lastLogLen) { lastLogLen=logs.length; renderFeed(logs); }
-
-  setText('an-l', leads); setText('an-e', emails);
-  const cats = [...new Set(allLeads.map(l=>l.category).filter(Boolean))];
-  document.getElementById('an-c').textContent = cats.length||'—';
-  const sc = allLeads.map(l=>l.score).filter(x=>x!==null&&x!==undefined);
-  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
-
-  if(startTime) {
-    document.getElementById('ss-start').textContent = startTime.toLocaleTimeString();
-    document.getElementById('ss-dur').textContent = fmtDur(Math.floor((Date.now()-startTime)/1000));
-  }
-  document.getElementById('ss-phase').textContent = phase;
-  document.getElementById('ss-ai').textContent = Math.max(0,kws.length-1)*5;
-  document.getElementById('ss-st').textContent = running?'Running':phase==='done'?'Done ✓':'Stopped';
-
+  document.getElementById('btnStart').disabled=running;
+  document.getElementById('btnStop').classList.toggle('show',running);
+  document.getElementById('btnSendPending').disabled=running;
+  setText('stLeads',leads); setText('stEmails',emails); setText('stKws',kws.length);
+  setText('tgtLeadsForEmail',leads);
+  document.getElementById('stRate').textContent=leads>0?Math.round((emails/leads)*100)+'%':'—';
+  const lp=Math.min(100,Math.round((leads/target)*100));
+  const ep=leads>0?Math.min(100,Math.round((emails/leads)*100)):0;
+  const ap=Math.min(100,Math.round((kws.length-1)/4*100));
+  setBar('pfLeads','ppLeads',lp,lp+'%'); setBar('pfEmail','ppEmail',ep,ep+'%');
+  setBar('pfAI','ppAI',ap,Math.max(0,kws.length-1)+' kws');
+  renderPipeline(phase,running);
+  const cc=document.getElementById('kwChips');
+  cc.innerHTML=kws.length?kws.map((k,i)=>`<div class="kw-chip"><span class="kw-idx">#${i+1}</span>${esc(k)}</div>`).join(''):'<span style="color:var(--slate2);font-size:11px;">None yet</span>';
+  const logs=d.logs||[];
+  if(logs.length!==lastLogLen){lastLogLen=logs.length;renderFeed(logs);}
+  setText('an-l',leads); setText('an-e',emails);
+  const cats=[...new Set(allLeads.map(l=>l.category).filter(Boolean))];
+  document.getElementById('an-c').textContent=cats.length||'—';
+  const sc=allLeads.map(l=>l.score).filter(x=>x!==null&&x!==undefined);
+  document.getElementById('an-s').textContent=sc.length?(sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1):'—';
+  if(startTime){document.getElementById('ss-start').textContent=startTime.toLocaleTimeString();document.getElementById('ss-dur').textContent=fmtDur(Math.floor((Date.now()-startTime)/1000));}
+  document.getElementById('ss-phase').textContent=phase;
+  document.getElementById('ss-ai').textContent=Math.max(0,kws.length-1)*5;
+  document.getElementById('ss-st').textContent=running?'Running':phase==='done'?'Done ✓':'Stopped';
   renderDB(allLeads);
-
-  if(!running && (phase==='done'||phase==='stopped'||phase==='idle')) {
-    document.getElementById('btnStart').disabled = false;
+  if(!running&&(phase==='done'||phase==='stopped'||phase==='idle')){
+    document.getElementById('btnStart').disabled=false;
     document.getElementById('btnStop').classList.remove('show');
-    if(pollTmr) { clearInterval(pollTmr); pollTmr=null; }
+    if(pollTmr){clearInterval(pollTmr);pollTmr=null;}
   }
 }
-
-function renderPipeline(phase, running) {
-  const all = ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'];
-  all.forEach(id=>{ const e=document.getElementById(id); if(e) e.className='pipe-step'; });
-  if(phase==='done') { all.forEach(id=>{ const e=document.getElementById(id); if(e) e.classList.add('p-done'); }); return; }
-  const map = {scraping:'pp-scrape', ai_keywords:'pp-ai', emailing:'pp-email'};
-  if(running && map[phase]) {
-    const activeId = map[phase];
+function renderPipeline(phase,running){
+  const all=['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'];
+  all.forEach(id=>{const e=document.getElementById(id);if(e)e.className='pipe-step';});
+  if(phase==='done'){all.forEach(id=>{const e=document.getElementById(id);if(e)e.classList.add('p-done');});return;}
+  const map={scraping:'pp-scrape',ai_keywords:'pp-ai',emailing:'pp-email'};
+  if(running&&map[phase]){
+    const activeId=map[phase];
     document.getElementById(activeId).classList.add('p-active');
-    const order = ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'];
-    const idx = order.indexOf(activeId);
-    for(let i=0;i<idx;i++) { const e=document.getElementById(order[i]); if(e) e.classList.add('p-done'); }
-    if(phase==='emailing') { const e=document.getElementById('pp-leads'); if(e) e.classList.add('p-done'); }
+    const order=['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'];
+    const idx=order.indexOf(activeId);
+    for(let i=0;i<idx;i++){const e=document.getElementById(order[i]);if(e)e.classList.add('p-done');}
+    if(phase==='emailing'){const e=document.getElementById('pp-leads');if(e)e.classList.add('p-done');}
   }
 }
-
-function renderFeed(logs) {
-  const feed = document.getElementById('actFeed');
-  if(!logs.length) { feed.innerHTML='<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>'; return; }
-  feed.innerHTML = [...logs].reverse().slice(0,100).map(l=>`
-    <div class="act-item">
-      <span class="act-time">${l.time}</span>
-      <span class="act-msg">${esc(l.msg)}</span>
-    </div>`).join('');
+function renderFeed(logs){
+  const feed=document.getElementById('actFeed');
+  if(!logs.length){feed.innerHTML='<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>';return;}
+  feed.innerHTML=[...logs].reverse().slice(0,100).map(l=>`<div class="act-item"><span class="act-time">${l.time}</span><span class="act-msg">${esc(l.msg)}</span></div>`).join('');
 }
 
 // ════ DATABASE ════
-function renderDB(leads) {
-  document.getElementById('dbCnt').textContent = leads.length;
+function renderDB(leads){
+  document.getElementById('dbCnt').textContent=leads.length;
   refreshDerived();
-  const tbody = document.getElementById('dbBody');
-  if(!leads.length) { tbody.innerHTML=`<tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr>`; return; }
-  tbody.innerHTML = leads.map((l,i)=>`
-    <tr>
+  const tbody=document.getElementById('dbBody');
+  if(!leads.length){tbody.innerHTML=`<tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr>`;return;}
+  tbody.innerHTML=leads.map((l,i)=>`<tr>
+    <td style="color:var(--slate2);font-family:var(--mono);font-size:10px">${i+1}</td>
+    <td><div style="font-weight:600;color:var(--cream);max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</div></td>
+    <td style="color:var(--slate);font-size:10.5px;max-width:110px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
+    <td><a class="email-a" href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
+    <td><span class="bdg bdg-cat">${esc(l.category||'—')}</span></td>
+    <td style="font-family:var(--mono);font-size:10.5px">${(l.installs||0).toLocaleString()}</td>
+    <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null?Number(l.score).toFixed(1):'new'}</td>
+    <td style="color:var(--gold);font-size:10.5px">${esc(l.keyword||'')}</td>
+    <td>${l.email_sent?'<span class="bdg bdg-sent">✓ Sent</span>':'<span class="bdg bdg-pend">Pending</span>'}</td>
+    <td><a class="ext-a" href="${esc(l.url)}" target="_blank">↗</a></td>
+  </tr>`).join('');
+}
+
+// ════ EMAIL ANALYTICS DATA ════
+// emailEvents: loaded from Sheet or manually logged
+let emailEvents = [];  // [{Timestamp, App ID, App Name, Email, Event, Details, Keyword, Category, Installs, Score}]
+
+function _getEmailStatusForLead(lead) {
+  // Return the latest event for this lead from emailEvents
+  const appId = lead.app_id || '';
+  const email  = (lead.email || '').toLowerCase();
+  const matches = emailEvents.filter(ev =>
+    (ev['App ID'] && ev['App ID'] === appId) ||
+    (ev['Email'] && ev['Email'].toLowerCase() === email)
+  );
+  if (!matches.length) {
+    return lead.email_sent ? 'sent' : 'pending';
+  }
+  // Return last event
+  const order = ['unsubscribed','spam','bounced','opened','inbox','sent'];
+  let best = null;
+  for (const ev of matches) {
+    const evType = (ev['Event'] || '').toLowerCase();
+    if (!best || order.indexOf(evType) < order.indexOf(best)) best = evType;
+  }
+  return best || (lead.email_sent ? 'sent' : 'pending');
+}
+
+function _applyAnFilters(leads) {
+  const fStatus   = document.getElementById('af-status').value;
+  const fCat      = document.getElementById('af-category').value;
+  const fKw       = document.getElementById('af-keyword').value;
+  const fScore    = document.getElementById('af-score').value;
+  const fInstalls = document.getElementById('af-installs').value;
+  const fSearch   = (document.getElementById('af-search').value || '').toLowerCase().trim();
+
+  return leads.filter(lead => {
+    const status = _getEmailStatusForLead(lead);
+
+    if (fStatus) {
+      if (fStatus === 'sent' && !['sent','inbox','opened','spam','bounced'].includes(status)) return false;
+      if (fStatus !== 'sent' && status !== fStatus) return false;
+    }
+    if (fCat && lead.category !== fCat) return false;
+    if (fKw  && lead.keyword  !== fKw)  return false;
+
+    if (fScore) {
+      const sc = lead.score;
+      if (fScore === 'new' && (sc !== null && sc !== undefined && sc > 0)) return false;
+      if (fScore === 'low' && !(sc !== null && sc > 0 && sc <= 2.5))       return false;
+      if (fScore === 'mid' && !(sc !== null && sc > 2.5 && sc <= 3.5))     return false;
+      if (fScore === 'high' && !(sc !== null && sc > 3.5))                 return false;
+    }
+    if (fInstalls) {
+      const inst = lead.installs || 0;
+      if (fInstalls === '0'   && inst !== 0)                 return false;
+      if (fInstalls === '1k'  && !(inst > 0 && inst <= 1000))  return false;
+      if (fInstalls === '5k'  && !(inst > 1000 && inst <= 5000)) return false;
+      if (fInstalls === '10k' && !(inst > 5000 && inst <= 10000)) return false;
+      if (fInstalls === '10k+' && inst <= 10000)             return false;
+    }
+    if (fSearch) {
+      const hay = [(lead.app_name||''),(lead.developer||''),(lead.email||''),
+                   (lead.category||''),(lead.keyword||'')].join(' ').toLowerCase();
+      if (!hay.includes(fSearch)) return false;
+    }
+    return true;
+  });
+}
+
+function _populateFilterDropdowns(leads) {
+  const cats = [...new Set(leads.map(l=>l.category).filter(Boolean))].sort();
+  const kws  = [...new Set(leads.map(l=>l.keyword).filter(Boolean))].sort();
+  const catSel = document.getElementById('af-category');
+  const kwSel  = document.getElementById('af-keyword');
+  const prevCat = catSel.value, prevKw = kwSel.value;
+  catSel.innerHTML = '<option value="">All Categories</option>' + cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  kwSel.innerHTML  = '<option value="">All Keywords</option>'  + kws.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  catSel.value = prevCat; kwSel.value = prevKw;
+}
+
+function renderAnalytics() {
+  const leads = allLeads;
+  _populateFilterDropdowns(leads);
+
+  // Compute email-status-enriched counts over ALL leads (for funnel)
+  const total   = leads.length;
+  const sent    = leads.filter(l => _getEmailStatusForLead(l) !== 'pending').length;
+  const inboxC  = leads.filter(l => _getEmailStatusForLead(l) === 'inbox').length;
+  const openedC = leads.filter(l => _getEmailStatusForLead(l) === 'opened').length;
+  const spamC   = leads.filter(l => _getEmailStatusForLead(l) === 'spam').length;
+  const bounceC = leads.filter(l => _getEmailStatusForLead(l) === 'bounced').length;
+  const unsubC  = leads.filter(l => _getEmailStatusForLead(l) === 'unsubscribed').length;
+
+  // KPI cards
+  setText('an-l', total);
+  setText('an-e', sent);
+  const inboxRate  = sent > 0 ? Math.round((inboxC / sent) * 100) : null;
+  const openRate   = sent > 0 ? Math.round((openedC / sent) * 100) : null;
+  const spamRate   = sent > 0 ? Math.round((spamC / sent) * 100) : null;
+  const bounceRate = sent > 0 ? Math.round((bounceC / sent) * 100) : null;
+  setText('an-inbox-rate',  inboxRate  !== null ? inboxRate  + '%' : '—');
+  setText('an-open-rate',   openRate   !== null ? openRate   + '%' : '—');
+  setText('an-spam-rate',   spamRate   !== null ? spamRate   + '%' : '—');
+  setText('an-bounce-rate', bounceRate !== null ? bounceRate + '%' : '—');
+
+  const cats = [...new Set(leads.map(l=>l.category).filter(Boolean))];
+  document.getElementById('an-c').textContent = cats.length || '—';
+  const sc = leads.map(l=>l.score).filter(x=>x!==null && x!==undefined && x>0);
+  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
+
+  // Funnel bars
+  function setFn(barId, cntId, count, base) {
+    const pct = base > 0 ? Math.round((count / base) * 100) : 0;
+    const bar = document.getElementById(barId);
+    const cnt = document.getElementById(cntId);
+    if (bar) { bar.style.width = Math.max(pct, count > 0 ? 3 : 0) + '%'; bar.textContent = count; }
+    if (cnt) cnt.textContent = count;
+  }
+  setFn('fn1',      'fn1c',      total,   total);
+  setFn('fn2',      'fn2c',      sent,    total);
+  setFn('fn-inbox', 'fn-inboxc', inboxC,  total);
+  setFn('fn-opened','fn-openedc',openedC, total);
+  setFn('fn-spam',  'fn-spamc',  spamC,   total);
+  setFn('fn-bounce','fn-bouncec',bounceC, total);
+  setFn('fn-unsub', 'fn-unsubc', unsubC,  total);
+
+  // Category chart
+  const catMap = {};
+  leads.forEach(l => { if(l.category) catMap[l.category] = (catMap[l.category]||0)+1; });
+  const catS = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const cMax = catS[0] ? catS[0][1] : 1;
+  document.getElementById('catBreak').innerHTML = catS.length ?
+    catS.map(([c,n])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:100px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</div><div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div><div class="prog-pct">${n}</div></div>`).join('')
+    : '<div class="empty-st" style="padding:12px">No data</div>';
+
+  // Install distribution
+  const ir = {'0':0,'1–1K':0,'1K–5K':0,'5K–10K':0,'10K+':0};
+  leads.forEach(l=>{
+    const i=l.installs||0;
+    if(i===0) ir['0']++;
+    else if(i<=1000)  ir['1–1K']++;
+    else if(i<=5000)  ir['1K–5K']++;
+    else if(i<=10000) ir['5K–10K']++;
+    else              ir['10K+']++;
+  });
+  document.getElementById('installBreak').innerHTML = Object.entries(ir).map(([k,v])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:65px;">${k}</div><div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div><div class="prog-pct">${v}</div></div>`).join('');
+
+  // Rating distribution
+  const sr = {'No Rating':0,'≤2.0':0,'2.0–2.9':0,'3.0–3.9':0,'4.0+':0};
+  leads.forEach(l=>{
+    const s=l.score;
+    if(!s || s===0) sr['No Rating']++;
+    else if(s<=2.0) sr['≤2.0']++;
+    else if(s<3.0)  sr['2.0–2.9']++;
+    else if(s<4.0)  sr['3.0–3.9']++;
+    else            sr['4.0+']++;
+  });
+  const srMax = Math.max(...Object.values(sr), 1);
+  document.getElementById('scoreBreak').innerHTML = Object.entries(sr).map(([k,v])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:70px;">${k}</div><div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/srMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('');
+
+  // Keyword performance
+  const kwM = {};
+  leads.forEach(l=>{if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1;});
+  const kwS = Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
+  const kwMax = kwS[0] ? kwS[0][1] : 1;
+  document.getElementById('kwPerf').innerHTML = kwS.length ?
+    kwS.map(([k,v])=>`<div class="prog-row" style="margin-bottom:8px;"><div class="prog-lbl" style="font-size:10px;min-width:80px;overflow:hidden;text-overflow:ellipsis;">${esc(k)}</div><div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((v/kwMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('')
+    : '<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
+
+  // Email status breakdown pie-like bar chart
+  const statusCounts = {
+    'Inbox': inboxC, 'Opened': openedC, 'Spam': spamC,
+    'Bounced': bounceC, 'Unsubscribed': unsubC,
+    'Sent (unknown)': Math.max(0, sent - inboxC - openedC - spamC - bounceC - unsubC),
+    'Pending': total - sent,
+  };
+  const stMax = Math.max(...Object.values(statusCounts), 1);
+  const stColors = {'Inbox':'pf-green','Opened':'pf-blue','Spam':'pf-amber','Bounced':'pf-amber','Unsubscribed':'pf-gold','Sent (unknown)':'pf-gold','Pending':'pf-gold'};
+  document.getElementById('statusBreak').innerHTML = Object.entries(statusCounts)
+    .filter(([,v])=>v>0)
+    .map(([k,v])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:110px;">${k}</div><div class="prog-track"><div class="prog-fill ${stColors[k]||'pf-gold'}" style="width:${Math.round((v/stMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('')
+    || '<div style="color:var(--slate2);font-size:11px;padding:8px">No data yet</div>';
+
+  // Session summary
+  setText('ss-deliv', sent > 0 ? Math.round((sent / total) * 100) + '%' : '—');
+  setText('ss-inbox', inboxRate !== null ? inboxRate + '%' : '—');
+  setText('ss-open',  openRate  !== null ? openRate  + '%' : '—');
+
+  // Filtered table
+  const filtered = _applyAnFilters(leads);
+  setText('an-filtered-cnt', filtered.length);
+  const tbody = document.getElementById('an-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-st"><span class="empty-ico">🔍</span>No leads match the current filters.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((l, i) => {
+    const st = _getEmailStatusForLead(l);
+    const stBadge = {
+      inbox:       `<span class="bdg bdg-inbox">📥 Inbox</span>`,
+      opened:      `<span class="bdg bdg-opened">👁 Opened</span>`,
+      spam:        `<span class="bdg bdg-spam">🚫 Spam</span>`,
+      bounced:     `<span class="bdg bdg-bounce">↩️ Bounce</span>`,
+      unsubscribed:`<span class="bdg bdg-unsub">🚫 Unsub</span>`,
+      sent:        `<span class="bdg bdg-sent">✓ Sent</span>`,
+      pending:     `<span class="bdg bdg-pend">Pending</span>`,
+    }[st] || `<span class="bdg bdg-pend">${esc(st)}</span>`;
+
+    const deliv = ['inbox','opened'].includes(st) ? `<span style="color:var(--green);font-size:10px;">✅ Delivered</span>`
+                : st === 'spam'     ? `<span style="color:var(--red);font-size:10px;">🚫 Spam</span>`
+                : st === 'bounced'  ? `<span style="color:var(--amber);font-size:10px;">↩️ Bounce</span>`
+                : st === 'sent'     ? `<span style="color:var(--slate);font-size:10px;">📤 Sent</span>`
+                :                    `<span style="color:var(--slate2);font-size:10px;">—</span>`;
+
+    return `<tr>
       <td style="color:var(--slate2);font-family:var(--mono);font-size:10px">${i+1}</td>
-      <td><div style="font-weight:600;color:var(--cream);max-width:150px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</div></td>
-      <td style="color:var(--slate);font-size:10.5px;max-width:110px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
+      <td><div style="font-weight:600;color:var(--cream);max-width:140px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</div></td>
+      <td style="color:var(--slate);font-size:10.5px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
       <td><a class="email-a" href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
       <td><span class="bdg bdg-cat">${esc(l.category||'—')}</span></td>
       <td style="font-family:var(--mono);font-size:10.5px">${(l.installs||0).toLocaleString()}</td>
-      <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null?Number(l.score).toFixed(1):'new'}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null&&l.score>0?Number(l.score).toFixed(1):'new'}</td>
       <td style="color:var(--gold);font-size:10.5px">${esc(l.keyword||'')}</td>
-      <td>${l.email_sent?'<span class="bdg bdg-sent">✓ Sent</span>':'<span class="bdg bdg-pend">Pending</span>'}</td>
+      <td>${stBadge}</td>
+      <td>${deliv}</td>
       <td><a class="ext-a" href="${esc(l.url)}" target="_blank">↗</a></td>
-    </tr>`).join('');
+    </tr>`;
+  }).join('');
 }
 
-// ════ ANALYTICS ════
-function renderAnalytics() {
-  const leads = allLeads;
-  if(!leads.length) return;
-  const total=leads.length, withEmail=leads.filter(l=>l.email).length, sent=leads.filter(l=>l.email_sent).length;
-  setText('fn1',total); setText('fn1c',total);
-  const p2=total>0?Math.round((withEmail/total)*100):0;
-  document.getElementById('fn2').style.width=p2+'%'; setText('fn2',withEmail); setText('fn2c',withEmail);
-  const p3=withEmail>0?Math.round((sent/withEmail)*100):0;
-  document.getElementById('fn3').style.width=p3+'%'; setText('fn3',sent); setText('fn3c',sent);
-  const catMap={};
-  leads.forEach(l=>{ if(l.category) catMap[l.category]=(catMap[l.category]||0)+1; });
-  const catS=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const cMax=catS[0]?catS[0][1]:1;
-  document.getElementById('catBreak').innerHTML=catS.map(([c,n])=>`
-    <div class="prog-row" style="margin-bottom:10px;">
-      <div class="prog-lbl" style="font-size:10px;min-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div>
-      <div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div>
-      <div class="prog-pct">${n}</div>
-    </div>`).join('')||'<div class="empty-st" style="padding:12px">No data</div>';
-  const ir={'0–1K':0,'1K–5K':0,'5K+':0};
-  leads.forEach(l=>{ const i=l.installs||0; if(i<1000)ir['0–1K']++; else if(i<=5000)ir['1K–5K']++; else ir['5K+']++; });
-  document.getElementById('installBreak').innerHTML=Object.entries(ir).map(([k,v])=>`
-    <div class="prog-row" style="margin-bottom:10px;">
-      <div class="prog-lbl" style="font-size:10px;min-width:60px">${k}</div>
-      <div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div>
-      <div class="prog-pct">${v}</div>
-    </div>`).join('');
-  const kwM={};
-  leads.forEach(l=>{ if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1; });
-  const kwS=Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
-  const kwMax=kwS[0]?kwS[0][1]:1;
-  document.getElementById('kwPerf').innerHTML=kwS.map(([k,v])=>`
-    <div class="prog-row" style="margin-bottom:8px;">
-      <div class="prog-lbl" style="font-size:10px;min-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div>
-      <div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/kwMax)*100)}%"></div></div>
-      <div class="prog-pct">${v}</div>
-    </div>`).join('')||'<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
+function clearAnFilters() {
+  ['af-status','af-category','af-keyword','af-score','af-installs'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const s=document.getElementById('af-search'); if(s) s.value='';
+  renderAnalytics();
+}
+
+function exportAnCSV() {
+  const filtered = _applyAnFilters(allLeads);
+  if (!filtered.length) { alert('No leads to export.'); return; }
+  const h = ['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent','Email Status'];
+  const rows = filtered.map(l => {
+    const st = _getEmailStatusForLead(l);
+    return [l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent,st]
+      .map(v=>'"'+String(v||'').replace(/"/g,'""')+'"');
+  });
+  const csv = [h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='playleads_analytics_'+Date.now()+'.csv'; a.click();
+}
+
+async function loadAnalyticsFromSheet() {
+  const sheetUrl = cfg.appsscript;
+  if (!sheetUrl) { alert('Sheet URL not configured in Setup!'); return; }
+  const btn = event && event.target;
+  if (btn) { btn.textContent = '⏳…'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/sheet_analytics', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sheet_url: sheetUrl})
+    });
+    const d = await r.json();
+    if (d.events) {
+      emailEvents = d.events;
+      renderAnalytics();
+      alert(`✅ Loaded ${emailEvents.length} email events from Sheet`);
+    }
+  } catch(e) {
+    alert('Error loading analytics: ' + e.message);
+  }
+  if (btn) { btn.textContent = '🔄 Refresh Sheet'; btn.disabled = false; }
+}
+
+async function logEmailEvent() {
+  const sheetUrl = cfg.appsscript;
+  const appIdOrEmail = document.getElementById('ev-appid').value.trim();
+  const evType       = document.getElementById('ev-type').value;
+  const details      = document.getElementById('ev-details').value.trim();
+  const res = document.getElementById('ev-result');
+
+  if (!appIdOrEmail) { alert('App ID বা Email দাও!'); return; }
+
+  // Find matching lead
+  const lead = allLeads.find(l =>
+    l.app_id === appIdOrEmail ||
+    (l.email && l.email.toLowerCase() === appIdOrEmail.toLowerCase())
+  ) || {};
+
+  const evObj = {
+    'App ID':   lead.app_id   || (appIdOrEmail.includes('@') ? '' : appIdOrEmail),
+    'App Name': lead.app_name || '',
+    'Email':    lead.email    || (appIdOrEmail.includes('@') ? appIdOrEmail : ''),
+    'Event':    evType,
+    'Details':  details,
+    'Keyword':  lead.keyword  || '',
+    'Category': lead.category || '',
+    'Installs': lead.installs || '',
+    'Score':    lead.score    || '',
+    'Timestamp': new Date().toISOString(),
+  };
+
+  // Add to local state immediately
+  emailEvents.push(evObj);
+  renderAnalytics();
+
+  res.style.display = 'block';
+  res.style.color = 'var(--green)';
+  res.textContent = `✅ Logged "${evType}" for ${appIdOrEmail}`;
+
+  // Push to sheet if configured
+  if (sheetUrl) {
+    try {
+      await fetch('/api/sheet_post', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          sheet_url: sheetUrl,
+          payload: {
+            action: 'log_email_event',
+            app_id:   evObj['App ID'],
+            app_name: evObj['App Name'],
+            email:    evObj['Email'],
+            event:    evType,
+            details:  details,
+            keyword:  evObj['Keyword'],
+            category: evObj['Category'],
+            installs: evObj['Installs'],
+            score:    evObj['Score'],
+          }
+        })
+      });
+      res.textContent += ' — Sheet এও save হয়েছে ✅';
+    } catch(e) {
+      res.textContent += ' (Sheet save failed: ' + e.message + ')';
+      res.style.color = 'var(--amber)';
+    }
+  }
+  setTimeout(() => { res.style.display = 'none'; }, 4000);
 }
 
 // ════ SPAM TEST ════
-async function runSpamTest() {
-  const testEmail = document.getElementById('spamTestEmail').value.trim();
-  if(!testEmail) { alert('Enter your test email!'); return; }
-  const btn = document.getElementById('btnSpamTest');
-  btn.disabled = true; btn.textContent = '⏳ AI writing + sending…';
-  const result = document.getElementById('spamResult');
-  result.className = 'spam-result'; result.style.display = 'none';
-  try {
-    const r = await fetch('/api/spam_test', {
-      method: 'POST', headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({
-        test_email:       testEmail,
-        sample_app_name:  document.getElementById('spamSampleApp').value || 'MyApp Pro',
-        sample_developer: document.getElementById('spamSampleDev').value || 'John Dev',
-        sample_score:     parseFloat(document.getElementById('spamSampleScore').value)||2.1,
-        groq_key:         cfg.groq,
-        email_script_url: cfg.emailscript,
-        sender_name:      cfg.sender_name||'',
-        sender_company:   cfg.sender_company||'',
-        email_subject:    cfg.email_subject||DEFAULT_SUBJECT,
-        email_body:       cfg.email_body||DEFAULT_BODY,
-      })
-    });
-    const d = await r.json();
-    if(d.ok) {
-      result.className = 'spam-result ok';
-      result.textContent = '✅ ' + d.msg + '\nSubject: ' + (d.subject||'') + '\n\n' + (d.body||'');
-      result.style.display = 'block';
-    } else {
-      result.className = 'spam-result err';
-      result.textContent = '❌ Error: ' + (d.error||'Unknown');
-      result.style.display = 'block';
-    }
-  } catch(e) {
-    result.className = 'spam-result err';
-    result.textContent = '❌ Network: ' + e.message;
-    result.style.display = 'block';
-  }
-  btn.disabled = false; btn.textContent = '📤 Send Test Email';
+async function runSpamTest(){
+  const testEmail=document.getElementById('spamTestEmail').value.trim();
+  if(!testEmail){alert('Enter your test email!');return;}
+  const btn=document.getElementById('btnSpamTest');
+  btn.disabled=true;btn.textContent='⏳ AI writing + sending…';
+  const result=document.getElementById('spamResult');
+  result.className='spam-result';result.style.display='none';
+  try{
+    const r=await fetch('/api/spam_test',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({
+      test_email:testEmail,
+      sample_app_name:document.getElementById('spamSampleApp').value||'MyApp Pro',
+      sample_developer:document.getElementById('spamSampleDev').value||'John Dev',
+      sample_score:parseFloat(document.getElementById('spamSampleScore').value)||2.1,
+      groq_key:cfg.groq,
+      email_script_url:cfg.emailscript||'',
+      sender_name:cfg.sender_name||'',
+      sender_company:cfg.sender_company||'',
+      email_subject:cfg.email_subject||DEFAULT_SUBJECT,
+      email_body:cfg.email_body||DEFAULT_BODY,
+      email_script_urls:cfg.emailscripts||'',
+      unsubscribe_url:cfg.unsub_url||'',
+    })});
+    const d=await r.json();
+    if(d.ok){result.className='spam-result ok';result.textContent='✅ '+d.msg+'\nSubject: '+(d.subject||'')+'\n\n'+(d.body||'');result.style.display='block';}
+    else{result.className='spam-result err';result.textContent='❌ Error: '+(d.error||'Unknown');result.style.display='block';}
+  }catch(e){result.className='spam-result err';result.textContent='❌ Network: '+e.message;result.style.display='block';}
+  btn.disabled=false;btn.textContent='📤 Send Test Email';
 }
 
 // ════ LIVE PREVIEW ════
-function fillTpl(tpl, lead) {
-  return tpl
-    .replace(/{{app_name}}/g,       lead.app_name||'')
-    .replace(/{{developer}}/g,      lead.developer||'')
-    .replace(/{{category}}/g,       lead.category||'')
-    .replace(/{{installs}}/g,       String(lead.installs||''))
-    .replace(/{{score}}/g,          String(lead.score||''))
-    .replace(/{{url}}/g,            lead.url||'')
-    .replace(/{{sender_name}}/g,    cfg.sender_name||'Your Name')
-    .replace(/{{sender_company}}/g, cfg.sender_company||'Your Company');
+function fillTpl(tpl,lead){
+  return tpl.replace(/{{app_name}}/g,lead.app_name||'').replace(/{{developer}}/g,lead.developer||'').replace(/{{category}}/g,lead.category||'').replace(/{{installs}}/g,String(lead.installs||'')).replace(/{{score}}/g,String(lead.score||'')).replace(/{{url}}/g,lead.url||'').replace(/{{sender_name}}/g,cfg.sender_name||'Your Name').replace(/{{sender_company}}/g,cfg.sender_company||'Your Company');
 }
-function updateLivePreview() {
-  const sample = {
-    app_name:'MyApp Pro', developer:'John Dev', category:'Productivity',
-    installs:1500, score:2.1, url:'https://play.google.com/store/apps/details?id=com.example',
-  };
-  const ls = document.getElementById('liveSubject');
-  const lb = document.getElementById('liveBody');
-  if(ls) ls.textContent = fillTpl(getVal('cfg-email-subject')||DEFAULT_SUBJECT, sample);
-  if(lb) lb.textContent = fillTpl(getVal('cfg-email-body')||DEFAULT_BODY, sample);
+function updateLivePreview(){
+  const sample={app_name:'MyApp Pro',developer:'John Dev',category:'Productivity',installs:1500,score:2.1,url:'https://play.google.com/store/apps/details?id=com.example'};
+  const ls=document.getElementById('liveSubject');
+  const lb=document.getElementById('liveBody');
+  if(ls)ls.textContent=fillTpl(getVal('cfg-email-subject')||DEFAULT_SUBJECT,sample);
+  if(lb)lb.textContent=fillTpl(getVal('cfg-email-body')||DEFAULT_BODY,sample);
 }
 
 // ════ CSV ════
-function exportCSV() {
-  if(!allLeads.length) { alert('No leads to export.'); return; }
-  const h = ['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent'];
-  const rows = allLeads.map(l=>[l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent]
-    .map(v=>'"'+String(v||'').replace(/"/g,'""')+'"'));
-  const csv = [h,...rows].map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download = 'playleads_'+Date.now()+'.csv'; a.click();
+function exportCSV(){
+  if(!allLeads.length){alert('No leads to export.');return;}
+  const h=['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent'];
+  const rows=allLeads.map(l=>[l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent].map(v=>'"'+String(v||'').replace(/"/g,'""')+'"'));
+  const csv=[h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);a.download='playleads_'+Date.now()+'.csv';a.click();
 }
 
 // ════ COPY ════
-function copyCode(id) {
-  navigator.clipboard.writeText(document.getElementById(id).textContent)
-    .then(()=>alert('✅ Copied!'));
+function copyCode(id){
+  navigator.clipboard.writeText(document.getElementById(id).textContent).then(()=>alert('✅ Copied!'));
 }
 
 // ════ UTILS ════
-function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function setText(id,v) { const e=document.getElementById(id); if(e) e.textContent=v; }
-function setBar(fId,pId,pct,lbl) { document.getElementById(fId).style.width=pct+'%'; document.getElementById(pId).textContent=lbl; }
-function getVal(id) { const e=document.getElementById(id); return e ? e.value.trim() : ''; }
-function setVal(id,v) { const e=document.getElementById(id); if(e) e.value=v; }
-function fmtDur(s) { return Math.floor(s/60)+'m '+s%60+'s'; }
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function setText(id,v){const e=document.getElementById(id);if(e)e.textContent=v;}
+function setBar(fId,pId,pct,lbl){document.getElementById(fId).style.width=pct+'%';document.getElementById(pId).textContent=lbl;}
+function getVal(id){const e=document.getElementById(id);return e?e.value.trim():'';}
+function setVal(id,v){const e=document.getElementById(id);if(e)e.value=v;}
+function fmtDur(s){return Math.floor(s/60)+'m '+s%60+'s';}
 
 // ════ CLOCK ════
-setInterval(()=>{ document.getElementById('clk').textContent=new Date().toLocaleTimeString(); }, 1000);
+setInterval(()=>{document.getElementById('clk').textContent=new Date().toLocaleTimeString();},1000);
 
 // ════ INIT ════
-window.addEventListener('load', ()=>{
+window.addEventListener('load',()=>{
   loadCfg(); checkWarn(); fetchSt(); startPoll();
   refreshSheetPending();
-  // Refresh sheet pending count every 30s
-  setInterval(refreshSheetPending, 30000);
+  setInterval(refreshSheetPending,30000);
 });
 </script>
 </body>
