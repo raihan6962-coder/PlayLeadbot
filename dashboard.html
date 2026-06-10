@@ -214,6 +214,18 @@ tbody tr:hover td { background: #13131c; }
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.an-filter {
+  background: #0d0d14; border: 1px solid var(--border); color: var(--cream);
+  font-family: var(--mono); font-size: 11px; padding: 6px 10px; border-radius: 5px;
+  outline: none; transition: border .2s; cursor: pointer;
+}
+.an-filter:focus, .an-filter:hover { border-color: var(--gold); }
+.an-filter option { background: #0d0d14; }
+.bdg-inbox  { background: #0a160d; color: var(--green);  border: 1px solid #166534; }
+.bdg-opened { background: #1a0d2e; color: #a78bfa;       border: 1px solid #4c1d95; }
+.bdg-spam   { background: #160a0a; color: var(--red);    border: 1px solid #7f1d1d; }
+.bdg-bounce { background: #1a1000; color: var(--amber);  border: 1px solid #78350f; }
+.bdg-unsub  { background: #111118; color: var(--slate);  border: 1px solid var(--border2); }
 @media(max-width:900px){
   .sidebar{display:none;} .main{margin-left:0;}
   .grid-2,.grid-3,.setup-grid,.form-row{grid-template-columns:1fr;}
@@ -325,47 +337,321 @@ tbody tr:hover td { background: #13131c; }
 
   <!-- ══ ANALYTICS ══ -->
   <section class="section" id="sec-analytics">
-    <div class="stats-grid">
-      <div class="stat-card c-gold"><div class="stat-label">Total Leads</div><div class="stat-val" id="an-l">0</div><div class="stat-sub">collected</div></div>
-      <div class="stat-card c-green"><div class="stat-label">Emails Sent</div><div class="stat-val" id="an-e">0</div><div class="stat-sub">outreach done</div></div>
-      <div class="stat-card c-blue"><div class="stat-label">Categories</div><div class="stat-val" id="an-c">—</div><div class="stat-sub">unique genres</div></div>
-      <div class="stat-card c-amber"><div class="stat-label">Avg Rating</div><div class="stat-val" id="an-s">—</div><div class="stat-sub">Play Store score</div></div>
+
+    <!-- TOP KPI CARDS -->
+    <div class="stats-grid" style="grid-template-columns:repeat(auto-fit,minmax(140px,1fr));margin-bottom:18px;">
+      <div class="stat-card c-gold">  <div class="stat-label">Total Leads</div>   <div class="stat-val" id="an-l">0</div>  <div class="stat-sub">collected</div></div>
+      <div class="stat-card c-green"> <div class="stat-label">Emails Sent</div>   <div class="stat-val" id="an-e">0</div>  <div class="stat-sub">outreach</div></div>
+      <div class="stat-card" style="--c:var(--blue)">
+        <div class="stat-label">Inbox Rate</div>
+        <div class="stat-val" id="an-inbox-rate" style="color:var(--blue)">—</div>
+        <div class="stat-sub">delivered to inbox</div>
+      </div>
+      <div class="stat-card" style="--c:#a78bfa">
+        <div class="stat-label">Open Rate</div>
+        <div class="stat-val" id="an-open-rate" style="color:#a78bfa">—</div>
+        <div class="stat-sub">of sent emails</div>
+      </div>
+      <div class="stat-card" style="--c:var(--red)">
+        <div class="stat-label">Spam Rate</div>
+        <div class="stat-val" id="an-spam-rate" style="color:var(--red)">—</div>
+        <div class="stat-sub">flagged as spam</div>
+      </div>
+      <div class="stat-card" style="--c:var(--amber)">
+        <div class="stat-label">Bounce Rate</div>
+        <div class="stat-val" id="an-bounce-rate" style="color:var(--amber)">—</div>
+        <div class="stat-sub">undeliverable</div>
+      </div>
+      <div class="stat-card c-blue">  <div class="stat-label">Categories</div>    <div class="stat-val" id="an-c">—</div>  <div class="stat-sub">unique genres</div></div>
+      <div class="stat-card c-amber"> <div class="stat-label">Avg Rating</div>    <div class="stat-val" id="an-s">—</div>  <div class="stat-sub">Play Store</div></div>
     </div>
+
+    <!-- FILTER BAR -->
+    <div class="card" style="margin-bottom:14px;padding:14px 18px;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <span style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;white-space:nowrap;">🔍 Filter</span>
+        <select class="an-filter" id="af-status" onchange="renderAnalytics()">
+          <option value="">All Status</option>
+          <option value="sent">✅ Sent</option>
+          <option value="pending">⏳ Pending</option>
+          <option value="inbox">📥 Inbox</option>
+          <option value="opened">👁 Opened</option>
+          <option value="spam">🚫 Spam</option>
+          <option value="bounced">↩️ Bounced</option>
+          <option value="unsubscribed">🚫 Unsubscribed</option>
+        </select>
+        <select class="an-filter" id="af-category" onchange="renderAnalytics()">
+          <option value="">All Categories</option>
+        </select>
+        <select class="an-filter" id="af-keyword" onchange="renderAnalytics()">
+          <option value="">All Keywords</option>
+        </select>
+        <select class="an-filter" id="af-score" onchange="renderAnalytics()">
+          <option value="">All Ratings</option>
+          <option value="new">🆕 New (no rating)</option>
+          <option value="low">⭐ Low (≤2.5)</option>
+          <option value="mid">⭐⭐ Mid (2.5–3.5)</option>
+          <option value="high">⭐⭐⭐ High (3.5+)</option>
+        </select>
+        <select class="an-filter" id="af-installs" onchange="renderAnalytics()">
+          <option value="">All Install Ranges</option>
+          <option value="0">0 installs</option>
+          <option value="1k">1–1K</option>
+          <option value="5k">1K–5K</option>
+          <option value="10k">5K–10K</option>
+          <option value="10k+">10K+</option>
+        </select>
+        <input class="an-filter" id="af-search" type="text" placeholder="Search app / email / dev…" oninput="renderAnalytics()" style="flex:1;min-width:160px;"/>
+        <button class="btn-ghost" onclick="clearAnFilters()" style="font-size:10px;padding:5px 12px;">✕ Clear</button>
+        <button class="btn-ghost" onclick="exportAnCSV()" style="font-size:10px;padding:5px 12px;">⬇ CSV</button>
+        <button class="btn-ghost" onclick="loadAnalyticsFromSheet()" style="font-size:10px;padding:5px 12px;" title="Pull latest data from Google Sheet">🔄 Refresh Sheet</button>
+      </div>
+    </div>
+
+    <!-- MAIN CHARTS ROW -->
     <div class="grid-2" style="margin-bottom:14px;">
+
+      <!-- DELIVERY FUNNEL -->
       <div class="card">
-        <div class="card-head">Conversion Funnel</div>
-        <div class="funnel">
-          <div class="fn-step"><div class="fn-lbl">Scraped</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div><div class="fn-cnt" id="fn1c">0</div></div>
-          <div class="fn-step"><div class="fn-lbl">Has Email</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div><div class="fn-cnt" id="fn2c">0</div></div>
-          <div class="fn-step"><div class="fn-lbl">Email Sent</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn3" style="width:0%;background:linear-gradient(90deg,#166534,var(--green))">0</div></div><div class="fn-cnt" id="fn3c">0</div></div>
+        <div class="card-head">Email Delivery Funnel</div>
+        <div class="funnel" style="gap:8px;">
+          <div class="fn-step"><div class="fn-lbl">Total Leads</div>    <div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div><div class="fn-cnt" id="fn1c">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">Emails Sent</div>    <div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div><div class="fn-cnt" id="fn2c">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">📥 Inbox</div>       <div class="fn-bar-wrap"><div class="fn-bar" id="fn-inbox"  style="width:0%;background:linear-gradient(90deg,#065f46,var(--green))">0</div></div><div class="fn-cnt" id="fn-inboxc">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">👁 Opened</div>      <div class="fn-bar-wrap"><div class="fn-bar" id="fn-opened" style="width:0%;background:linear-gradient(90deg,#4c1d95,#a78bfa)">0</div></div><div class="fn-cnt" id="fn-openedc">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">🚫 Spam</div>        <div class="fn-bar-wrap"><div class="fn-bar" id="fn-spam"   style="width:0%;background:linear-gradient(90deg,#7f1d1d,var(--red))">0</div></div><div class="fn-cnt" id="fn-spamc">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">↩️ Bounced</div>     <div class="fn-bar-wrap"><div class="fn-bar" id="fn-bounce" style="width:0%;background:linear-gradient(90deg,#78350f,var(--amber))">0</div></div><div class="fn-cnt" id="fn-bouncec">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">🚫 Unsubscribed</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn-unsub"  style="width:0%;background:linear-gradient(90deg,#374151,#6b7280)">0</div></div><div class="fn-cnt" id="fn-unsubc">0</div></div>
         </div>
       </div>
+
+      <!-- TOP CATEGORIES -->
       <div class="card">
         <div class="card-head">Top Categories</div>
         <div id="catBreak"><div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div></div>
       </div>
     </div>
-    <div class="grid-3">
+
+    <!-- SECOND CHARTS ROW -->
+    <div class="grid-3" style="margin-bottom:14px;">
       <div class="card">
         <div class="card-head">Install Distribution</div>
         <div id="installBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
       </div>
       <div class="card">
+        <div class="card-head">Rating Distribution</div>
+        <div id="scoreBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
+      </div>
+      <div class="card">
         <div class="card-head">Keyword Performance</div>
         <div id="kwPerf"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
       </div>
+    </div>
+
+    <!-- EMAIL STATUS TIMELINE / DAILY SUMMARY -->
+    <div class="grid-2" style="margin-bottom:14px;">
+      <div class="card">
+        <div class="card-head">Email Status Breakdown</div>
+        <div id="statusBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
+      </div>
       <div class="card">
         <div class="card-head">Session Summary</div>
-        <div style="font-size:11px;color:var(--slate2);line-height:2.4;padding:4px 0;">
-          Start time: <span id="ss-start" style="color:var(--slate)">—</span><br>
-          Duration: <span id="ss-dur" style="color:var(--slate)">—</span><br>
-          Phase: <span id="ss-phase" style="color:var(--gold)">—</span><br>
-          AI calls: <span id="ss-ai" style="color:var(--blue)">0</span><br>
-          Sheet: <span id="ss-sheet" style="color:var(--green)">—</span><br>
-          Status: <span id="ss-st" style="color:var(--slate)">Idle</span>
+        <div style="font-size:11px;color:var(--slate2);line-height:2.6;padding:4px 0;">
+          Start time:     <span id="ss-start" style="color:var(--slate)">—</span><br>
+          Duration:       <span id="ss-dur"   style="color:var(--slate)">—</span><br>
+          Phase:          <span id="ss-phase" style="color:var(--gold)">—</span><br>
+          AI calls:       <span id="ss-ai"    style="color:var(--blue)">0</span><br>
+          Sheet:          <span id="ss-sheet" style="color:var(--green)">—</span><br>
+          Status:         <span id="ss-st"    style="color:var(--slate)">Idle</span><br>
+          Delivery rate:  <span id="ss-deliv" style="color:var(--green)">—</span><br>
+          Inbox rate:     <span id="ss-inbox" style="color:var(--blue)">—</span><br>
+          Open rate:      <span id="ss-open"  style="color:#a78bfa">—</span>
         </div>
       </div>
     </div>
+
+    <!-- FILTERED LEADS TABLE -->
+    <div class="card">
+      <div class="card-head" style="justify-content:space-between;">
+        <span>Filtered Leads &nbsp;<span id="an-filtered-cnt" style="color:var(--gold2);font-family:var(--serif);font-size:18px;font-weight:700">0</span></span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-ghost" onclick="exportAnCSV()" style="font-size:10px;padding:5px 12px;">⬇ Export Filtered CSV</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>App</th><th>Developer</th><th>Email</th>
+            <th>Category</th><th>Installs</th><th>Score</th>
+            <th>Keyword</th><th>Email Status</th><th>Delivery</th><th>Link</th>
+          </tr></thead>
+          <tbody id="an-tbody"><tr><td colspan="11"><div class="empty-st"><span class="empty-ico">📊</span>No data yet.</div></td></tr></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- SHEET ANALYTICS TAB INFO -->
+    <div class="card" style="margin-top:14px;">
+      <div class="card-head">📋 Google Sheet — Email Analytics Tab Setup</div>
+      <div class="info-box" style="margin-bottom:12px;">
+        Sheet এ <strong style="color:var(--gold2);">Email Analytics</strong> tab automatically তৈরি হবে।
+        Spam / Bounce / Inbox / Opened events এই tab এ log হবে।
+        নিচের Script code টা তোমার <strong>Lead Database Apps Script</strong> এ add করো (existing code replace করো)।
+      </div>
+      <div class="as-box">
+        <h4>📋 Updated Apps Script — Analytics সহ (existing script replace করো)</h4>
+        <div class="code-block" id="analyticsScriptCode">function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var action = data.action;
+
+    if (action === "append") {
+      var tab = data.tab || "All Leads";
+      var sheet = ss.getSheetByName(tab);
+      if (!sheet) sheet = ss.insertSheet(tab);
+      var row = data.row;
+      if (sheet.getLastRow() === 0) sheet.appendRow(Object.keys(row));
+      sheet.appendRow(Object.values(row));
+
+    } else if (action === "log_email_event") {
+      // Log spam / bounce / inbox / opened events
+      var evSheet = ss.getSheetByName("Email Analytics");
+      if (!evSheet) {
+        evSheet = ss.insertSheet("Email Analytics");
+        evSheet.appendRow(["Timestamp","App ID","App Name","Email","Event","Details","Keyword","Category","Installs","Score"]);
+      }
+      evSheet.appendRow([
+        new Date().toISOString(),
+        data.app_id || "",
+        data.app_name || "",
+        data.email || "",
+        data.event || "",   // inbox / spam / bounced / opened / unsubscribed
+        data.details || "",
+        data.keyword || "",
+        data.category || "",
+        data.installs || "",
+        data.score || ""
+      ]);
+      // Also update status in All Leads tab
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet && data.app_id) {
+        var vals = allSheet.getDataRange().getValues();
+        var headers = vals[0];
+        var appIdCol = headers.indexOf("App ID");
+        var statusCol = headers.indexOf("Email Status");
+        if (statusCol < 0) {
+          allSheet.getRange(1, headers.length + 1).setValue("Email Status");
+          statusCol = headers.length;
+        }
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][appIdCol]) === String(data.app_id)) {
+            allSheet.getRange(i + 1, statusCol + 1).setValue(data.event);
+            break;
+          }
+        }
+      }
+
+    } else if (action === "get_analytics") {
+      var evSheet = ss.getSheetByName("Email Analytics");
+      if (!evSheet) return ContentService.createTextOutput(JSON.stringify({events:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = evSheet.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({events:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0];
+      var events = [];
+      for (var i = 1; i < vals.length; i++) {
+        var obj = {};
+        headers.forEach(function(h, j) { obj[h] = vals[i][j]; });
+        events.push(obj);
+      }
+      return ContentService.createTextOutput(JSON.stringify({events:events})).setMimeType(ContentService.MimeType.JSON);
+
+    } else if (action === "mark_sent") {
+      var allSheet = ss.getSheetByName("All Leads");
+      if (allSheet) {
+        var vals = allSheet.getDataRange().getValues();
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][vals[i].length-1]) === data.app_id) {
+            var col = vals[0].indexOf("Email Sent")+1;
+            if (col > 0) allSheet.getRange(i+1,col).setValue("Yes");
+            break;
+          }
+        }
+      }
+
+    } else if (action === "get_all") {
+      var sh = ss.getSheetByName(data.tab||"All Leads");
+      if (!sh) return ContentService.createTextOutput(JSON.stringify({records:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = sh.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({records:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0]; var records = [];
+      for (var i=1;i<vals.length;i++){var obj={};headers.forEach(function(h,j){obj[h]=vals[i][j];});records.push(obj);}
+      return ContentService.createTextOutput(JSON.stringify({records:records})).setMimeType(ContentService.MimeType.JSON);
+
+    } else if (action === "get_pending") {
+      var sh = ss.getSheetByName("All Leads");
+      if (!sh) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      var vals = sh.getDataRange().getValues();
+      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      var headers = vals[0]; var colIdx={};
+      headers.forEach(function(h,i){colIdx[h]=i;});
+      var leads=[];
+      for (var i=1;i<vals.length;i++){
+        var row=vals[i];
+        var sent=String(row[colIdx["Email Sent"]]||"").trim().toLowerCase();
+        if (sent==="no"||sent===""){
+          leads.push({app_id:String(row[colIdx["App ID"]]||""),app_name:String(row[colIdx["App Name"]]||""),developer:String(row[colIdx["Developer"]]||""),email:String(row[colIdx["Email"]]||""),category:String(row[colIdx["Category"]]||""),installs:Number(row[colIdx["Installs"]]||0),score:row[colIdx["Score"]]?Number(row[colIdx["Score"]]):null,url:String(row[colIdx["URL"]]||""),keyword:String(row[colIdx["Keyword"]]||"")});
+        }
+      }
+      return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:leads})).setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({status:"ok"})).setMimeType(ContentService.MimeType.JSON);
+  } catch(err) {
+    return ContentService.createTextOutput(JSON.stringify({status:"error",msg:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+  }
+}</div>
+        <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('analyticsScriptCode')">📋 Copy Updated Script</button>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:var(--slate2);line-height:2;">
+        <strong style="color:var(--gold2);">Event types যা log হবে:</strong><br>
+        <span style="color:var(--green);">inbox</span> — email successfully delivered to inbox &nbsp;|&nbsp;
+        <span style="color:#a78bfa;">opened</span> — recipient opened the email &nbsp;|&nbsp;
+        <span style="color:var(--red);">spam</span> — flagged as spam &nbsp;|&nbsp;
+        <span style="color:var(--amber);">bounced</span> — email bounced (invalid / full) &nbsp;|&nbsp;
+        <span style="color:#6b7280;">unsubscribed</span> — clicked unsubscribe<br>
+        <strong style="color:var(--gold2);">Note:</strong> Spam/bounce detection automatic হয় Gmail Apps Script থেকে।
+        Manual log করতে হলে নিচের "Log Event" ব্যবহার করো।
+      </div>
+
+      <!-- MANUAL EVENT LOGGER -->
+      <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:14px;">
+        <div style="font-size:9px;letter-spacing:2px;color:var(--slate2);text-transform:uppercase;margin-bottom:12px;">Manual Event Logger</div>
+        <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:end;flex-wrap:wrap;">
+          <div>
+            <div class="form-label" style="margin-bottom:5px;">App ID or Email</div>
+            <input class="form-input" id="ev-appid" type="text" placeholder="com.example.app or email@dev.com" style="font-size:11px;padding:8px 12px;"/>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:5px;">Event Type</div>
+            <select class="form-input" id="ev-type" style="font-size:11px;padding:8px 12px;">
+              <option value="inbox">📥 Inbox</option>
+              <option value="opened">👁 Opened</option>
+              <option value="spam">🚫 Spam</option>
+              <option value="bounced">↩️ Bounced</option>
+              <option value="unsubscribed">🚫 Unsubscribed</option>
+            </select>
+          </div>
+          <div>
+            <div class="form-label" style="margin-bottom:5px;">Details (optional)</div>
+            <input class="form-input" id="ev-details" type="text" placeholder="notes…" style="font-size:11px;padding:8px 12px;"/>
+          </div>
+          <button class="btn-ghost" onclick="logEmailEvent()" style="white-space:nowrap;padding:8px 14px;font-size:11px;">📝 Log</button>
+        </div>
+        <div id="ev-result" style="margin-top:8px;font-size:11px;display:none;"></div>
+      </div>
+    </div>
+
   </section>
 
   <!-- ══ DATABASE ══ -->
@@ -1255,29 +1541,343 @@ function renderDB(leads){
   </tr>`).join('');
 }
 
-// ════ ANALYTICS ════
-function renderAnalytics(){
-  const leads=allLeads;
-  if(!leads.length)return;
-  const total=leads.length,withEmail=leads.filter(l=>l.email).length,sent=leads.filter(l=>l.email_sent).length;
-  setText('fn1',total);setText('fn1c',total);
-  const p2=total>0?Math.round((withEmail/total)*100):0;
-  document.getElementById('fn2').style.width=p2+'%';setText('fn2',withEmail);setText('fn2c',withEmail);
-  const p3=withEmail>0?Math.round((sent/withEmail)*100):0;
-  document.getElementById('fn3').style.width=p3+'%';setText('fn3',sent);setText('fn3c',sent);
-  const catMap={};
-  leads.forEach(l=>{if(l.category)catMap[l.category]=(catMap[l.category]||0)+1;});
-  const catS=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const cMax=catS[0]?catS[0][1]:1;
-  document.getElementById('catBreak').innerHTML=catS.map(([c,n])=>`<div class="prog-row" style="margin-bottom:10px;"><div class="prog-lbl" style="font-size:10px;min-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div><div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div><div class="prog-pct">${n}</div></div>`).join('')||'<div class="empty-st" style="padding:12px">No data</div>';
-  const ir={'0–1K':0,'1K–5K':0,'5K+':0};
-  leads.forEach(l=>{const i=l.installs||0;if(i<1000)ir['0–1K']++;else if(i<=5000)ir['1K–5K']++;else ir['5K+']++;});
-  document.getElementById('installBreak').innerHTML=Object.entries(ir).map(([k,v])=>`<div class="prog-row" style="margin-bottom:10px;"><div class="prog-lbl" style="font-size:10px;min-width:60px">${k}</div><div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div><div class="prog-pct">${v}</div></div>`).join('');
-  const kwM={};
-  leads.forEach(l=>{if(l.keyword)kwM[l.keyword]=(kwM[l.keyword]||0)+1;});
-  const kwS=Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
-  const kwMax=kwS[0]?kwS[0][1]:1;
-  document.getElementById('kwPerf').innerHTML=kwS.map(([k,v])=>`<div class="prog-row" style="margin-bottom:8px;"><div class="prog-lbl" style="font-size:10px;min-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div><div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/kwMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('')||'<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
+// ════ EMAIL ANALYTICS DATA ════
+// emailEvents: loaded from Sheet or manually logged
+let emailEvents = [];  // [{Timestamp, App ID, App Name, Email, Event, Details, Keyword, Category, Installs, Score}]
+
+function _getEmailStatusForLead(lead) {
+  // Return the latest event for this lead from emailEvents
+  const appId = lead.app_id || '';
+  const email  = (lead.email || '').toLowerCase();
+  const matches = emailEvents.filter(ev =>
+    (ev['App ID'] && ev['App ID'] === appId) ||
+    (ev['Email'] && ev['Email'].toLowerCase() === email)
+  );
+  if (!matches.length) {
+    return lead.email_sent ? 'sent' : 'pending';
+  }
+  // Return last event
+  const order = ['unsubscribed','spam','bounced','opened','inbox','sent'];
+  let best = null;
+  for (const ev of matches) {
+    const evType = (ev['Event'] || '').toLowerCase();
+    if (!best || order.indexOf(evType) < order.indexOf(best)) best = evType;
+  }
+  return best || (lead.email_sent ? 'sent' : 'pending');
+}
+
+function _applyAnFilters(leads) {
+  const fStatus   = document.getElementById('af-status').value;
+  const fCat      = document.getElementById('af-category').value;
+  const fKw       = document.getElementById('af-keyword').value;
+  const fScore    = document.getElementById('af-score').value;
+  const fInstalls = document.getElementById('af-installs').value;
+  const fSearch   = (document.getElementById('af-search').value || '').toLowerCase().trim();
+
+  return leads.filter(lead => {
+    const status = _getEmailStatusForLead(lead);
+
+    if (fStatus) {
+      if (fStatus === 'sent' && !['sent','inbox','opened','spam','bounced'].includes(status)) return false;
+      if (fStatus !== 'sent' && status !== fStatus) return false;
+    }
+    if (fCat && lead.category !== fCat) return false;
+    if (fKw  && lead.keyword  !== fKw)  return false;
+
+    if (fScore) {
+      const sc = lead.score;
+      if (fScore === 'new' && (sc !== null && sc !== undefined && sc > 0)) return false;
+      if (fScore === 'low' && !(sc !== null && sc > 0 && sc <= 2.5))       return false;
+      if (fScore === 'mid' && !(sc !== null && sc > 2.5 && sc <= 3.5))     return false;
+      if (fScore === 'high' && !(sc !== null && sc > 3.5))                 return false;
+    }
+    if (fInstalls) {
+      const inst = lead.installs || 0;
+      if (fInstalls === '0'   && inst !== 0)                 return false;
+      if (fInstalls === '1k'  && !(inst > 0 && inst <= 1000))  return false;
+      if (fInstalls === '5k'  && !(inst > 1000 && inst <= 5000)) return false;
+      if (fInstalls === '10k' && !(inst > 5000 && inst <= 10000)) return false;
+      if (fInstalls === '10k+' && inst <= 10000)             return false;
+    }
+    if (fSearch) {
+      const hay = [(lead.app_name||''),(lead.developer||''),(lead.email||''),
+                   (lead.category||''),(lead.keyword||'')].join(' ').toLowerCase();
+      if (!hay.includes(fSearch)) return false;
+    }
+    return true;
+  });
+}
+
+function _populateFilterDropdowns(leads) {
+  const cats = [...new Set(leads.map(l=>l.category).filter(Boolean))].sort();
+  const kws  = [...new Set(leads.map(l=>l.keyword).filter(Boolean))].sort();
+  const catSel = document.getElementById('af-category');
+  const kwSel  = document.getElementById('af-keyword');
+  const prevCat = catSel.value, prevKw = kwSel.value;
+  catSel.innerHTML = '<option value="">All Categories</option>' + cats.map(c=>`<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  kwSel.innerHTML  = '<option value="">All Keywords</option>'  + kws.map(k=>`<option value="${esc(k)}">${esc(k)}</option>`).join('');
+  catSel.value = prevCat; kwSel.value = prevKw;
+}
+
+function renderAnalytics() {
+  const leads = allLeads;
+  _populateFilterDropdowns(leads);
+
+  // Compute email-status-enriched counts over ALL leads (for funnel)
+  const total   = leads.length;
+  const sent    = leads.filter(l => _getEmailStatusForLead(l) !== 'pending').length;
+  const inboxC  = leads.filter(l => _getEmailStatusForLead(l) === 'inbox').length;
+  const openedC = leads.filter(l => _getEmailStatusForLead(l) === 'opened').length;
+  const spamC   = leads.filter(l => _getEmailStatusForLead(l) === 'spam').length;
+  const bounceC = leads.filter(l => _getEmailStatusForLead(l) === 'bounced').length;
+  const unsubC  = leads.filter(l => _getEmailStatusForLead(l) === 'unsubscribed').length;
+
+  // KPI cards
+  setText('an-l', total);
+  setText('an-e', sent);
+  const inboxRate  = sent > 0 ? Math.round((inboxC / sent) * 100) : null;
+  const openRate   = sent > 0 ? Math.round((openedC / sent) * 100) : null;
+  const spamRate   = sent > 0 ? Math.round((spamC / sent) * 100) : null;
+  const bounceRate = sent > 0 ? Math.round((bounceC / sent) * 100) : null;
+  setText('an-inbox-rate',  inboxRate  !== null ? inboxRate  + '%' : '—');
+  setText('an-open-rate',   openRate   !== null ? openRate   + '%' : '—');
+  setText('an-spam-rate',   spamRate   !== null ? spamRate   + '%' : '—');
+  setText('an-bounce-rate', bounceRate !== null ? bounceRate + '%' : '—');
+
+  const cats = [...new Set(leads.map(l=>l.category).filter(Boolean))];
+  document.getElementById('an-c').textContent = cats.length || '—';
+  const sc = leads.map(l=>l.score).filter(x=>x!==null && x!==undefined && x>0);
+  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
+
+  // Funnel bars
+  function setFn(barId, cntId, count, base) {
+    const pct = base > 0 ? Math.round((count / base) * 100) : 0;
+    const bar = document.getElementById(barId);
+    const cnt = document.getElementById(cntId);
+    if (bar) { bar.style.width = Math.max(pct, count > 0 ? 3 : 0) + '%'; bar.textContent = count; }
+    if (cnt) cnt.textContent = count;
+  }
+  setFn('fn1',      'fn1c',      total,   total);
+  setFn('fn2',      'fn2c',      sent,    total);
+  setFn('fn-inbox', 'fn-inboxc', inboxC,  total);
+  setFn('fn-opened','fn-openedc',openedC, total);
+  setFn('fn-spam',  'fn-spamc',  spamC,   total);
+  setFn('fn-bounce','fn-bouncec',bounceC, total);
+  setFn('fn-unsub', 'fn-unsubc', unsubC,  total);
+
+  // Category chart
+  const catMap = {};
+  leads.forEach(l => { if(l.category) catMap[l.category] = (catMap[l.category]||0)+1; });
+  const catS = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const cMax = catS[0] ? catS[0][1] : 1;
+  document.getElementById('catBreak').innerHTML = catS.length ?
+    catS.map(([c,n])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:100px;overflow:hidden;text-overflow:ellipsis;">${esc(c)}</div><div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div><div class="prog-pct">${n}</div></div>`).join('')
+    : '<div class="empty-st" style="padding:12px">No data</div>';
+
+  // Install distribution
+  const ir = {'0':0,'1–1K':0,'1K–5K':0,'5K–10K':0,'10K+':0};
+  leads.forEach(l=>{
+    const i=l.installs||0;
+    if(i===0) ir['0']++;
+    else if(i<=1000)  ir['1–1K']++;
+    else if(i<=5000)  ir['1K–5K']++;
+    else if(i<=10000) ir['5K–10K']++;
+    else              ir['10K+']++;
+  });
+  document.getElementById('installBreak').innerHTML = Object.entries(ir).map(([k,v])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:65px;">${k}</div><div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div><div class="prog-pct">${v}</div></div>`).join('');
+
+  // Rating distribution
+  const sr = {'No Rating':0,'≤2.0':0,'2.0–2.9':0,'3.0–3.9':0,'4.0+':0};
+  leads.forEach(l=>{
+    const s=l.score;
+    if(!s || s===0) sr['No Rating']++;
+    else if(s<=2.0) sr['≤2.0']++;
+    else if(s<3.0)  sr['2.0–2.9']++;
+    else if(s<4.0)  sr['3.0–3.9']++;
+    else            sr['4.0+']++;
+  });
+  const srMax = Math.max(...Object.values(sr), 1);
+  document.getElementById('scoreBreak').innerHTML = Object.entries(sr).map(([k,v])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:70px;">${k}</div><div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/srMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('');
+
+  // Keyword performance
+  const kwM = {};
+  leads.forEach(l=>{if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1;});
+  const kwS = Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
+  const kwMax = kwS[0] ? kwS[0][1] : 1;
+  document.getElementById('kwPerf').innerHTML = kwS.length ?
+    kwS.map(([k,v])=>`<div class="prog-row" style="margin-bottom:8px;"><div class="prog-lbl" style="font-size:10px;min-width:80px;overflow:hidden;text-overflow:ellipsis;">${esc(k)}</div><div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((v/kwMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('')
+    : '<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
+
+  // Email status breakdown pie-like bar chart
+  const statusCounts = {
+    'Inbox': inboxC, 'Opened': openedC, 'Spam': spamC,
+    'Bounced': bounceC, 'Unsubscribed': unsubC,
+    'Sent (unknown)': Math.max(0, sent - inboxC - openedC - spamC - bounceC - unsubC),
+    'Pending': total - sent,
+  };
+  const stMax = Math.max(...Object.values(statusCounts), 1);
+  const stColors = {'Inbox':'pf-green','Opened':'pf-blue','Spam':'pf-amber','Bounced':'pf-amber','Unsubscribed':'pf-gold','Sent (unknown)':'pf-gold','Pending':'pf-gold'};
+  document.getElementById('statusBreak').innerHTML = Object.entries(statusCounts)
+    .filter(([,v])=>v>0)
+    .map(([k,v])=>`<div class="prog-row" style="margin-bottom:9px;"><div class="prog-lbl" style="font-size:10px;min-width:110px;">${k}</div><div class="prog-track"><div class="prog-fill ${stColors[k]||'pf-gold'}" style="width:${Math.round((v/stMax)*100)}%"></div></div><div class="prog-pct">${v}</div></div>`).join('')
+    || '<div style="color:var(--slate2);font-size:11px;padding:8px">No data yet</div>';
+
+  // Session summary
+  setText('ss-deliv', sent > 0 ? Math.round((sent / total) * 100) + '%' : '—');
+  setText('ss-inbox', inboxRate !== null ? inboxRate + '%' : '—');
+  setText('ss-open',  openRate  !== null ? openRate  + '%' : '—');
+
+  // Filtered table
+  const filtered = _applyAnFilters(leads);
+  setText('an-filtered-cnt', filtered.length);
+  const tbody = document.getElementById('an-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-st"><span class="empty-ico">🔍</span>No leads match the current filters.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = filtered.map((l, i) => {
+    const st = _getEmailStatusForLead(l);
+    const stBadge = {
+      inbox:       `<span class="bdg bdg-inbox">📥 Inbox</span>`,
+      opened:      `<span class="bdg bdg-opened">👁 Opened</span>`,
+      spam:        `<span class="bdg bdg-spam">🚫 Spam</span>`,
+      bounced:     `<span class="bdg bdg-bounce">↩️ Bounce</span>`,
+      unsubscribed:`<span class="bdg bdg-unsub">🚫 Unsub</span>`,
+      sent:        `<span class="bdg bdg-sent">✓ Sent</span>`,
+      pending:     `<span class="bdg bdg-pend">Pending</span>`,
+    }[st] || `<span class="bdg bdg-pend">${esc(st)}</span>`;
+
+    const deliv = ['inbox','opened'].includes(st) ? `<span style="color:var(--green);font-size:10px;">✅ Delivered</span>`
+                : st === 'spam'     ? `<span style="color:var(--red);font-size:10px;">🚫 Spam</span>`
+                : st === 'bounced'  ? `<span style="color:var(--amber);font-size:10px;">↩️ Bounce</span>`
+                : st === 'sent'     ? `<span style="color:var(--slate);font-size:10px;">📤 Sent</span>`
+                :                    `<span style="color:var(--slate2);font-size:10px;">—</span>`;
+
+    return `<tr>
+      <td style="color:var(--slate2);font-family:var(--mono);font-size:10px">${i+1}</td>
+      <td><div style="font-weight:600;color:var(--cream);max-width:140px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</div></td>
+      <td style="color:var(--slate);font-size:10.5px;max-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
+      <td><a class="email-a" href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
+      <td><span class="bdg bdg-cat">${esc(l.category||'—')}</span></td>
+      <td style="font-family:var(--mono);font-size:10.5px">${(l.installs||0).toLocaleString()}</td>
+      <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null&&l.score>0?Number(l.score).toFixed(1):'new'}</td>
+      <td style="color:var(--gold);font-size:10.5px">${esc(l.keyword||'')}</td>
+      <td>${stBadge}</td>
+      <td>${deliv}</td>
+      <td><a class="ext-a" href="${esc(l.url)}" target="_blank">↗</a></td>
+    </tr>`;
+  }).join('');
+}
+
+function clearAnFilters() {
+  ['af-status','af-category','af-keyword','af-score','af-installs'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  const s=document.getElementById('af-search'); if(s) s.value='';
+  renderAnalytics();
+}
+
+function exportAnCSV() {
+  const filtered = _applyAnFilters(allLeads);
+  if (!filtered.length) { alert('No leads to export.'); return; }
+  const h = ['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent','Email Status'];
+  const rows = filtered.map(l => {
+    const st = _getEmailStatusForLead(l);
+    return [l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent,st]
+      .map(v=>'"'+String(v||'').replace(/"/g,'""')+'"');
+  });
+  const csv = [h,...rows].map(r=>r.join(',')).join('\n');
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
+  a.download='playleads_analytics_'+Date.now()+'.csv'; a.click();
+}
+
+async function loadAnalyticsFromSheet() {
+  const sheetUrl = cfg.appsscript;
+  if (!sheetUrl) { alert('Sheet URL not configured in Setup!'); return; }
+  const btn = event && event.target;
+  if (btn) { btn.textContent = '⏳…'; btn.disabled = true; }
+  try {
+    const r = await fetch('/api/sheet_analytics', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({sheet_url: sheetUrl})
+    });
+    const d = await r.json();
+    if (d.events) {
+      emailEvents = d.events;
+      renderAnalytics();
+      alert(`✅ Loaded ${emailEvents.length} email events from Sheet`);
+    }
+  } catch(e) {
+    alert('Error loading analytics: ' + e.message);
+  }
+  if (btn) { btn.textContent = '🔄 Refresh Sheet'; btn.disabled = false; }
+}
+
+async function logEmailEvent() {
+  const sheetUrl = cfg.appsscript;
+  const appIdOrEmail = document.getElementById('ev-appid').value.trim();
+  const evType       = document.getElementById('ev-type').value;
+  const details      = document.getElementById('ev-details').value.trim();
+  const res = document.getElementById('ev-result');
+
+  if (!appIdOrEmail) { alert('App ID বা Email দাও!'); return; }
+
+  // Find matching lead
+  const lead = allLeads.find(l =>
+    l.app_id === appIdOrEmail ||
+    (l.email && l.email.toLowerCase() === appIdOrEmail.toLowerCase())
+  ) || {};
+
+  const evObj = {
+    'App ID':   lead.app_id   || (appIdOrEmail.includes('@') ? '' : appIdOrEmail),
+    'App Name': lead.app_name || '',
+    'Email':    lead.email    || (appIdOrEmail.includes('@') ? appIdOrEmail : ''),
+    'Event':    evType,
+    'Details':  details,
+    'Keyword':  lead.keyword  || '',
+    'Category': lead.category || '',
+    'Installs': lead.installs || '',
+    'Score':    lead.score    || '',
+    'Timestamp': new Date().toISOString(),
+  };
+
+  // Add to local state immediately
+  emailEvents.push(evObj);
+  renderAnalytics();
+
+  res.style.display = 'block';
+  res.style.color = 'var(--green)';
+  res.textContent = `✅ Logged "${evType}" for ${appIdOrEmail}`;
+
+  // Push to sheet if configured
+  if (sheetUrl) {
+    try {
+      await fetch('/api/sheet_post', {
+        method:'POST', headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({
+          sheet_url: sheetUrl,
+          payload: {
+            action: 'log_email_event',
+            app_id:   evObj['App ID'],
+            app_name: evObj['App Name'],
+            email:    evObj['Email'],
+            event:    evType,
+            details:  details,
+            keyword:  evObj['Keyword'],
+            category: evObj['Category'],
+            installs: evObj['Installs'],
+            score:    evObj['Score'],
+          }
+        })
+      });
+      res.textContent += ' — Sheet এও save হয়েছে ✅';
+    } catch(e) {
+      res.textContent += ' (Sheet save failed: ' + e.message + ')';
+      res.style.color = 'var(--amber)';
+    }
+  }
+  setTimeout(() => { res.style.display = 'none'; }, 4000);
 }
 
 // ════ SPAM TEST ════
