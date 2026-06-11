@@ -1007,10 +1007,10 @@ tbody tr:hover td { background: #13131c; }
     var data = JSON.parse(e.postData.contents);
     var opts = {
       htmlBody: data.html_body || data.body,
-      name: data.from_name || 'Your Name',
+      name: data.from_name || '',
       headers: {
-        'List-Unsubscribe': '&lt;' + (data.unsubscribe_url || '') + '&gt;',
-        'Precedence': 'bulk'
+        'List-Unsubscribe': '<' + (data.unsubscribe_url || '') + '>',
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
       }
     };
     GmailApp.sendEmail(data.to, data.subject, data.body, opts);
