@@ -597,26 +597,6 @@ tbody tr:hover td { background: #13131c; }
       <div class="stat-card c-blue"><div class="stat-label">Categories</div><div class="stat-val" id="an-c">—</div><div class="stat-sub">unique genres</div></div>
       <div class="stat-card c-amber"><div class="stat-label">Avg Rating</div><div class="stat-val" id="an-s">—</div><div class="stat-sub">Play Store score</div></div>
     </div>
-
-    <div style="margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;padding:0 2px;">
-      <div style="display:flex;align-items:center;gap:12px;">
-        <span style="font-family:var(--serif);font-size:18px;font-weight:600;color:var(--gold2);">📧 Email Analytics</span>
-        <span id="anEmailTotal" style="font-family:var(--mono);font-size:10px;color:var(--slate2);"></span>
-      </div>
-      <button class="btn-ghost" onclick="refreshEmailAnalytics()" style="padding:6px 14px;font-size:10px;">🔄 Refresh</button>
-    </div>
-
-    <!-- 7 Email Summary Cards -->
-    <div class="stats-grid">
-      <div class="stat-card c-green"><div class="stat-label">📬 Sent</div><div class="stat-val" id="anSent">0</div><div class="stat-sub">total sent</div></div>
-      <div class="stat-card c-blue"><div class="stat-label">👁️ Opened</div><div class="stat-val" id="anOpened">0</div><div class="stat-sub">unique opens</div></div>
-      <div class="stat-card c-amber"><div class="stat-label">⏳ Pending</div><div class="stat-val" id="anPending">0</div><div class="stat-sub">unopened</div></div>
-      <div class="stat-card" style="border-color:#7f1d1d;"><div class="stat-label" style="color:#dc2626;">❌ Bounced</div><div class="stat-val" style="color:#ef4444;" id="anBounced">0</div><div class="stat-sub">returned</div></div>
-      <div class="stat-card" style="border-color:#7f1d1d;"><div class="stat-label" style="color:#dc2626;">🗑️ Spam</div><div class="stat-val" style="color:#ef4444;" id="anSpam">0</div><div class="stat-sub">reported</div></div>
-      <div class="stat-card" style="border-color:#3a1414;"><div class="stat-label" style="color:#f87171;">⚠️ Failed</div><div class="stat-val" style="color:#f87171;" id="anFailed">0</div><div class="stat-sub">send errors</div></div>
-      <div class="stat-card" style="border-color:#3a3a50;"><div class="stat-label">🔕 Unsubscribed</div><div class="stat-val" style="color:var(--slate);" id="anUnsub">0</div><div class="stat-sub">opted out</div></div>
-    </div>
-
     <div class="grid-2" style="margin-bottom:14px;">
       <div class="card">
         <div class="card-head">Conversion Funnel</div>
@@ -631,70 +611,6 @@ tbody tr:hover td { background: #13131c; }
         <div id="catBreak"><div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div></div>
       </div>
     </div>
-
-    <!-- Email Log with Filters -->
-    <div class="card" style="margin-bottom:18px;">
-      <div class="card-head" style="justify-content:space-between;">
-        <span>📋 Email Log</span>
-        <span id="anLogCount" style="font-size:10px;color:var(--slate2);font-family:var(--mono);">0 results</span>
-      </div>
-
-      <!-- Filter Panel -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:14px;padding:14px;background:#0d0d14;border:1px solid var(--border);border-radius:7px;">
-        <div>
-          <div class="hf-label" style="margin-bottom:4px;">Status</div>
-          <select class="hf-input" id="anFilterStatus" onchange="applyAnalyticsFilters()">
-            <option value="all">All</option>
-            <option value="sent">Sent</option>
-            <option value="opened">Opened</option>
-            <option value="failed">Failed</option>
-            <option value="bounced">Bounced</option>
-            <option value="spam">Spam</option>
-            <option value="unsubscribed">Unsubscribed</option>
-          </select>
-        </div>
-        <div>
-          <div class="hf-label" style="margin-bottom:4px;">From</div>
-          <input class="hf-input" id="anFilterFrom" type="date"/>
-        </div>
-        <div>
-          <div class="hf-label" style="margin-bottom:4px;">To</div>
-          <input class="hf-input" id="anFilterTo" type="date"/>
-        </div>
-        <div>
-          <div class="hf-label" style="margin-bottom:4px;">Keyword</div>
-          <input class="hf-input" id="anFilterKeyword" type="text" placeholder="any"/>
-        </div>
-        <div>
-          <div class="hf-label" style="margin-bottom:4px;">Category</div>
-          <input class="hf-input" id="anFilterCategory" type="text" placeholder="any"/>
-        </div>
-        <div>
-          <div class="hf-label" style="margin-bottom:4px;">Search</div>
-          <input class="hf-input" id="anFilterSearch" type="text" placeholder="name / email / subject"/>
-        </div>
-        <div style="display:flex;align-items:flex-end;gap:6px;">
-          <button class="btn-primary" onclick="applyAnalyticsFilters()" style="padding:8px 16px;font-size:11px;">🔍 Apply</button>
-          <button class="btn-clear" onclick="resetAnalyticsFilters()" style="padding:8px 14px;font-size:10px;">↺ Reset</button>
-          <button class="btn-ghost" onclick="exportAnalyticsCSV()" style="padding:8px 14px;font-size:10px;">📥 CSV</button>
-        </div>
-      </div>
-
-      <!-- Table -->
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>#</th><th>App Name</th><th>Email</th><th>Subject</th>
-            <th>Status</th><th>Sent At</th><th>Opened At</th><th>Detail</th>
-          </tr></thead>
-          <tbody id="anLogBody"><tr><td colspan="8"><div class="empty-st"><span class="empty-ico">📧</span>No email data yet. Send some emails first!</div></td></tr></tbody>
-        </table>
-      </div>
-
-      <!-- Pagination -->
-      <div id="anPagination" style="display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;flex-wrap:wrap;"></div>
-    </div>
-
     <div class="grid-3">
       <div class="card">
         <div class="card-head">Install Distribution</div>
@@ -836,7 +752,6 @@ tbody tr:hover td { background: #13131c; }
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{installs}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_name}}</code>
             <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_company}}</code>
-            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{unsubscribe_url}}</code> — auto-added at bottom
           </div>
           <div class="form-group">
             <label class="form-label">Email Body Template</label>
@@ -1005,18 +920,7 @@ tbody tr:hover td { background: #13131c; }
             <div class="code-block" id="emailCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var opts = {
-      htmlBody: data.html_body || data.body,
-      name: data.from_name || '',
-      replyTo: Session.getActiveUser().getEmail(),
-      headers: {
-        'List-Unsubscribe': '<' + (data.unsubscribe_url || '') + '>',
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-        'X-Mailer': 'Mail',
-        'Precedence': 'bulk'
-      }
-    };
-    GmailApp.sendEmail(data.to, data.subject, data.body, opts);
+    GmailApp.sendEmail(data.to, data.subject, data.body);
     return ContentService
       .createTextOutput(JSON.stringify({status: "ok"}))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1052,16 +956,6 @@ TARGET_LEADS=300</div>
   </section>
 </main>
 
-<!-- Email Detail Modal -->
-<div id="anModal" style="display:none;position:fixed;inset:0;z-index:999;background:rgba(0,0,0,.7);align-items:center;justify-content:center;" onclick="if(event.target===this)closeEmailDetail()">
-  <div style="background:var(--card);border:1px solid var(--border);border-radius:var(--r);max-width:700px;width:90%;max-height:85vh;overflow-y:auto;padding:24px;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;">
-      <span style="font-family:var(--serif);font-size:18px;font-weight:600;color:var(--cream);">📧 Email Detail</span>
-      <button onclick="closeEmailDetail()" style="background:none;border:none;color:var(--slate2);font-size:22px;cursor:pointer;padding:4px 8px;">✕</button>
-    </div>
-    <div id="anModalBody" style="font-size:12px;color:var(--slate);line-height:2;">Loading...</div>
-  </div>
-</div>
 <script>
 // ════ CONFIG ════
 const CFG_KEY = 'playlead_v5';
@@ -1069,17 +963,19 @@ let cfg = {};
 
 const DEFAULT_SUBJECT = 'Quick question about {{app_name}}';
 const DEFAULT_BODY =
-`Hi {{developer}},
+`Hi {{developer}} team,
 
-I came across {{app_name}} on Play Store — looks like a really interesting project.
+I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
 
-I've been following apps in the {{category}} space and had a thought about something that might be useful for {{app_name}}.
+I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
 
-Let me know if you have a few minutes to chat this week?
+Would you be open to a quick 15-minute chat this week?
 
-Best,
+Best regards,
 {{sender_name}}
-{{sender_company}}`;
+{{sender_company}}
+
+App: {{url}}`;
 
 function loadCfg() {
   try { cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) { cfg={}; }
@@ -1207,24 +1103,14 @@ const pgTitles = {
   spamtest:   '🧪 <span class="hi">Spam Test</span>',
   setup:      '⚙️ <span class="hi">Setup & Config</span>',
 };
-let anPollTmr = null;
 function showSec(name, el) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('sec-'+name).classList.add('active');
   el.classList.add('active');
   document.getElementById('pgTitle').innerHTML = pgTitles[name];
-  if(name==='analytics') { renderAnalytics(); startAnPoll(); }
-  else { stopAnPoll(); }
+  if(name==='analytics') renderAnalytics();
   if(name==='spamtest')  updateLivePreview();
-}
-function startAnPoll() {
-  stopAnPoll();
-  refreshEmailAnalytics();
-  anPollTmr = setInterval(refreshEmailAnalytics, 5000);
-}
-function stopAnPoll() {
-  if(anPollTmr) { clearInterval(anPollTmr); anPollTmr = null; }
 }
 
 // ════ HUNTER MODE ════
@@ -1529,195 +1415,6 @@ function renderAnalytics() {
       <div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/kwMax)*100)}%"></div></div>
       <div class="prog-pct">${v}</div>
     </div>`).join('')||'<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
-
-  // New: refresh email analytics from SQLite
-  refreshEmailAnalytics();
-}
-
-// ════ EMAIL ANALYTICS (SQLite) ════
-let anCurrentPage = 1;
-let anCurrentTid = null;
-
-async function refreshEmailAnalytics() {
-  await fetchAnalyticsOverview();
-  await fetchEmailLogs(anCurrentPage);
-}
-
-async function fetchAnalyticsOverview() {
-  try {
-    const r = await fetch('/api/analytics/overview');
-    const d = await r.json();
-    if(d.ok && d.data) {
-      setText('anSent', d.data.sent);
-      setText('anOpened', d.data.opened);
-      setText('anPending', d.data.pending_open);
-      setText('anBounced', d.data.bounced);
-      setText('anSpam', d.data.spam);
-      setText('anFailed', d.data.failed);
-      setText('anUnsub', d.data.unsubscribed);
-      const total = parseInt(d.data.total)||0;
-      document.getElementById('anEmailTotal').textContent = total + ' tracked';
-    }
-  } catch(e) {}
-}
-
-async function fetchEmailLogs(page) {
-  anCurrentPage = page || 1;
-  const status = getVal('anFilterStatus') || 'all';
-  const from = getVal('anFilterFrom') || '';
-  const to = getVal('anFilterTo') || '';
-  const keyword = getVal('anFilterKeyword') || '';
-  const cat = getVal('anFilterCategory') || '';
-  const q = getVal('anFilterSearch') || '';
-
-  const params = new URLSearchParams({
-    page: anCurrentPage, limit: 50,
-    status, keyword, category: cat, q,
-    date_from: from, date_to: to
-  });
-
-  try {
-    const r = await fetch('/api/analytics/logs?' + params);
-    const d = await r.json();
-    if(d.ok) renderEmailLogs(d);
-  } catch(e) {}
-}
-
-function renderEmailLogs(d) {
-  const rows = d.data || [];
-  const tbody = document.getElementById('anLogBody');
-  document.getElementById('anLogCount').textContent = d.total + ' results';
-
-  if(!rows.length) {
-    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-st"><span class="empty-ico">📧</span>No email data yet.</div></td></tr>';
-    document.getElementById('anPagination').innerHTML = '';
-    return;
-  }
-
-  tbody.innerHTML = rows.map((r,i) => `
-    <tr style="cursor:pointer;" onclick="showEmailDetail('${esc(r.tracking_id)}')">
-      <td style="color:var(--slate2);font-family:var(--mono);font-size:10px;">${(anCurrentPage-1)*50 + i + 1}</td>
-      <td><div style="max-width:130px;overflow:hidden;text-overflow:ellipsis;font-weight:500;">${esc(r.app_name||'')}</div></td>
-      <td><span style="font-family:var(--mono);font-size:10px;color:var(--gold);">${esc(r.email||'')}</span></td>
-      <td><div style="max-width:150px;overflow:hidden;text-overflow:ellipsis;color:var(--slate);">${esc(r.subject||'')}</div></td>
-      <td>${emailStatusBadge(r.status, r.unsubscribed)}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--slate2);">${r.sent_at ? r.sent_at.split(' ')[1] : '—'}</td>
-      <td style="font-family:var(--mono);font-size:10px;color:var(--slate2);">${r.opened_at ? r.opened_at.split(' ')[1] : '—'}</td>
-      <td><span style="color:var(--blue);font-size:12px;cursor:pointer;">👁</span></td>
-    </tr>`).join('');
-
-  renderAnPagination(d.total, d.page, d.limit);
-}
-
-function emailStatusBadge(status, unsubscribed) {
-  if(unsubscribed) return '<span class="bdg" style="background:#1a1a2a;color:var(--slate);border:1px solid #3a3a50;">Unsubscribed</span>';
-  const map = {
-    'sent': '<span class="bdg" style="background:#0a160d;color:#4ade80;border:1px solid #166534;">Sent</span>',
-    'opened': '<span class="bdg" style="background:#0a1020;color:#60a5fa;border:1px solid #1e3a8a;">Opened</span>',
-    'delivered': '<span class="bdg" style="background:#0a160d;color:#4ade80;border:1px solid #166534;">Delivered</span>',
-    'failed': '<span class="bdg" style="background:#160a0a;color:#f87171;border:1px solid #7f1d1d;">Failed</span>',
-    'bounced': '<span class="bdg" style="background:#160a0a;color:#fb923c;border:1px solid #7f2d1d;">Bounced</span>',
-    'spam': '<span class="bdg" style="background:#160a0a;color:#ef4444;border:1px solid #7f1d1d;">Spam</span>',
-  };
-  return map[status] || '<span class="bdg bdg-pend">'+status+'</span>';
-}
-
-function renderAnPagination(total, page, limit) {
-  const pages = Math.ceil(total / limit);
-  const el = document.getElementById('anPagination');
-  if(pages <= 1) { el.innerHTML = ''; return; }
-  let html = '';
-  if(page > 1) html += '<button class="btn-ghost" onclick="fetchEmailLogs('+(page-1)+')" style="padding:5px 10px;font-size:10px;">‹ Prev</button>';
-  for(let p = Math.max(1, page-2); p <= Math.min(pages, page+2); p++) {
-    html += `<button class="${p===page?'btn-primary':'btn-ghost'}" onclick="fetchEmailLogs(${p})" style="padding:5px 10px;font-size:10px;">${p}</button>`;
-  }
-  if(page < pages) html += '<button class="btn-ghost" onclick="fetchEmailLogs('+(page+1)+')" style="padding:5px 10px;font-size:10px;">Next ›</button>';
-  el.innerHTML = html;
-}
-
-function applyAnalyticsFilters() { fetchEmailLogs(1); }
-function resetAnalyticsFilters() {
-  ['anFilterStatus','anFilterFrom','anFilterTo','anFilterKeyword','anFilterCategory','anFilterSearch'].forEach(id=>{
-    const e=document.getElementById(id); if(e) e.value = id==='anFilterStatus'?'all':'';
-  });
-  fetchEmailLogs(1);
-}
-
-async function showEmailDetail(tid) {
-  anCurrentTid = tid;
-  const modal = document.getElementById('anModal');
-  modal.style.display = 'flex';
-  document.getElementById('anModalBody').innerHTML = '<div style="text-align:center;padding:30px;">⏳ Loading...</div>';
-
-  try {
-    const r = await fetch('/api/analytics/email/' + encodeURIComponent(tid));
-    const d = await r.json();
-    if(d.ok && d.data) renderEmailDetail(d.data);
-    else document.getElementById('anModalBody').innerHTML = '<div style="color:var(--red);padding:20px;">Error loading detail.</div>';
-  } catch(e) {
-    document.getElementById('anModalBody').innerHTML = '<div style="color:var(--red);padding:20px;">Network error.</div>';
-  }
-}
-
-function closeEmailDetail() {
-  document.getElementById('anModal').style.display = 'none';
-  anCurrentTid = null;
-}
-
-function renderEmailDetail(data) {
-  document.getElementById('anModalBody').innerHTML = `
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;">
-      <div><strong style="color:var(--cream);">App Name:</strong><br><span style="color:var(--slate);">${esc(data.app_name||'—')}</span></div>
-      <div><strong style="color:var(--cream);">Email:</strong><br><span style="color:var(--gold);font-family:var(--mono);font-size:11px;">${esc(data.email||'—')}</span></div>
-      <div style="grid-column:span 2;"><strong style="color:var(--cream);">Subject:</strong><br><span style="color:var(--slate);">${esc(data.subject||'—')}</span></div>
-      <div><strong style="color:var(--cream);">Status:</strong><br>${emailStatusBadge(data.status, data.unsubscribed)}</div>
-      <div><strong style="color:var(--cream);">Category:</strong><br><span style="color:var(--blue);font-size:11px;">${esc(data.category||'—')}</span></div>
-      <div><strong style="color:var(--cream);">Sent At:</strong><br><span style="font-family:var(--mono);font-size:10px;color:var(--slate2);">${data.sent_at||'—'}</span></div>
-      <div><strong style="color:var(--cream);">Opened At:</strong><br><span style="font-family:var(--mono);font-size:10px;color:var(--slate2);">${data.opened_at||'Not yet opened'}</span></div>
-      <div><strong style="color:var(--cream);">Opened Count:</strong><br><span style="font-family:var(--mono);font-size:12px;color:var(--blue);">${data.opened_count||0}</span></div>
-      <div><strong style="color:var(--cream);">Unsubscribed:</strong><br><span style="color:${data.unsubscribed?'var(--red)':'var(--green)'};">${data.unsubscribed?'Yes':'No'}</span></div>
-      <div><strong style="color:var(--cream);">Keyword:</strong><br><span style="color:var(--gold);font-size:11px;">${esc(data.keyword||'—')}</span></div>
-      <div style="grid-column:span 2;"><strong style="color:var(--cream);">Delivery Detail:</strong><br><span style="color:var(--slate2);font-size:11px;">${esc(data.delivery_detail||'—')}</span></div>
-    </div>
-    <div style="margin-bottom:14px;">
-      <strong style="color:var(--cream);">Email Body Preview:</strong>
-      <pre style="background:#0d0d14;border:1px solid var(--border);border-radius:5px;padding:12px;font-size:10px;color:var(--slate);white-space:pre-wrap;max-height:220px;overflow-y:auto;margin-top:6px;font-family:var(--mono);line-height:1.6;">${esc(data.body||'—')}</pre>
-    </div>
-    <div style="display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid var(--border);padding-top:14px;">
-      <span style="font-size:10px;color:var(--slate2);align-self:center;">Manual Action:</span>
-      <button class="btn-ghost" onclick="updateEmailStatus('${data.tracking_id}','opened')" style="font-size:10px;">👁️ Mark Opened</button>
-      <button class="btn-ghost" onclick="updateEmailStatus('${data.tracking_id}','delivered')" style="font-size:10px;color:#4ade80;">✅ Mark Delivered</button>
-      <button class="btn-ghost" onclick="updateEmailStatus('${data.tracking_id}','bounced')" style="font-size:10px;color:#f87171;">❌ Mark Bounced</button>
-      <button class="btn-ghost" onclick="updateEmailStatus('${data.tracking_id}','spam')" style="font-size:10px;color:#f87171;">🗑️ Mark Spam</button>
-    </div>
-  `;
-}
-
-async function updateEmailStatus(tid, status) {
-  if(!tid) return;
-  try {
-    const r = await fetch('/api/analytics/update_status', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({tracking_id: tid, status})
-    });
-    const d = await r.json();
-    if(d.ok) {
-      if(anCurrentTid === tid) showEmailDetail(tid);
-      fetchEmailLogs(anCurrentPage);
-      fetchAnalyticsOverview();
-    } else alert('Error: '+(d.error||'unknown'));
-  } catch(e) { alert('Error: '+e.message); }
-}
-
-function exportAnalyticsCSV() {
-  const status = getVal('anFilterStatus') || 'all';
-  const from = getVal('anFilterFrom') || '';
-  const to = getVal('anFilterTo') || '';
-  const keyword = getVal('anFilterKeyword') || '';
-  const cat = getVal('anFilterCategory') || '';
-  const q = getVal('anFilterSearch') || '';
-  const params = new URLSearchParams({status, keyword, category: cat, q, date_from: from, date_to: to, limit: 10000, format: 'csv'});
-  window.open('/api/analytics/logs?'+params, '_blank');
 }
 
 // ════ SPAM TEST ════
