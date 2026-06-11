@@ -405,7 +405,7 @@ def passes_filter(installs: int, score, hunter: dict) -> bool:
         if installs > max_inst:
             return False
         # Hunter mode: app MUST have a rating (we want apps with bad ratings)
-        if score is None:
+        if not score:
             return False
         if score > max_score:
             return False
