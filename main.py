@@ -454,7 +454,8 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                 continue
 
             installs = details.get("minInstalls") or 0
-            score    = details.get("score")
+            hist = details.get("histogram", [0, 0, 0, 0, 0])
+            score = (1*hist[0] + 2*hist[1] + 3*hist[2] + 4*hist[3] + 5*hist[4]) / sum(hist) if sum(hist) > 0 else None
 
             if not passes_filter(installs, score, hunter):
                 global_seen_ids.add(app_id)
