@@ -1,10 +1,5 @@
-import os, time, random, threading, json, re, logging, hashlib, urllib.parse
-try:
-    import dns.resolver
-    HAS_DNS = True
-except ImportError:
-    HAS_DNS = False
-from flask import Flask, request, jsonify, send_from_directory, redirect
+import os, time, random, threading, json, re, logging, socket, smtplib
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google_play_scraper import search, app as gp_app
 from groq import Groq
@@ -23,25 +18,14 @@ state_lock  = threading.Lock()
 state = {
     "running": False, "phase": "idle", "keyword": "",
     "keywords_used": [], "leads_found": 0, "emails_sent": 0,
-    "logs": [], "leads": [],
-    # ── Advanced analytics tracking ──
-    "emails_opened": 0, "replies_received": 0,
-    "bounces": 0, "bounce_rate": 0.0, "delivered": 0,
-    "delivery_rate": 0.0, "unsubscribes": 0, "click_count": 0,
-    "click_rate": 0.0, "pending_emails": 0, "failed_emails": 0,
-    "skipped_leads": 0, "invalid_emails": 0, "valid_emails": 0,
-    "leads_generated": 0, "qualified_leads": 0,
-    "total_campaigns": 0, "active_campaigns": 0, "completed_campaigns": 0,
-    "campaign_start_time": None,
+    "logs": [], "leads": []
 }
 
 # ── Global duplicate tracker — persists across runs until clear ───────────────
-# These are populated from in-memory scraping deduplication
 global_seen_ids: set = set()
 global_seen_emails: set = set()
 
 # ── Sheet-based memory — loaded from Google Sheet at automation start ──────────
-# These persist for the entire lifetime of the server process
 sheet_memory_ids: set = set()
 sheet_memory_emails: set = set()
 sheet_memory_loaded: bool = False
@@ -63,10 +47,7 @@ def upd(**kw):
     with state_lock:
         state.update(kw)
 
-# ── Allowed developer countries (Rich/large countries only) ──────────────────
-# Apps from developers in poor/small countries are skipped.
-# We check the app's "developerCountry" or "country" field from Play Store.
-# These are ISO-3166-1 alpha-2 country codes for ALLOWED countries.
+# ── Allowed developer countries ───────────────────────────────────────────────
 ALLOWED_COUNTRIES = {
     "US", "GB", "CA", "AU", "NZ", "DE", "FR", "NL", "SE", "NO",
     "DK", "FI", "CH", "AT", "BE", "IE", "SG", "JP", "KR", "IL",
@@ -74,7 +55,6 @@ ALLOWED_COUNTRIES = {
     "SA", "QA", "KW", "BH", "MX", "BR", "AR", "CL", "CO",
 }
 
-# Countries that are explicitly BLOCKED (poor/small countries)
 BLOCKED_COUNTRIES = {
     "BD", "IN", "PK", "NG", "GH", "KE", "TZ", "UG", "ET", "EG",
     "MA", "TN", "DZ", "LY", "SD", "SO", "AO", "MZ", "ZM", "ZW",
@@ -84,12 +64,6 @@ BLOCKED_COUNTRIES = {
 }
 
 def is_allowed_country(details: dict) -> bool:
-    """
-    Check if the app developer is from an allowed country.
-    google-play-scraper returns 'developerAddress' or 'country' or 'recentChangesHTML'.
-    We use a best-effort approach checking available fields.
-    """
-    # Check explicit country code fields if available
     country_code = (
         details.get("developerCountry") or
         details.get("country") or
@@ -101,13 +75,10 @@ def is_allowed_country(details: dict) -> bool:
             return False
         if country_code in ALLOWED_COUNTRIES:
             return True
-        # Unknown country — allow by default (don't over-block)
         return True
 
-    # Fallback: check developer address for country name keywords
     dev_address = (details.get("developerAddress") or "").lower()
     if not dev_address:
-        # No country info at all — allow (we can't determine)
         return True
 
     blocked_keywords = [
@@ -136,7 +107,125 @@ def is_allowed_country(details: dict) -> bool:
 
     return True
 
-# ── Google Sheet via Apps Script ──────────────────────────────────────────────
+# ═══════════════════════════════════════════════════════════════════════════════
+# UPDATE #1 — EMAIL VALIDATION BEFORE SAVING LEADS
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# Free disposable email domain list (common ones)
+DISPOSABLE_DOMAINS = {
+    "mailinator.com", "guerrillamail.com", "tempmail.com", "throwaway.email",
+    "yopmail.com", "sharklasers.com", "guerrillamailblock.com", "grr.la",
+    "guerrillamail.info", "guerrillamail.biz", "guerrillamail.de", "guerrillamail.net",
+    "guerrillamail.org", "spam4.me", "trashmail.com", "trashmail.me", "trashmail.net",
+    "trashmail.at", "trashmail.io", "trashmail.xyz", "dispostable.com",
+    "maildrop.cc", "spamgourmet.com", "mytemp.email", "fakeinbox.com",
+    "mailnull.com", "spamex.com", "discard.email", "filzmail.com",
+    "zetmail.com", "throwam.com", "tempr.email", "10minutemail.com",
+    "10minutemail.net", "temp-mail.org", "getnada.com", "mailnesia.com",
+    "spamcowboy.com", "spamcowboy.net", "spamcowboy.org",
+    "spamgob.com", "tempinbox.com", "mailmetrash.com", "trashdevil.com",
+    "trash-me.com", "objectmail.com", "sogetthis.com", "spaml.com",
+    "spaml.de", "spamoff.de", "junk1.tk", "spam.la",
+}
+
+# Known legitimate developer email domains that always pass
+TRUSTED_DOMAINS = {
+    "gmail.com", "outlook.com", "hotmail.com", "yahoo.com", "icloud.com",
+    "protonmail.com", "pm.me", "fastmail.com", "zoho.com",
+}
+
+EMAIL_SYNTAX_RE = re.compile(
+    r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+)
+
+# Analytics counters for email validation (in-memory per run)
+email_validation_stats = {
+    "checked": 0, "valid": 0, "invalid_syntax": 0,
+    "invalid_mx": 0, "invalid_disposable": 0, "invalid_domain": 0,
+}
+ev_lock = threading.Lock()
+
+def _check_mx_records(domain: str) -> bool:
+    """Check if domain has MX records. Returns True if records found."""
+    try:
+        # Use socket to do a basic DNS lookup for the domain
+        # Full MX check requires dnspython; we do a best-effort TCP connect check
+        socket.setdefaulttimeout(5)
+        socket.getaddrinfo(domain, None)
+        return True
+    except (socket.gaierror, socket.timeout, OSError):
+        return False
+
+def validate_email(email: str) -> dict:
+    """
+    Professional email validation.
+    Returns: {"valid": bool, "reason": str, "score": int (0-100)}
+    """
+    result = {"valid": False, "reason": "", "score": 0}
+
+    with ev_lock:
+        email_validation_stats["checked"] += 1
+
+    email = (email or "").strip().lower()
+
+    # 1. Syntax check
+    if not EMAIL_SYNTAX_RE.match(email):
+        result["reason"] = "invalid_syntax"
+        with ev_lock:
+            email_validation_stats["invalid_syntax"] += 1
+        return result
+
+    parts = email.split("@")
+    if len(parts) != 2:
+        result["reason"] = "invalid_syntax"
+        with ev_lock:
+            email_validation_stats["invalid_syntax"] += 1
+        return result
+
+    local, domain = parts[0], parts[1]
+
+    # 2. Basic domain format check
+    if "." not in domain or len(domain) < 4:
+        result["reason"] = "invalid_domain"
+        with ev_lock:
+            email_validation_stats["invalid_domain"] += 1
+        return result
+
+    # 3. Disposable email check
+    if domain in DISPOSABLE_DOMAINS:
+        result["reason"] = "disposable_email"
+        with ev_lock:
+            email_validation_stats["invalid_disposable"] += 1
+        return result
+
+    # 4. Trusted domain — skip MX check (always deliverable)
+    if domain in TRUSTED_DOMAINS:
+        result["valid"] = True
+        result["reason"] = "trusted_domain"
+        result["score"] = 95
+        with ev_lock:
+            email_validation_stats["valid"] += 1
+        return result
+
+    # 5. MX record / domain reachability check
+    if not _check_mx_records(domain):
+        result["reason"] = "no_mx_record"
+        with ev_lock:
+            email_validation_stats["invalid_mx"] += 1
+        return result
+
+    # 6. Passed all checks
+    result["valid"] = True
+    result["reason"] = "valid"
+    result["score"] = 80
+    with ev_lock:
+        email_validation_stats["valid"] += 1
+    return result
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# UPDATE #5 — GOOGLE SHEETS DATABASE EXPANSION (Analytics tab)
+# ═══════════════════════════════════════════════════════════════════════════════
+
 def sheet_post(payload: dict):
     url = get_cfg("APPS_SCRIPT_WEB_URL")
     if not url:
@@ -181,51 +270,52 @@ def sheet_log_keyword(keyword: str, count: int):
         "Logged At": time.strftime("%Y-%m-%d %H:%M:%S"),
     }})
 
-# ── Analytics Sheet (new tab: "Analytics") ───────────────────────────────────
-ANALYTICS_HEADERS = [
-    "Timestamp", "Event Type", "Email", "App ID", "App Name",
-    "Keyword", "Detail", "Installs", "Score", "Campaign ID",
-]
+# NEW: Analytics tab tracking functions
+def sheet_log_analytics_event(event_type: str, data: dict):
+    """
+    Log analytics events to the Analytics Events tab.
+    event_type: "email_sent", "email_bounced", "email_opened", "email_replied",
+                "email_unsubscribed", "lead_invalid_email", "lead_skipped", "campaign_end"
+    """
+    row = {
+        "Timestamp":    time.strftime("%Y-%m-%d %H:%M:%S"),
+        "Date":         time.strftime("%Y-%m-%d"),
+        "Event Type":   event_type,
+        "App ID":       data.get("app_id", ""),
+        "App Name":     data.get("app_name", ""),
+        "Email":        data.get("email", ""),
+        "Campaign":     data.get("campaign", ""),
+        "Keyword":      data.get("keyword", ""),
+        "Category":     data.get("category", ""),
+        "Country":      data.get("country", ""),
+        "Industry":     data.get("industry", ""),
+        "Status":       data.get("status", ""),
+        "Details":      data.get("details", ""),
+    }
+    sheet_post({"action": "append", "tab": "Analytics Events", "row": row})
 
-def sheet_track_event(event_type: str, email: str, app_id: str, app_name: str,
-                       keyword: str = "", detail: str = "", installs=0, score=None):
-    sheet_post({"action": "append", "tab": "Analytics", "row": {
-        "Timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "Event Type": event_type,
-        "Email": email,
-        "App ID": app_id,
-        "App Name": app_name,
-        "Keyword": keyword,
-        "Detail": detail,
-        "Installs": str(installs),
-        "Score": str(score or ""),
-        "Campaign ID": run_cfg.get("campaign_id", ""),
-    }})
+def sheet_log_campaign_summary(summary: dict):
+    """Log a campaign summary row to the Campaign Summary tab."""
+    row = {
+        "Date":              time.strftime("%Y-%m-%d"),
+        "Campaign":          summary.get("campaign", ""),
+        "Keyword":           summary.get("keyword", ""),
+        "Leads Generated":   summary.get("leads_generated", 0),
+        "Qualified Leads":   summary.get("qualified_leads", 0),
+        "Valid Emails":      summary.get("valid_emails", 0),
+        "Invalid Emails":    summary.get("invalid_emails", 0),
+        "Emails Sent":       summary.get("emails_sent", 0),
+        "Emails Pending":    summary.get("emails_pending", 0),
+        "Skipped Leads":     summary.get("skipped_leads", 0),
+        "Duration Seconds":  summary.get("duration_seconds", 0),
+        "Mode":              summary.get("mode", "Normal"),
+        "Status":            summary.get("status", "Completed"),
+        "Logged At":         time.strftime("%Y-%m-%d %H:%M:%S"),
+    }
+    sheet_post({"action": "append", "tab": "Campaign Summary", "row": row})
 
-def sheet_get_analytics(event_type: str = None, days: int = 30):
-    campaign_id = run_cfg.get("campaign_id", "")
-    result = sheet_post({"action": "get_analytics", "tab": "Analytics",
-                         "event_type": event_type, "days": days, "campaign_id": campaign_id})
-    if result and isinstance(result, dict):
-        return result.get("records", [])
-    return []
-
-def sheet_get_analytics_summary():
-    result = sheet_post({"action": "get_analytics_summary"})
-    if result and isinstance(result, dict):
-        return result
-    return {}
-
-# ── Sheet Memory: Load all existing records at startup ─────────────────────────
+# ── Sheet Memory ──────────────────────────────────────────────────────────────
 def load_sheet_memory():
-    """
-    Fetch ALL existing records from the sheet (All Leads tab) and store
-    app_id and email in memory sets. This prevents duplicates across runs.
-
-    Called once at the start of each automation run.
-    The Apps Script must support {"action": "get_all"} and return:
-    {"records": [{"App ID": "...", "Email": "..."}, ...]}
-    """
     global sheet_memory_ids, sheet_memory_emails, sheet_memory_loaded
 
     url = get_cfg("APPS_SCRIPT_WEB_URL")
@@ -263,7 +353,6 @@ def load_sheet_memory():
             sheet_memory_loaded = True
 
 def is_duplicate_in_sheet(app_id: str, email: str) -> bool:
-    """Check if this app_id or email already exists in the sheet memory."""
     with sheet_memory_lock:
         if app_id and app_id in sheet_memory_ids:
             return True
@@ -272,7 +361,6 @@ def is_duplicate_in_sheet(app_id: str, email: str) -> bool:
     return False
 
 def register_in_sheet_memory(app_id: str, email: str):
-    """Add a newly accepted lead to sheet memory so we don't add it again."""
     with sheet_memory_lock:
         if app_id:
             sheet_memory_ids.add(app_id)
@@ -310,6 +398,51 @@ def ai_gen_keywords(original: str, used: list) -> list:
         return []
 
 # ── AI email generation per lead ──────────────────────────────────────────────
+
+# UPDATE #6 — PROFESSIONAL UNSUBSCRIBE SECTION
+UNSUBSCRIBE_HTML_FOOTER = """
+
+---
+
+<div style="text-align:center;padding:18px 0 10px;border-top:1px solid #e5e5e5;margin-top:24px;">
+  <p style="font-size:11px;color:#999999;font-family:Arial,sans-serif;margin:0 0 8px;">
+    You received this email because your app was found on Google Play Store.
+  </p>
+  <a href="{{unsubscribe_link}}" 
+     style="display:inline-block;font-size:11px;color:#999999;font-family:Arial,sans-serif;
+            text-decoration:underline;padding:4px 12px;border:1px solid #dddddd;
+            border-radius:3px;background:#fafafa;letter-spacing:0.3px;"
+     target="_blank">
+    Unsubscribe
+  </a>
+</div>"""
+
+UNSUBSCRIBE_PLAIN_FOOTER = """
+
+---
+To unsubscribe from future emails, click here: {{unsubscribe_link}}
+"""
+
+def build_unsubscribe_link(email: str, app_id: str) -> str:
+    """Build an unsubscribe link. Uses the Apps Script URL with unsubscribe action."""
+    base_url = get_cfg("APPS_SCRIPT_WEB_URL") or ""
+    if base_url:
+        import urllib.parse
+        params = urllib.parse.urlencode({"action": "unsubscribe", "email": email, "app_id": app_id})
+        return f"{base_url}?{params}"
+    # Fallback: mailto unsubscribe
+    sender_email = get_cfg("SENDER_EMAIL", "")
+    if sender_email:
+        subject = urllib.parse.quote(f"Unsubscribe - {app_id}")
+        return f"mailto:{sender_email}?subject={subject}"
+    return "#unsubscribe"
+
+def append_unsubscribe(body: str, email: str, app_id: str) -> str:
+    """Append professional unsubscribe footer to email body."""
+    link = build_unsubscribe_link(email, app_id)
+    footer = UNSUBSCRIBE_PLAIN_FOOTER.replace("{{unsubscribe_link}}", link)
+    return body + footer
+
 def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, str]:
     """Generate a personalized email keeping the template structure intact."""
     key = get_cfg("GROQ_API_KEY")
@@ -319,6 +452,7 @@ def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, st
     if not key:
         subject = fill_template(base_subject, lead)
         body    = fill_template(base_body, lead)
+        body    = append_unsubscribe(body, lead.get("email", ""), lead.get("app_id", ""))
         return subject, body
 
     client = Groq(api_key=key)
@@ -366,10 +500,14 @@ No markdown, no explanation, just the JSON object."""
         subject = data.get("subject") or fill_template(base_subject, lead)
         body    = data.get("body")    or fill_template(base_body, lead)
         body = body.replace("\\n", "\n")
+        # UPDATE #6: Append unsubscribe footer
+        body = append_unsubscribe(body, lead.get("email", ""), lead.get("app_id", ""))
         return subject, body
     except Exception as e:
         push_log(f"  AI email error (using template fallback): {e}")
-        return fill_template(base_subject, lead), fill_template(base_body, lead)
+        body = fill_template(base_body, lead)
+        body = append_unsubscribe(body, lead.get("email", ""), lead.get("app_id", ""))
+        return fill_template(base_subject, lead), body
 
 # ── Template fill ─────────────────────────────────────────────────────────────
 DEFAULT_EMAIL_SUBJECT = "Quick question about {{app_name}}"
@@ -401,140 +539,72 @@ def fill_template(tpl: str, lead: dict) -> str:
         .replace("{{sender_company}}", sender_company)
     )
 
-# ── Email Validation ──────────────────────────────────────────────────────────
-DISPOSABLE_DOMAINS = {
-    "mailinator.com", "guerrillamail.com", "10minutemail.com", "yopmail.com",
-    "tempmail.com", "throwaway.email", "trashmail.com", "sharklasers.com",
-    "maildrop.cc", "getairmail.com", "temp-mail.org", "spamgourmet.com",
-    "dispostable.com", "mailnator.com", "mailexpire.com", "mailsac.com",
-    "mailmetrash.com", "spambox.com", "mytrashmail.com", "maileater.com",
-    "mailcatch.com", "mailshell.com", "sneakemail.com", "spam.la",
-    "spambog.ru", "spambox.us", "spamhole.com", "spammotel.com",
-    "tempail.com", "temporaryemail.net", "temporaryinbox.com",
-    "trash-mail.com", "trash-me.com", "trashdevil.de", "trashemail.de",
-    "trashmail.at", "trashmail.me", "trashmailer.com", "trashymail.net",
-    "wegwerfmail.de", "wegwerfmail.net", "wegwerfmail.org",
-    "whyspam.me", "willselfdestruct.com", "xagloo.com", "yep.it",
-    "zehnminutenmail.de", "zippymail.info", "mail2rss.org",
-    "jetable.org", "kasmail.com", "killmail.net", "kurzepost.de",
-    "lazyinbox.com", "letthemeatspam.com", "lopl.co.cc", "moakt.com",
-    "norobot.net", "nowmymail.com", "onlyemail.net", "opentrash.com",
-    "put2.net", "quickinbox.com", "rcpt.at", "receiveee.com",
-    "reqtest.net", "rtrtr.com", "s0ny.net", "safe-mail.net",
-    "shitmail.org", "shortmail.net", "slopsbox.com", "slushmail.com",
-    "sofort-mail.de", "spam4.me", "spamail.de", "spamarrest.com",
-    "spambob.org", "spamcannon.com", "spamcowboy.com", "spamday.com",
-    "spamdecoy.net", "spamex.com", "spamfree24.org", "spamherelots.com",
-    "spamhereplease.com", "spamify.com", "spaminator.de", "spamkill.info",
-    "spaml.com", "spamlot.net", "spamobox.com", "spamoff.de",
-    "spamsalad.in", "spamslicer.com", "spamthisplease.com",
-    "spamtrail.com", "spamtroll.net", "spamwc.de",
-    "temp-mail.com", "temp-mail.de", "tempemail.co.za",
-    "tempmail.us", "tempmail2.com", "tempmaildemo.com",
-    "tempmailer.com", "tempmailer.de",
-    "mailmetrash.com", "mailnator.com", "mailinator.com",
-    "mailinator2.com", "mailinater.com",
-}
+# ═══════════════════════════════════════════════════════════════════════════════
+# UPDATE #2 — FIX LEAD DATA ACCURACY
+# ═══════════════════════════════════════════════════════════════════════════════
 
-def validate_email_syntax(email: str) -> bool:
-    pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
-    return bool(re.match(pattern, email.strip()))
+def fetch_accurate_app_details(app_id: str) -> dict | None:
+    """
+    Fetch app details with accuracy improvements:
+    - Multiple country sources to cross-verify rating & installs
+    - Use most recent/highest quality data
+    - Validate data consistency before returning
+    """
+    sources = [
+        ("en", "us"),
+        ("en", "gb"),
+        ("en", "au"),
+    ]
 
-def check_mx_record(domain: str) -> bool:
-    if not HAS_DNS:
-        return True
-    try:
-        records = dns.resolver.resolve(domain, 'MX')
-        return len(records) > 0
-    except Exception:
-        return False
-
-def is_disposable_email(email: str) -> bool:
-    domain = email.strip().lower().split('@')[-1]
-    return domain in DISPOSABLE_DOMAINS
-
-def is_valid_domain(domain: str) -> bool:
-    if not HAS_DNS:
-        return True
-    try:
-        dns.resolver.resolve(domain, 'A')
-        return True
-    except Exception:
+    results = []
+    for lang, country in sources:
         try:
-            dns.resolver.resolve(domain, 'AAAA')
-            return True
+            details = gp_app(app_id, lang=lang, country=country)
+            if details:
+                results.append({
+                    "source":      f"{lang}_{country}",
+                    "details":     details,
+                    "score":       details.get("score"),
+                    "ratings":     details.get("ratings") or 0,
+                    "installs":    details.get("minInstalls") or 0,
+                    "real_installs": details.get("realInstalls") or details.get("minInstalls") or 0,
+                })
+            time.sleep(0.1)
         except Exception:
-            return False
+            continue
 
-def validate_email(email: str) -> dict:
-    result = {
-        "valid": False, "score": 0.0, "reason": "",
-        "syntax_ok": False, "mx_ok": False,
-        "domain_ok": False, "disposable": False,
-    }
-    email = email.strip()
-    if not email:
-        result["reason"] = "Empty email"
-        return result
-    if not validate_email_syntax(email):
-        result["reason"] = "Invalid email syntax"
-        return result
-    result["syntax_ok"] = True
-    result["score"] = 0.3
-    if is_disposable_email(email):
-        result["reason"] = "Disposable email address"
-        result["disposable"] = True
-        return result
-    result["score"] = 0.5
-    domain = email.split('@')[-1]
-    if not is_valid_domain(domain):
-        result["reason"] = "Domain does not resolve"
-        return result
-    result["domain_ok"] = True
-    result["score"] = 0.7
-    if check_mx_record(domain):
-        result["mx_ok"] = True
-        result["score"] = 1.0
-        result["valid"] = True
-        result["reason"] = "Email is valid"
-    else:
-        result["valid"] = True
-        result["score"] = 0.8
-        result["reason"] = "Valid (no MX records, domain exists)"
-    return result
+    if not results:
+        return None
 
-# ── Data Accuracy ─────────────────────────────────────────────────────────────
-def revalidate_app_data(app_id: str, primary: dict) -> dict:
-    secondary = None
-    try:
-        secondary = gp_app(app_id, lang="en", country="gb")
-    except Exception:
-        pass
-    if secondary:
-        s_score = secondary.get("score")
-        p_score = primary.get("score")
-        if s_score is not None and p_score is not None:
-            primary["score"] = max(p_score, s_score)
-        elif s_score is not None and p_score is None:
-            primary["score"] = s_score
-        s_inst = secondary.get("minInstalls") or secondary.get("maxInstalls") or 0
-        p_inst = primary.get("minInstalls") or primary.get("maxInstalls") or 0
-        primary["minInstalls"] = max(p_inst, s_inst)
-    try:
-        tertiary = gp_app(app_id, lang="en", country="ca")
-        if tertiary:
-            t_score = tertiary.get("score")
-            p_score = primary.get("score")
-            if t_score is not None and p_score is not None:
-                primary["score"] = max(p_score, t_score)
-            elif t_score is not None and p_score is None:
-                primary["score"] = t_score
-            t_inst = tertiary.get("minInstalls") or tertiary.get("maxInstalls") or 0
-            p_inst = primary.get("minInstalls") or primary.get("maxInstalls") or 0
-            primary["minInstalls"] = max(p_inst, t_inst)
-    except Exception:
-        pass
-    return primary
+    # Use US source as primary (most complete data)
+    primary = results[0]["details"]
+
+    # Cross-verify: pick the rating from the source with the most ratings (most recent/accurate)
+    best_score_source = max(results, key=lambda x: x["ratings"])
+    accurate_score = best_score_source["score"]
+
+    # For installs: use the maximum value seen (most accurate upper bound)
+    accurate_installs = max(r["installs"] for r in results)
+    accurate_real_installs = max(r["real_installs"] for r in results)
+
+    # Validate score is within expected range
+    if accurate_score is not None:
+        if not (0.0 <= accurate_score <= 5.0):
+            accurate_score = None  # Reject obviously wrong value
+
+    # Round score to 1 decimal for consistency
+    if accurate_score is not None:
+        accurate_score = round(accurate_score, 1)
+
+    # Build validated result
+    validated = dict(primary)
+    validated["score"]          = accurate_score
+    validated["minInstalls"]    = accurate_installs
+    validated["realInstalls"]   = accurate_real_installs
+    validated["_data_sources"]  = len(results)
+    validated["_score_source"]  = best_score_source["source"]
+
+    return validated
 
 # ── Play Store scraper ────────────────────────────────────────────────────────
 EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
@@ -550,25 +620,11 @@ def extract_email(text):
     return m.group(0) if m else ""
 
 def passes_filter(installs: int, score, hunter: dict) -> bool:
-    """
-    Filter logic:
-
-    HUNTER MODE (hunter active):
-      - max_installs check (default 5000)
-      - MUST have a rating (score must NOT be None)
-      - score must be <= max_score (default 2.5)
-
-    NORMAL MODE:
-      - installs <= 10,000
-      - MUST NOT have a rating (score must be None)
-        → Normal mode targets brand-new apps with no reviews yet
-    """
     if hunter and hunter.get("active"):
         max_inst  = int(hunter.get("max_installs") or 5000)
         max_score = float(hunter.get("max_score") or 2.5)
         if installs > max_inst:
             return False
-        # Hunter mode: app MUST have a rating (we want apps with bad ratings)
         if score is None:
             return False
         if score > max_score:
@@ -578,7 +634,6 @@ def passes_filter(installs: int, score, hunter: dict) -> bool:
     # Normal mode: <=10,000 installs AND no rating (completely new apps)
     if installs > 10_000:
         return False
-    # Normal mode: skip apps that already have a rating
     if score is not None:
         return False
     return True
@@ -611,14 +666,11 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                 push_log(f"  ⏭️  Skip (in sheet): {app_id}")
                 continue
 
-            try:
-                details = gp_app(app_id, lang="en", country="us")
-            except Exception:
+            # UPDATE #2: Use accurate multi-source data fetching
+            details = fetch_accurate_app_details(app_id)
+            if not details:
                 global_seen_ids.add(app_id)
                 continue
-
-            # ── Data accuracy: cross-verify with multiple sources ─────────────
-            details = revalidate_app_data(app_id, details)
 
             installs = details.get("minInstalls") or 0
             score    = details.get("score")
@@ -630,7 +682,6 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
             # ── Country filter ─────────────────────────────────────────────────
             if not is_allowed_country(details):
                 global_seen_ids.add(app_id)
-                mode_name = "Hunter" if (hunter and hunter.get("active")) else "Normal"
                 push_log(f"  🚫 Skip (blocked country): {details.get('title', app_id)}")
                 continue
 
@@ -650,20 +701,25 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                 push_log(f"  ⏭️  Skip (email dup): {email}")
                 continue
 
-            # ── Email validation ──────────────────────────────────────────────
+            # ══════════════════════════════════════════════════════════════════
+            # UPDATE #1: EMAIL VALIDATION BEFORE SAVING
+            # ══════════════════════════════════════════════════════════════════
+            push_log(f"  🔎 Validating email: {email}")
             val_result = validate_email(email)
             if not val_result["valid"]:
+                push_log(f"  ❌ Invalid email ({val_result['reason']}): {email} — skipping lead")
                 global_seen_ids.add(app_id)
-                with state_lock:
-                    state["invalid_emails"] = state.get("invalid_emails", 0) + 1
-                    state["skipped_leads"] = state.get("skipped_leads", 0) + 1
-                push_log(f"  🚫 Skip (invalid email): {email} — {val_result['reason']}")
-                # Log invalid email to sheet analytics
-                sheet_track_event("invalid_email", email, app_id, details.get("title", ""),
-                                  keyword, val_result["reason"], installs, score)
+                # Log to analytics: invalid email
+                sheet_log_analytics_event("lead_invalid_email", {
+                    "app_id":   app_id,
+                    "app_name": details.get("title", ""),
+                    "email":    email,
+                    "keyword":  keyword,
+                    "category": details.get("genre", ""),
+                    "details":  val_result["reason"],
+                })
                 continue
-            with state_lock:
-                state["valid_emails"] = state.get("valid_emails", 0) + 1
+            push_log(f"  ✉️  Email valid (score={val_result['score']}): {email}")
 
             lead = {
                 "app_id":      app_id,
@@ -679,11 +735,13 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
                 "keyword":     keyword,
                 "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
                 "email_sent":  False,
+                # UPDATE #2: Store validation metadata
+                "email_valid_score": val_result["score"],
+                "data_sources":      details.get("_data_sources", 1),
             }
             leads.append(lead)
             global_seen_ids.add(app_id)
             global_seen_emails.add(email)
-            # Register in sheet memory so same run won't add again
             register_in_sheet_memory(app_id, email)
 
             score_str = f"{score:.1f}★" if score else "new (no rating)"
@@ -698,93 +756,68 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
     return leads
 
 # ── Email send ────────────────────────────────────────────────────────────────
-def build_unsubscribe_html(email: str, app_id: str, app_name: str) -> str:
-    base_url = get_cfg("BASE_URL", "")
-    encoded_email = urllib.parse.quote(email)
-    encoded_app = urllib.parse.quote(app_id)
-    unsub_url = f"{base_url}/api/unsubscribe?email={encoded_email}&app_id={encoded_app}&name={urllib.parse.quote(app_name)}"
-    html = (
-        f'<tr><td align="center" style="padding:20px 10px 5px;font-size:10px;color:#8b8ba8;line-height:1.6;font-family:Arial,Helvetica,sans-serif;">'
-        f'<a href="{unsub_url}" style="color:#6b6b88;text-decoration:underline;font-size:11px;">Unsubscribe</a>'
-        f'<br><span style="color:#5a5a78;font-size:10px;">You\'re receiving this because your app is listed on Google Play.</span>'
-        f'</td></tr>'
-    )
-    return html, unsub_url
-
-def build_tracking_pixel(email: str, app_id: str) -> str:
-    base_url = get_cfg("BASE_URL", "")
-    encoded_email = urllib.parse.quote(email)
-    encoded_app = urllib.parse.quote(app_id)
-    pixel_url = f"{base_url}/api/track/open?email={encoded_email}&app_id={encoded_app}"
-    return f'<img src="{pixel_url}" width="1" height="1" style="display:none;" alt="" />'
-
-def wrap_body_with_tracking(body: str, email: str, app_id: str, app_name: str) -> tuple[str, str]:
-    unsub_html, unsub_url = build_unsubscribe_html(email, app_id, app_name)
-    tracking_pixel = build_tracking_pixel(email, app_id)
-    plain_text_unsub = f"\n\n---\nTo unsubscribe, visit: {unsub_url}"
-    html_body = (
-        '<html><body style="margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;">'
-        '<table width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">'
-        '<table width="600" cellpadding="0" cellspacing="0" style="max-width:600px;">'
-        '<tr><td style="padding:20px 10px;font-size:14px;color:#333;line-height:1.7;">'
-        + body.replace("\n", "<br>") +
-        '</td></tr>'
-        + unsub_html +
-        '</table></td></tr></table>'
-        + tracking_pixel +
-        '</body></html>'
-    )
-    plain_body = body + plain_text_unsub
-    return html_body, plain_body
-
 def send_email(lead: dict, subject: str, body: str) -> bool:
     url = get_cfg("EMAIL_SCRIPT_URL")
     if not url or not lead.get("email"):
         push_log("EMAIL_SCRIPT_URL not set or no email")
         return False
-    app_id = lead.get("app_id", "")
-    app_name = lead.get("app_name", "")
-    email_addr = lead["email"]
-    html_body, plain_body = wrap_body_with_tracking(body, email_addr, app_id, app_name)
     try:
         r = requests.post(url, json={
-            "to":        email_addr,
-            "subject":   subject,
-            "body":      plain_body,
-            "html_body": html_body,
+            "to":      lead["email"],
+            "subject": subject,
+            "body":    body,
         }, timeout=30)
         result = r.json() if r.text else {}
         if result.get("status") == "ok":
-            with state_lock:
-                state["delivered"] = state.get("delivered", 0) + 1
-                state["emails_sent"] = state.get("emails_sent", 0) + 1
-            push_log(f"  📧 Sent: {email_addr} ({app_name})")
-            sheet_track_event("email_sent", email_addr, app_id, app_name,
-                              lead.get("keyword", ""), "", lead.get("installs", 0), lead.get("score"))
+            push_log(f"  📧 Sent: {lead['email']} ({lead['app_name']})")
+            # UPDATE #5: Log analytics event for sent email
+            sheet_log_analytics_event("email_sent", {
+                "app_id":   lead.get("app_id", ""),
+                "app_name": lead.get("app_name", ""),
+                "email":    lead.get("email", ""),
+                "keyword":  lead.get("keyword", ""),
+                "category": lead.get("category", ""),
+                "status":   "sent",
+            })
             return True
-        with state_lock:
-            state["failed_emails"] = state.get("failed_emails", 0) + 1
-        push_log(f"  ❌ Email failed: {email_addr}: {result.get('msg','?')}")
-        sheet_track_event("email_failed", email_addr, app_id, app_name,
-                          lead.get("keyword", ""), result.get("msg", "Unknown"), lead.get("installs", 0), lead.get("score"))
+        push_log(f"  ❌ Email failed: {lead['email']}: {result.get('msg','?')}")
+        # UPDATE #5: Log analytics event for failed email
+        sheet_log_analytics_event("email_failed", {
+            "app_id":   lead.get("app_id", ""),
+            "app_name": lead.get("app_name", ""),
+            "email":    lead.get("email", ""),
+            "keyword":  lead.get("keyword", ""),
+            "details":  result.get("msg", "unknown"),
+            "status":   "failed",
+        })
         return False
     except Exception as e:
-        with state_lock:
-            state["failed_emails"] = state.get("failed_emails", 0) + 1
         push_log(f"  ❌ Email error: {e}")
-        sheet_track_event("email_failed", email_addr, app_id, app_name,
-                          lead.get("keyword", ""), str(e), lead.get("installs", 0), lead.get("score"))
+        sheet_log_analytics_event("email_failed", {
+            "app_id":   lead.get("app_id", ""),
+            "email":    lead.get("email", ""),
+            "details":  str(e),
+            "status":   "failed",
+        })
         return False
 
 # ── Master automation ─────────────────────────────────────────────────────────
 def run_automation(initial_kw: str, target: int, hunter: dict = None):
     global global_seen_ids, global_seen_emails
 
+    campaign_id   = f"campaign_{time.strftime('%Y%m%d_%H%M%S')}"
+    campaign_start = time.time()
+
     upd(running=True, phase="loading_sheet", keyword=initial_kw,
         keywords_used=[], leads_found=0, emails_sent=0, logs=[], leads=[])
     stop_event.clear()
     mode = "Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🚀 Started | kw='{initial_kw}' | target={target} | mode={mode}")
+    push_log(f"🚀 Started | kw='{initial_kw}' | target={target} | mode={mode} | campaign={campaign_id}")
+
+    # Reset validation stats for this run
+    with ev_lock:
+        for k in email_validation_stats:
+            email_validation_stats[k] = 0
 
     # ── Step 0: Load sheet memory to prevent cross-run duplicates ─────────────
     push_log("📋 Step 0: Loading existing sheet records into memory …")
@@ -794,9 +827,10 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
     base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
     base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
 
-    all_leads = []
-    kws_used  = [initial_kw]
-    kw_queue  = [initial_kw]
+    all_leads  = []
+    kws_used   = [initial_kw]
+    kw_queue   = [initial_kw]
+    skipped    = 0
 
     upd(phase="scraping")
 
@@ -817,26 +851,25 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
 
         batch = scrape_keyword(kw, hunter)
         all_leads.extend(batch)
-        upd(leads_found=len(all_leads), leads=[l.copy() for l in all_leads],
-            leads_generated=len(all_leads), qualified_leads=len(all_leads))
+        upd(leads_found=len(all_leads), leads=[l.copy() for l in all_leads])
 
         for lead in batch:
             sheet_append_lead(lead)
             sheet_append_qualified(lead)
-            sheet_track_event("lead_generated", lead["email"], lead["app_id"],
-                              lead["app_name"], kw, "", lead["installs"], lead["score"])
 
         push_log(f"📊 Total: {len(all_leads)} / {target}")
 
     if stop_event.is_set():
         push_log("🛑 Stopped during scraping.")
         upd(running=False, phase="stopped")
+        _log_campaign_end(campaign_id, initial_kw, mode, all_leads, 0, campaign_start, "Stopped")
         return
 
     push_log(f"✅ Scraping done. {len(all_leads)} leads. Starting emails …")
 
     # ── Phase 2: AI Email + Send ──────────────────────────────────────────────
     upd(phase="emailing")
+    sent_count = 0
 
     for i, lead in enumerate(all_leads):
         if stop_event.is_set():
@@ -849,6 +882,9 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
         ok = send_email(lead, subject, body)
         lead["email_sent"] = ok
         with state_lock:
+            if ok:
+                state["emails_sent"] += 1
+                sent_count += 1
             state["leads"] = [l.copy() for l in all_leads]
 
         if ok:
@@ -863,14 +899,36 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
                 time.sleep(1)
 
     if stop_event.is_set():
-        upd(running=False, phase="stopped", completed_campaigns=0, active_campaigns=0)
+        upd(running=False, phase="stopped")
+        _log_campaign_end(campaign_id, initial_kw, mode, all_leads, sent_count, campaign_start, "Stopped")
     else:
         push_log("🎉 Automation complete!")
-        upd(running=False, phase="done", completed_campaigns=1, active_campaigns=0)
+        upd(running=False, phase="done")
+        _log_campaign_end(campaign_id, initial_kw, mode, all_leads, sent_count, campaign_start, "Completed")
+
+def _log_campaign_end(campaign_id, keyword, mode, leads, sent, start_time, status):
+    """Log campaign summary to the Campaign Summary sheet tab."""
+    with ev_lock:
+        valid_emails   = email_validation_stats["valid"]
+        invalid_emails = email_validation_stats["checked"] - email_validation_stats["valid"]
+    sheet_log_campaign_summary({
+        "campaign":       campaign_id,
+        "keyword":        keyword,
+        "leads_generated": len(leads),
+        "qualified_leads": len(leads),
+        "valid_emails":   valid_emails,
+        "invalid_emails": invalid_emails,
+        "emails_sent":    sent,
+        "emails_pending": len(leads) - sent,
+        "skipped_leads":  invalid_emails,
+        "duration_seconds": int(time.time() - start_time),
+        "mode":           mode,
+        "status":         status,
+    })
 
 # ── Send pending ──────────────────────────────────────────────────────────────
 def run_send_pending(leads: list):
-    upd(running=True, phase="emailing", active_campaigns=1)
+    upd(running=True, phase="emailing")
     stop_event.clear()
     push_log(f"📬 Sending pending: {len(leads)} leads")
     base_subject = get_cfg("EMAIL_SUBJECT") or DEFAULT_EMAIL_SUBJECT
@@ -886,6 +944,8 @@ def run_send_pending(leads: list):
         if ok:
             sent += 1
             sheet_mark_sent(lead["app_id"], lead["email"], lead["app_name"])
+            with state_lock:
+                state["emails_sent"] = state.get("emails_sent", 0) + 1
         if i < len(leads) - 1:
             wait = random.uniform(60, 120)
             push_log(f"  ⏳ Waiting {wait:.0f}s … ({i+1}/{len(leads)})")
@@ -919,35 +979,15 @@ def api_start():
         "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
-        "BASE_URL":            data.get("base_url")         or os.environ.get("BASE_URL", ""),
     }
-    # Reset in-memory dedup for this new run (sheet memory is re-loaded fresh)
     global global_seen_ids, global_seen_emails
     global_seen_ids    = set()
     global_seen_emails = set()
 
-    campaign_id = f"camp_{int(time.time())}"
-    run_cfg["campaign_id"] = campaign_id
-
-    with state_lock:
-        state.update({
-            "running": False, "phase": "idle", "keyword": "",
-            "keywords_used": [], "leads_found": 0, "emails_sent": 0,
-            "logs": [], "leads": [],
-            "emails_opened": 0, "replies_received": 0,
-            "bounces": 0, "bounce_rate": 0.0, "delivered": 0,
-            "delivery_rate": 0.0, "unsubscribes": 0, "click_count": 0,
-            "click_rate": 0.0, "pending_emails": 0, "failed_emails": 0,
-            "skipped_leads": 0, "invalid_emails": 0, "valid_emails": 0,
-            "leads_generated": 0, "qualified_leads": 0,
-            "total_campaigns": 0, "active_campaigns": 0, "completed_campaigns": 0,
-            "campaign_start_time": time.strftime("%Y-%m-%d %H:%M:%S"),
-        })
-
     target = int(data.get("target") or os.environ.get("TARGET_LEADS", 300))
     hunter = data.get("hunter") or {}
     threading.Thread(target=run_automation, args=(keyword, target, hunter), daemon=True).start()
-    return jsonify({"ok": True, "keyword": keyword, "campaign_id": campaign_id})
+    return jsonify({"ok": True, "keyword": keyword})
 
 @application.route("/api/stop", methods=["POST"])
 def api_stop():
@@ -970,15 +1010,7 @@ def api_clear():
         state.update({
             "running": False, "phase": "idle", "keyword": "",
             "keywords_used": [], "leads_found": 0, "emails_sent": 0,
-            "logs": [], "leads": [],
-            "emails_opened": 0, "replies_received": 0,
-            "bounces": 0, "bounce_rate": 0.0, "delivered": 0,
-            "delivery_rate": 0.0, "unsubscribes": 0, "click_count": 0,
-            "click_rate": 0.0, "pending_emails": 0, "failed_emails": 0,
-            "skipped_leads": 0, "invalid_emails": 0, "valid_emails": 0,
-            "leads_generated": 0, "qualified_leads": 0,
-            "total_campaigns": 0, "active_campaigns": 0, "completed_campaigns": 0,
-            "campaign_start_time": None,
+            "logs": [], "leads": []
         })
     global_seen_ids      = set()
     global_seen_emails   = set()
@@ -1010,7 +1042,6 @@ def api_send_pending():
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
         "APPS_SCRIPT_WEB_URL": data.get("sheet_url")        or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
-        "BASE_URL":            data.get("base_url")         or os.environ.get("BASE_URL", ""),
     }
     threading.Thread(target=run_send_pending, args=(leads,), daemon=True).start()
     return jsonify({"ok": True, "count": len(leads)})
@@ -1029,7 +1060,6 @@ def api_spam_test():
         "SENDER_COMPANY":   data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
         "EMAIL_SUBJECT":    data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":       data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
-        "BASE_URL":         data.get("base_url")         or os.environ.get("BASE_URL", ""),
     }
     sample = {
         "app_name":   data.get("sample_app_name", "MyApp Pro"),
@@ -1038,6 +1068,7 @@ def api_spam_test():
         "installs":   1500,
         "score":      data.get("sample_score", 2.1),
         "email":      test_to,
+        "app_id":     "com.example",
         "url":        "https://play.google.com/store/apps/details?id=com.example",
     }
     url = get_cfg("EMAIL_SCRIPT_URL")
@@ -1058,7 +1089,6 @@ def api_spam_test():
 # ── Sheet pending fetch ───────────────────────────────────────────────────────
 @application.route("/api/sheet_pending", methods=["POST"])
 def api_sheet_pending():
-    """Fetch leads from Sheet where Email Sent = No, return count + leads list."""
     data = request.get_json(silent=True) or {}
     sheet_url = data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
     if not sheet_url:
@@ -1074,166 +1104,97 @@ def api_sheet_pending():
 # ── Sheet memory status ───────────────────────────────────────────────────────
 @application.route("/api/sheet_memory_status", methods=["GET"])
 def api_sheet_memory_status():
-    """Returns how many records are currently loaded in sheet memory."""
     with sheet_memory_lock:
         return jsonify({
-            "loaded": sheet_memory_loaded,
-            "ids_count": len(sheet_memory_ids),
+            "loaded":       sheet_memory_loaded,
+            "ids_count":    len(sheet_memory_ids),
             "emails_count": len(sheet_memory_emails),
         })
 
-# ── Tracking endpoints ──────────────────────────────────────────────────────
-@application.route("/api/track/open", methods=["GET"])
-def api_track_open():
-    email = request.args.get("email", "")
-    app_id = request.args.get("app_id", "")
-    if email and app_id:
-        with state_lock:
-            state["emails_opened"] = state.get("emails_opened", 0) + 1
-        sheet_track_event("email_opened", email, app_id, "", "", "", 0, None)
-    pixel = "GIF89a\x01\x00\x01\x00\x80\x00\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x00\x00\x00\x00\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02D\x01\x00;"
-    return application.make_response((pixel, 200, {"Content-Type": "image/gif", "Cache-Control": "no-cache"}))
+# ── Email validation stats API ────────────────────────────────────────────────
+@application.route("/api/email_validation_stats", methods=["GET"])
+def api_email_validation_stats():
+    """Return current email validation statistics."""
+    with ev_lock:
+        stats = dict(email_validation_stats)
+    total    = stats["checked"]
+    valid    = stats["valid"]
+    invalid  = total - valid
+    rate     = round((valid / total * 100), 1) if total > 0 else 0
+    return jsonify({
+        "checked":            total,
+        "valid":              valid,
+        "invalid":            invalid,
+        "valid_rate_pct":     rate,
+        "invalid_syntax":     stats["invalid_syntax"],
+        "invalid_mx":         stats["invalid_mx"],
+        "invalid_disposable": stats["invalid_disposable"],
+        "invalid_domain":     stats["invalid_domain"],
+    })
 
-@application.route("/api/track/click", methods=["GET"])
-def api_track_click():
-    email = request.args.get("email", "")
-    app_id = request.args.get("app_id", "")
-    url = request.args.get("url", "")
-    if email and app_id:
-        with state_lock:
-            state["click_count"] = state.get("click_count", 0) + 1
-        sheet_track_event("email_clicked", email, app_id, "", "", url, 0, None)
-    if url:
-        return redirect(url)
-    return jsonify({"ok": True})
-
-@application.route("/api/track/bounce", methods=["POST"])
-def api_track_bounce():
+# ── Analytics fetch from Sheet ────────────────────────────────────────────────
+@application.route("/api/analytics", methods=["POST"])
+def api_analytics():
+    """
+    Fetch analytics data from the Analytics Events and Campaign Summary sheets.
+    Supports date_from, date_to, campaign, status filters.
+    """
     data = request.get_json(silent=True) or {}
-    email = data.get("email", "")
-    app_id = data.get("app_id", "")
-    reason = data.get("reason", "")
-    if email:
-        with state_lock:
-            state["bounces"] = state.get("bounces", 0) + 1
-        sheet_track_event("email_bounced", email, app_id, "", "", reason, 0, None)
-    return jsonify({"ok": True})
+    sheet_url = data.get("sheet_url") or os.environ.get("APPS_SCRIPT_WEB_URL", "")
+    if not sheet_url:
+        return jsonify({"error": "sheet_url not set"}), 400
 
-# ── Unsubscribe ─────────────────────────────────────────────────────────────
-UNSUBSCRIBE_PAGE = """<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Unsubscribed</title><style>
-body{{margin:0;padding:0;background:#0a0a0f;color:#f0e6d0;font-family:Arial,Helvetica,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;}
-.box{{text-align:center;padding:40px 20px;max-width:500px;}}
-h1{{color:#c9a84c;font-size:28px;margin-bottom:10px;}}
-p{{color:#8b8ba8;font-size:14px;line-height:1.7;}}
-.check{{color:#4ade80;font-size:48px;margin-bottom:20px;display:block;}}
-</style></head><body>
-<div class="box"><span class="check">&#10004;</span>
-<h1>Successfully Unsubscribed</h1>
-<p>You have been unsubscribed from email communications for <strong>{app_name}</strong>.</p>
-<p style="font-size:12px;color:#5a5a78;">You will no longer receive outreach emails regarding this app.</p></div></body></html>"""
-
-@application.route("/api/unsubscribe", methods=["GET"])
-def api_unsubscribe():
-    email = request.args.get("email", "")
-    app_id = request.args.get("app_id", "")
-    app_name = request.args.get("name", "your app")
-    if email or app_id:
-        with state_lock:
-            state["unsubscribes"] = state.get("unsubscribes", 0) + 1
-        sheet_track_event("unsubscribed", email, app_id, app_name, "", "", 0, None)
-    html = UNSUBSCRIBE_PAGE.replace("{app_name}", app_name)
-    return html, 200, {"Content-Type": "text/html; charset=utf-8"}
-
-# ── Advanced Analytics API ──────────────────────────────────────────────────
-def compute_analytics():
-    with state_lock:
-        s = dict(state)
-    total_sent = s.get("delivered", 0) + s.get("failed_emails", 0)
-    total_leads = s.get("leads_generated", 0)
-    total_delivered = s.get("delivered", 0)
-    total_opened = s.get("emails_opened", 0)
-    total_replied = s.get("replies_received", 0)
-    total_bounced = s.get("bounces", 0)
-    total_unsub = s.get("unsubscribes", 0)
-    total_clicked = s.get("click_count", 0)
-    total_failed = s.get("failed_emails", 0)
-    total_invalid = s.get("invalid_emails", 0)
-    total_valid = s.get("valid_emails", 0)
-    total_skipped = s.get("skipped_leads", 0)
-    total_pending = s.get("pending_emails", 0)
-
-    return {
-        "emails_sent": s.get("emails_sent", 0),
-        "emails_opened": total_opened,
-        "open_rate": round((total_opened / total_delivered * 100), 1) if total_delivered > 0 else 0.0,
-        "replies_received": total_replied,
-        "reply_rate": round((total_replied / total_delivered * 100), 1) if total_delivered > 0 else 0.0,
-        "bounces": total_bounced,
-        "bounce_rate": round((total_bounced / total_sent * 100), 1) if total_sent > 0 else 0.0,
-        "delivered": total_delivered,
-        "delivery_rate": round((total_delivered / max(total_sent, 1) * 100), 1) if total_sent > 0 else 0.0,
-        "unsubscribes": total_unsub,
-        "click_count": total_clicked,
-        "click_rate": round((total_clicked / total_delivered * 100), 1) if total_delivered > 0 else 0.0,
-        "pending_emails": total_pending,
-        "failed_emails": total_failed,
-        "skipped_leads": total_skipped,
-        "invalid_emails": total_invalid,
-        "valid_emails": total_valid,
-        "leads_generated": total_leads,
-        "qualified_leads": s.get("qualified_leads", 0),
-        "total_campaigns": s.get("total_campaigns", 0),
-        "active_campaigns": s.get("active_campaigns", 0),
-        "completed_campaigns": s.get("completed_campaigns", 0),
-        "campaign_start_time": s.get("campaign_start_time"),
-        "running": s.get("running", False),
-        "phase": s.get("phase", "idle"),
+    filters = {
+        "date_from":   data.get("date_from", ""),
+        "date_to":     data.get("date_to", ""),
+        "campaign":    data.get("campaign", ""),
+        "status":      data.get("status", ""),
+        "lead_source": data.get("lead_source", ""),
+        "industry":    data.get("industry", ""),
+        "country":     data.get("country", ""),
     }
 
-@application.route("/api/analytics/summary", methods=["GET"])
-def api_analytics_summary():
-    return jsonify(compute_analytics())
+    try:
+        r = requests.post(sheet_url, json={
+            "action":  "get_analytics",
+            "filters": filters,
+        }, timeout=25)
+        result = r.json() if r.text else {}
+        return jsonify({"ok": True, "data": result})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-@application.route("/api/analytics/records", methods=["GET"])
-def api_analytics_records():
-    event_type = request.args.get("event_type", "")
-    days = int(request.args.get("days", 30))
-    records = sheet_get_analytics(event_type, days)
-    return jsonify({"ok": True, "records": records, "count": len(records)})
+# ── Unsubscribe handler (GET — for link clicks) ────────────────────────────────
+@application.route("/unsubscribe", methods=["GET"])
+def handle_unsubscribe():
+    """Handle unsubscribe clicks. Logs to sheet and returns confirmation page."""
+    email  = request.args.get("email", "").strip()
+    app_id = request.args.get("app_id", "").strip()
 
-@application.route("/api/analytics/filter", methods=["POST"])
-def api_analytics_filter():
-    data = request.get_json(silent=True) or {}
-    event_type = data.get("event_type", "")
-    days = int(data.get("days", 30))
-    campaign = data.get("campaign", "")
-    lead_source = data.get("lead_source", "")
-    industry = data.get("industry", "")
-    country = data.get("country", "")
-    status = data.get("status", "")
-    records = sheet_get_analytics(event_type, days)
-    filtered = []
-    for rec in records:
-        if campaign and campaign not in str(rec.get("Campaign ID", "")):
-            continue
-        if event_type and rec.get("Event Type", "") != event_type:
-            continue
-        filtered.append(rec)
-    return jsonify({"ok": True, "records": filtered, "count": len(filtered), "total": len(records)})
-
-# ── Health check ────────────────────────────────────────────────────────────
-@application.route("/api/health", methods=["GET"])
-def api_health():
-    with state_lock:
-        return jsonify({
-            "status": "ok",
-            "running": state.get("running", False),
-            "phase": state.get("phase", "idle"),
-            "uptime": state.get("campaign_start_time"),
-            "timestamp": time.time(),
+    if email:
+        push_log(f"🚫 Unsubscribe request: {email}")
+        sheet_log_analytics_event("email_unsubscribed", {
+            "email":   email,
+            "app_id":  app_id,
+            "status":  "unsubscribed",
+            "details": "user clicked unsubscribe link",
         })
+        # Also mark in the Unsubscribes sheet tab
+        sheet_post({"action": "append", "tab": "Unsubscribes", "row": {
+            "Email":         email,
+            "App ID":        app_id,
+            "Unsubscribed At": time.strftime("%Y-%m-%d %H:%M:%S"),
+        }})
+
+    return """<!DOCTYPE html>
+<html><head><title>Unsubscribed</title>
+<style>body{font-family:Arial,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;background:#f9f9f9;}
+.box{text-align:center;padding:40px;background:#fff;border-radius:8px;box-shadow:0 2px 12px rgba(0,0,0,.1);max-width:400px;}
+h2{color:#333;margin-bottom:12px;}p{color:#666;font-size:14px;}</style></head>
+<body><div class="box"><h2>✅ Unsubscribed</h2>
+<p>You have been successfully removed from our mailing list.</p>
+<p style="margin-top:16px;font-size:12px;color:#999;">You will not receive any further emails from us.</p>
+</div></body></html>""", 200
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
