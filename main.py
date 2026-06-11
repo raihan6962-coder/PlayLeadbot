@@ -1,5 +1,4 @@
-import os, time, random, threading, json, re, logging, socket, urllib.request
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import os, time, random, threading, json, re, logging, sqlite3, uuid, hashlib
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from google_play_scraper import search, app as gp_app
@@ -35,6 +34,47 @@ sheet_memory_loaded: bool = False
 sheet_memory_lock = threading.Lock()
 
 run_cfg = {}
+
+# ── SQLite Email Tracking DB ───────────────────────────────────────────────────
+DB_PATH = os.environ.get("SQLITE_DB_PATH", "email_tracking.db")
+
+def get_db():
+    conn = sqlite3.connect(DB_PATH, timeout=10)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+def init_db():
+    try:
+        conn = get_db()
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS email_log (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tracking_id TEXT UNIQUE NOT NULL,
+                app_id TEXT,
+                app_name TEXT,
+                developer TEXT,
+                email TEXT NOT NULL,
+                subject TEXT,
+                body TEXT,
+                status TEXT DEFAULT 'sent',
+                sent_at TEXT,
+                opened_at TEXT,
+                opened_count INTEGER DEFAULT 0,
+                unsubscribe_token TEXT,
+                unsubscribed INTEGER DEFAULT 0,
+                keyword TEXT,
+                category TEXT,
+                is_failed INTEGER DEFAULT 0,
+                error_msg TEXT,
+                delivery_detail TEXT
+            )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        log.warning(f"init_db: {e}")
+
+init_db()
 
 def get_cfg(key, fallback=""):
     return run_cfg.get(key) or os.environ.get(key, fallback)
@@ -263,7 +303,7 @@ def ai_gen_keywords(original: str, used: list) -> list:
 
 # ── AI email generation per lead ──────────────────────────────────────────────
 def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, str]:
-    """Generate a personalized email keeping the template structure intact."""
+    """Generate a natural, unique email that avoids spam filters."""
     key = get_cfg("GROQ_API_KEY")
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
     sender_company = get_cfg("SENDER_COMPANY", "Your Company")
@@ -277,14 +317,9 @@ def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, st
     score_info   = f"{lead['score']:.1f} stars" if lead.get("score") else "no ratings yet (brand new)"
     install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
 
-    prompt = f"""You are a cold email personalizer. Your only job is to fill in the base template with the real app details — keeping the structure and wording almost identical.
+    prompt = f"""You are writing a short personal email from {sender_name} at {sender_company} to a mobile app developer. Write in a warm, natural, human tone — like a real person reaching out, NOT a sales pitch.
 
-BASE TEMPLATE (follow this EXACTLY):
-Subject: {base_subject}
-Body:
-{base_body}
-
-APP DETAILS:
+CONTEXT ABOUT THE APP:
 - App Name: {lead.get('app_name', '')}
 - Developer: {lead.get('developer', '')}
 - Category: {lead.get('category', '')}
@@ -292,25 +327,27 @@ APP DETAILS:
 - Rating: {score_info}
 - Play Store URL: {lead.get('url', '')}
 
-SENDER:
-- Name: {sender_name}
-- Company: {sender_company}
+WRITING RULES:
+1. Write a SHORT email (3-4 short paragraphs max). First line goes in subject.
+2. Subject line: a simple friendly question — NO caps, NO exclamation, NO sales words
+3. Body: sound like a real curious human, not a marketing team. Mention the app naturally.
+4. DO NOT use these words EVER: "service", "recovery", "negative reviews", "reputation", "rating issues", "clean up", "protect", "professional", "solution", "help you"
+5. Do NOT talk about bad reviews or problems with their app. Be positive.
+6. Keep it casual — like "Hey, came across your app and had a thought I wanted to share..."
+7. End with a soft CTA like "Let me know if you're open to chatting sometime."
+8. Sign off with just: 
+{sender_name}
+{sender_company}
+9. Return ONLY JSON: {{"subject": "...", "body": "..."}}
+10. Every email MUST be unique — different opening, different angle, different phrasing.
 
-STRICT RULES:
-1. Copy the template EXACTLY — same structure, same sentences, same flow
-2. Only replace placeholder values (app name, developer name, installs, rating, url) with the real app details above
-3. You may change at most 2-3 words in the entire body to naturally fit this specific app — nothing more
-4. Do NOT rewrite sentences, do NOT add new sentences, do NOT remove any sentences
-5. Do NOT change the greeting format, CTA, or sign-off
-6. CRITICAL: Preserve every line break and blank line from the template exactly as-is. Each paragraph must stay as a separate paragraph. Use \\n for newlines inside the JSON string.
-7. Return ONLY valid JSON: {{"subject": "...", "body": "..."}}
 No markdown, no explanation, just the JSON object."""
 
     try:
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=500
+            temperature=0.9, max_tokens=500
         )
         raw = resp.choices[0].message.content.strip()
         raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
@@ -325,19 +362,17 @@ No markdown, no explanation, just the JSON object."""
 
 # ── Template fill ─────────────────────────────────────────────────────────────
 DEFAULT_EMAIL_SUBJECT = "Quick question about {{app_name}}"
-DEFAULT_EMAIL_BODY = """Hi {{developer}} team,
+DEFAULT_EMAIL_BODY = """Hi {{developer}},
 
-I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
+I came across {{app_name}} on Play Store — looks like a really interesting project.
 
-I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
+I've been following apps in the {{category}} space and had a thought about something that might be useful for {{app_name}}.
 
-Would you be open to a quick 15-minute chat this week?
+Let me know if you have a few minutes to chat this week?
 
-Best regards,
+Best,
 {{sender_name}}
-{{sender_company}}
-
-App: {{url}}"""
+{{sender_company}}"""
 
 def fill_template(tpl: str, lead: dict) -> str:
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
@@ -351,6 +386,7 @@ def fill_template(tpl: str, lead: dict) -> str:
         .replace("{{url}}",            lead.get("url", ""))
         .replace("{{sender_name}}",    sender_name)
         .replace("{{sender_company}}", sender_company)
+        .replace("{{unsubscribe_url}}","")
     )
 
 # ── Play Store scraper ────────────────────────────────────────────────────────
@@ -358,146 +394,7 @@ EMAIL_RE = re.compile(r"[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}")
 
 SEARCH_COMBOS = [
     ("en", "us"), ("en", "gb"), ("en", "au"), ("en", "ca"),
-    ("en", "nz"), ("en", "ie"), ("en", "sg"), ("en", "za"),
 ]
-
-# Extra regions used only for detail cross-validation
-DETAIL_COMBOS = [("en", "us"), ("en", "gb"), ("en", "au")]
-
-PLAY_HEADERS = {
-    "User-Agent": (
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-        "AppleWebKit/537.36 (KHTML, like Gecko) "
-        "Chrome/124.0.0.0 Safari/537.36"
-    ),
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-}
-
-# ── Email validation ──────────────────────────────────────────────────────────
-DISPOSABLE_DOMAINS = {
-    "mailinator.com", "guerrillamail.com", "10minutemail.com", "trashmail.com",
-    "yopmail.com", "throwam.com", "sharklasers.com", "spam4.me",
-    "tempmail.com", "fakeinbox.com", "maildrop.cc", "dispostable.com",
-    "mailnull.com", "spamgourmet.com", "discard.email", "getnada.com",
-    "tempr.email", "33mail.com", "spamex.com", "deadaddress.com",
-}
-EMAIL_SYNTAX_RE = re.compile(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$')
-
-def _email_syntax_ok(email: str) -> bool:
-    return bool(email) and len(email) <= 254 and bool(EMAIL_SYNTAX_RE.match(email))
-
-def _domain_exists(domain: str) -> bool:
-    try:
-        socket.setdefaulttimeout(5)
-        socket.getaddrinfo(domain, None)
-        return True
-    except (socket.gaierror, socket.timeout, OSError):
-        return False
-
-def is_valid_email(email: str) -> tuple:
-    if not email: return False, "empty"
-    email = email.strip().lower()
-    if not _email_syntax_ok(email): return False, "invalid_syntax"
-    domain = email.split("@")[-1]
-    if domain in DISPOSABLE_DOMAINS: return False, "disposable"
-    if not _domain_exists(domain): return False, "domain_not_found"
-    return True, "ok"
-
-# ── Accurate app detail fetch ─────────────────────────────────────────────────
-def _parse_installs(val) -> int:
-    if val is None: return 0
-    s = str(val).strip().replace(",", "").replace("+", "").upper()
-    if not s: return 0
-    try:
-        if s.endswith("B"): return int(float(s[:-1]) * 1_000_000_000)
-        if s.endswith("M"): return int(float(s[:-1]) * 1_000_000)
-        if s.endswith("K"): return int(float(s[:-1]) * 1_000)
-        return int(float(s))
-    except: return 0
-
-def _html_crosscheck(app_id: str) -> dict:
-    """Direct Play Store HTML scrape for accurate score + installs + email."""
-    url = f"https://play.google.com/store/apps/details?id={app_id}&hl=en&gl=us"
-    out = {}
-    try:
-        req = urllib.request.Request(url, headers=PLAY_HEADERS)
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            html = resp.read(500_000).decode("utf-8", errors="ignore")
-    except Exception:
-        return out
-    # Score
-    for pat in [
-        r'"starRating"\s*:\s*"?([\d.]+)"?',
-        r'"ratingValue"\s*:\s*"?([\d.]+)"?',
-        r'itemprop="ratingValue"\s+content="([\d.]+)"',
-        r'Rated\s+([\d.]+)\s+(?:stars?|out)',
-    ]:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            try:
-                v = float(m.group(1))
-                if 0 < v <= 5:
-                    out["score"] = round(v, 1)
-                    break
-            except: pass
-    # Installs
-    for pat in [
-        r'"numDownloads"\s*:\s*"([^"]+)"',
-        r'([\d,]+\+?)\s+downloads',
-        r'"([\d,.]+[KMB]?\+?)"\s*,\s*"Installs"',
-    ]:
-        m = re.search(pat, html, re.IGNORECASE)
-        if m:
-            parsed = _parse_installs(m.group(1))
-            if parsed >= 0:
-                out["minInstalls"] = parsed
-                break
-    # Email from mailto
-    em = re.search(r'href="mailto:([^"?&\s]+)"', html)
-    if em:
-        out["developerEmail"] = em.group(1).strip()
-    return out
-
-def fetch_app_details_accurate(app_id: str) -> dict | None:
-    """
-    Fetch from google-play-scraper (3 regions) → pick best result →
-    cross-validate with direct HTML scrape for accurate score/installs.
-    """
-    best = None
-    for lang, country in DETAIL_COMBOS:
-        try:
-            d = gp_app(app_id, lang=lang, country=country)
-            if d is None: continue
-            sc = d.get("score")
-            try: sc = float(sc) if sc else None
-            except: sc = None
-            if sc == 0.0: sc = None
-            d = dict(d)
-            d["score"] = sc
-            if best is None:
-                best = d
-            elif sc is not None and best.get("score") is None:
-                best = d
-            if best.get("score") is not None:
-                break
-        except Exception:
-            time.sleep(0.2)
-            continue
-    if best is None:
-        return None
-    # Cross-validate with HTML
-    try:
-        html = _html_crosscheck(app_id)
-        if html.get("score") and html["score"] > 0:
-            best["score"] = html["score"]
-        if html.get("minInstalls", 0) > 0 and _parse_installs(best.get("minInstalls") or 0) == 0:
-            best["minInstalls"] = html["minInstalls"]
-        if html.get("developerEmail") and not best.get("developerEmail"):
-            best["developerEmail"] = html["developerEmail"]
-    except Exception:
-        pass
-    return best
 
 def extract_email(text):
     if not text:
@@ -539,191 +436,119 @@ def passes_filter(installs: int, score, hunter: dict) -> bool:
         return False
     return True
 
-# ── Per-app qualification (runs in thread pool) ───────────────────────────────
-def _qualify_one(app_id: str, keyword: str, hunter: dict) -> dict | None:
-    """Fetch full details, filter, validate email. Returns lead dict or None."""
-    try:
-        details = fetch_app_details_accurate(app_id)
-        if not details:
-            return None
-
-        installs = _parse_installs(details.get("minInstalls") or details.get("installs") or 0)
-        score    = details.get("score")
-        try:    score = float(score) if score else None
-        except: score = None
-        if score == 0.0: score = None
-
-        if not passes_filter(installs, score, hunter):
-            return None
-
-        if not is_allowed_country(details):
-            return None
-
-        email = (
-            extract_email(details.get("developerEmail", ""))
-            or extract_email(details.get("privacyPolicy", ""))
-            or extract_email(details.get("description",  ""))
-            or extract_email(details.get("recentChanges",""))
-        )
-        if not email:
-            return None
-
-        email = email.lower().strip()
-
-        # Validate email before accepting
-        valid, reason = is_valid_email(email)
-        if not valid:
-            return None
-
-        return {
-            "app_id":      app_id,
-            "app_name":    details.get("title",     ""),
-            "developer":   details.get("developer", ""),
-            "email":       email,
-            "category":    details.get("genre",     ""),
-            "installs":    installs,
-            "score":       score,
-            "description": (details.get("description") or "")[:300],
-            "url":         f"https://play.google.com/store/apps/details?id={app_id}",
-            "icon":        details.get("icon",       ""),
-            "keyword":     keyword,
-            "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
-            "email_sent":  False,
-        }
-    except Exception:
-        return None
-
-
 def scrape_keyword(keyword: str, hunter: dict = None) -> list:
-    """
-    1. Search all SEARCH_COMBOS → collect unique candidate app IDs
-    2. Sort: lowest installs / no score first (best leads come first)
-    3. Parallel detail fetch + qualify (10 threads, batches of 30)
-    4. Email validate → accept lead
-    """
+    """Scrape across multiple country combos; deduplicate via in-memory + sheet memory."""
     global global_seen_ids, global_seen_emails
-    mode_label = "Hunter" if (hunter and hunter.get("active")) else "Normal"
-    push_log(f"🔍 Scraping [{mode_label}]: '{keyword}'")
+    push_log(f"🔍 Scraping: '{keyword}'")
     leads = []
-
-    # ── Step 1: collect candidate app IDs from all regions ───────────────────
-    seen_in_search: set = set()
-    candidates: list    = []
 
     for lang, country in SEARCH_COMBOS:
         if stop_event.is_set():
             break
-        results = []
-        for attempt in range(3):
-            try:
-                results = search(keyword, lang=lang, country=country, n_hits=500)
-                push_log(f"  [{country}] {len(results)} results")
-                break
-            except Exception as e:
-                err = str(e).lower()
-                if any(x in err for x in ["429", "403", "rate", "blocked", "captcha"]):
-                    wait = 20 * (attempt + 1)
-                    push_log(f"  ⏳ Rate-limit ({country}), wait {wait}s")
-                    time.sleep(wait)
-                elif attempt == 2:
-                    push_log(f"  Search error ({country}): {str(e)[:60]}")
-                else:
-                    time.sleep(random.uniform(2, 4))
+        try:
+            results = search(keyword, lang=lang, country=country, n_hits=500)
+        except Exception as e:
+            push_log(f"  Search error ({country}): {e}")
+            continue
 
         for item in results:
-            aid = item.get("appId", "")
-            if not aid or aid in seen_in_search or aid in global_seen_ids:
+            if stop_event.is_set():
+                break
+            app_id = item.get("appId", "")
+            if not app_id or app_id in global_seen_ids:
                 continue
-            if is_duplicate_in_sheet(aid, ""):
-                global_seen_ids.add(aid)
+
+            # ── Sheet memory check (cross-run dedup) ──────────────────────────
+            if is_duplicate_in_sheet(app_id, ""):
+                global_seen_ids.add(app_id)
+                push_log(f"  ⏭️  Skip (in sheet): {app_id}")
                 continue
-            seen_in_search.add(aid)
-            candidates.append((aid, item))
 
-        time.sleep(random.uniform(0.3, 0.8))
+            try:
+                details = gp_app(app_id, lang="en", country="us")
+            except Exception:
+                global_seen_ids.add(app_id)
+                continue
 
-    push_log(f"  📋 {len(candidates)} unique candidates")
-    if not candidates:
-        push_log(f"  📦 0 new leads from '{keyword}'")
-        sheet_log_keyword(keyword, 0)
-        return []
+            installs = details.get("minInstalls") or 0
+            score    = details.get("score")
 
-    # ── Step 2: sort — no score / lowest installs first ──────────────────────
-    def _sort_key(pair):
-        _, item = pair
-        sc = item.get("score") or 0
-        try: sc = float(sc)
-        except: sc = 0.0
-        inst = _parse_installs(item.get("minInstalls") or item.get("installs") or 0)
-        return (0 if sc == 0 else 1, inst)
+            if not passes_filter(installs, score, hunter):
+                global_seen_ids.add(app_id)
+                continue
 
-    candidates.sort(key=_sort_key)
+            # ── Country filter ─────────────────────────────────────────────────
+            if not is_allowed_country(details):
+                global_seen_ids.add(app_id)
+                mode_name = "Hunter" if (hunter and hunter.get("active")) else "Normal"
+                push_log(f"  🚫 Skip (blocked country): {details.get('title', app_id)}")
+                continue
 
-    # ── Step 3: parallel detail fetch in batches of 30 ───────────────────────
-    BATCH = 30
-    WORKERS = 10
+            email = (
+                extract_email(details.get("developerEmail", ""))
+                or extract_email(details.get("privacyPolicy", ""))
+                or extract_email(details.get("description", ""))
+                or extract_email(details.get("recentChanges", ""))
+            )
+            if not email:
+                global_seen_ids.add(app_id)
+                continue
 
-    for batch_start in range(0, len(candidates), BATCH):
-        if stop_event.is_set():
-            break
+            # ── Email dedup: check both in-memory and sheet memory ─────────────
+            if email in global_seen_emails or is_duplicate_in_sheet("", email):
+                global_seen_ids.add(app_id)
+                push_log(f"  ⏭️  Skip (email dup): {email}")
+                continue
 
-        batch_ids = [
-            aid for aid, _ in candidates[batch_start: batch_start + BATCH]
-            if aid not in global_seen_ids
-        ]
-
-        with ThreadPoolExecutor(max_workers=WORKERS) as ex:
-            futures = {
-                ex.submit(_qualify_one, aid, keyword, hunter): aid
-                for aid in batch_ids
+            lead = {
+                "app_id":      app_id,
+                "app_name":    details.get("title", ""),
+                "developer":   details.get("developer", ""),
+                "email":       email,
+                "category":    details.get("genre", ""),
+                "installs":    installs,
+                "score":       score,
+                "description": (details.get("description") or "")[:300],
+                "url":         f"https://play.google.com/store/apps/details?id={app_id}",
+                "icon":        details.get("icon", ""),
+                "keyword":     keyword,
+                "scraped_at":  time.strftime("%Y-%m-%d %H:%M:%S"),
+                "email_sent":  False,
             }
-            for fut in as_completed(futures):
-                aid  = futures[fut]
-                lead = None
-                try:
-                    lead = fut.result()
-                except Exception:
-                    pass
+            leads.append(lead)
+            global_seen_ids.add(app_id)
+            global_seen_emails.add(email)
+            # Register in sheet memory so same run won't add again
+            register_in_sheet_memory(app_id, email)
 
-                global_seen_ids.add(aid)
+            score_str = f"{score:.1f}★" if score else "new (no rating)"
+            push_log(f"  ✅ {lead['app_name']} | {installs:,} installs | {score_str} | {email}")
+            time.sleep(0.25)
 
-                if not lead:
-                    continue
-
-                email = lead["email"]
-                if email in global_seen_emails or is_duplicate_in_sheet("", email):
-                    push_log(f"  ⏭️  Skip (email dup): {email}")
-                    continue
-
-                leads.append(lead)
-                global_seen_emails.add(email)
-                register_in_sheet_memory(aid, email)
-
-                score_str = f"{lead['score']:.1f}★" if lead["score"] else "new (no rating)"
-                push_log(
-                    f"  ✅ [{mode_label}] {lead['app_name']} | "
-                    f"{lead['installs']:,} installs | {score_str} | {email}"
-                )
-
-        push_log(f"  Batch {batch_start//BATCH + 1} done | leads so far: {len(leads)}")
-        time.sleep(random.uniform(0.4, 1.0))
+        push_log(f"  [{country}] done. Leads so far: {len(leads)}")
+        time.sleep(0.5)
 
     push_log(f"  📦 {len(leads)} new leads from '{keyword}'")
     sheet_log_keyword(keyword, len(leads))
     return leads
 
 # ── Email send ────────────────────────────────────────────────────────────────
-def send_email(lead: dict, subject: str, body: str) -> bool:
+def send_email(lead: dict, subject: str, body: str, html_body: str = "", unsubscribe_url: str = "") -> bool:
+    """Send email with plain text + minimal HTML (for unsubscribe button)."""
     url = get_cfg("EMAIL_SCRIPT_URL")
     if not url or not lead.get("email"):
         push_log("EMAIL_SCRIPT_URL not set or no email")
         return False
+    payload = {
+        "to":              lead["email"],
+        "subject":         subject,
+        "body":            body,
+        "from_name":       get_cfg("SENDER_NAME", ""),
+        "html_body":        html_body or body,
+        "unsubscribe_url": unsubscribe_url,
+    }
     try:
-        r = requests.post(url, json={
-            "to":      lead["email"],
-            "subject": subject,
-            "body":    body,
-        }, timeout=30)
+        r = requests.post(url, json=payload, timeout=30)
         result = r.json() if r.text else {}
         if result.get("status") == "ok":
             push_log(f"  📧 Sent: {lead['email']} ({lead['app_name']})")
@@ -733,6 +558,74 @@ def send_email(lead: dict, subject: str, body: str) -> bool:
     except Exception as e:
         push_log(f"  ❌ Email error: {e}")
         return False
+
+# ── Email tracking helpers ──────────────────────────────────────────────────────
+def generate_tracking_id() -> str:
+    return str(uuid.uuid4())
+
+def generate_unsubscribe_token(tracking_id: str, email: str) -> str:
+    salt = get_cfg("GROQ_API_KEY", "playlead_tracking")
+    return hashlib.sha256(f"{tracking_id}:{email}:{salt}".encode()).hexdigest()[:16]
+
+def log_email_to_db(tracking_id, lead, subject, body, status="sent", error_msg=""):
+    conn = get_db()
+    try:
+        conn.execute("""
+            INSERT INTO email_log 
+            (tracking_id, app_id, app_name, developer, email, subject, body,
+             status, sent_at, unsubscribe_token, keyword, category, is_failed, error_msg)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (tracking_id, lead.get("app_id", ""), lead.get("app_name", ""),
+              lead.get("developer", ""), lead.get("email", ""), subject, body,
+              status, time.strftime("%Y-%m-%d %H:%M:%S"),
+              generate_unsubscribe_token(tracking_id, lead.get("email", "")),
+              lead.get("keyword", ""), lead.get("category", ""),
+              1 if status == "failed" else 0, error_msg))
+        conn.commit()
+    except Exception as e:
+        log.warning(f"log_email_to_db: {e}")
+    finally:
+        conn.close()
+
+def send_email_tracked(lead, subject, body, base_url="") -> bool:
+    """Send email with clickable unsubscribe button + minimal HTML."""
+    tracking_id = generate_tracking_id()
+    token = generate_unsubscribe_token(tracking_id, lead.get("email", ""))
+
+    if not base_url:
+        base_url = get_cfg("APP_URL", "").rstrip("/")
+
+    uns_url = f"{base_url}/api/unsubscribe?email={lead.get('email','')}&token={token}"
+    body = body.replace("{{unsubscribe_url}}", uns_url)
+    body_aug = body.rstrip() + f"\n\n---\n[Unsubscribe] {uns_url}"
+
+    # Minimal HTML — just <br> for line breaks + button at bottom (no <p> tags)
+    import html as htmlmod
+    esc_body = htmlmod.escape(body.rstrip())
+    html_lines = esc_body.replace("\n", "<br>")
+    btn = f'<a href="{htmlmod.escape(uns_url)}" style="display:inline-block;padding:7px 16px;background:#f2f2f2;border:1px solid #ccc;border-radius:4px;color:#333;text-decoration:none;font-size:12px;">Unsubscribe</a>'
+    html_body = f"""<!DOCTYPE html>
+<html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;line-height:1.5;white-space:pre-wrap;margin:0;padding:0;">
+{html_lines}
+<br><br>
+{btn}
+</body></html>"""
+
+    log_email_to_db(tracking_id, lead, subject, body_aug, "sent")
+
+    ok = send_email(lead, subject, body_aug, html_body, uns_url)
+
+    if not ok:
+        conn = get_db()
+        try:
+            conn.execute("UPDATE email_log SET status='failed', is_failed=1 WHERE tracking_id=?", (tracking_id,))
+            conn.commit()
+        except Exception as e:
+            log.warning(f"send_email_tracked (fail update): {e}")
+        finally:
+            conn.close()
+
+    return ok
 
 # ── Master automation ─────────────────────────────────────────────────────────
 def run_automation(initial_kw: str, target: int, hunter: dict = None):
@@ -801,7 +694,7 @@ def run_automation(initial_kw: str, target: int, hunter: dict = None):
         push_log(f"  🤖 AI writing email for {lead['app_name']} …")
         subject, body = ai_gen_email(lead, base_subject, base_body)
 
-        ok = send_email(lead, subject, body)
+        ok = send_email_tracked(lead, subject, body, get_cfg("APP_URL", ""))
         lead["email_sent"] = ok
         with state_lock:
             if ok:
@@ -839,7 +732,7 @@ def run_send_pending(leads: list):
             break
         push_log(f"  🤖 AI writing email for {lead.get('app_name','')} …")
         subject, body = ai_gen_email(lead, base_subject, base_body)
-        ok = send_email(lead, subject, body)
+        ok = send_email_tracked(lead, subject, body, get_cfg("APP_URL", ""))
         if ok:
             sent += 1
             sheet_mark_sent(lead["app_id"], lead["email"], lead["app_name"])
@@ -878,6 +771,7 @@ def api_start():
         "SENDER_COMPANY":      data.get("sender_company")   or os.environ.get("SENDER_COMPANY", ""),
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
+        "APP_URL":             request.host_url.rstrip("/"),
     }
     # Reset in-memory dedup for this new run (sheet memory is re-loaded fresh)
     global global_seen_ids, global_seen_emails
@@ -942,6 +836,7 @@ def api_send_pending():
         "EMAIL_SUBJECT":       data.get("email_subject")    or os.environ.get("EMAIL_SUBJECT", ""),
         "EMAIL_BODY":          data.get("email_body")       or os.environ.get("EMAIL_BODY", ""),
         "APPS_SCRIPT_WEB_URL": data.get("sheet_url")        or os.environ.get("APPS_SCRIPT_WEB_URL", ""),
+        "APP_URL":             request.host_url.rstrip("/"),
     }
     threading.Thread(target=run_send_pending, args=(leads,), daemon=True).start()
     return jsonify({"ok": True, "count": len(leads)})
@@ -977,7 +872,13 @@ def api_spam_test():
     base_body    = get_cfg("EMAIL_BODY")    or DEFAULT_EMAIL_BODY
     subject, body = ai_gen_email(sample, base_subject, base_body)
     try:
-        r = requests.post(url, json={"to": test_to, "subject": subject, "body": body}, timeout=30)
+        import html as htmlmod
+        html_btn = f'<a href="{htmlmod.escape(get_cfg("APP_URL", "#"))}" style="display:inline-block;padding:7px 16px;background:#f2f2f2;border:1px solid #ccc;border-radius:4px;color:#333;text-decoration:none;font-size:12px;">Unsubscribe</a>'
+        html_body = "<br>".join(htmlmod.escape(line) for line in body.split("\n")) + "<br><br>" + html_btn
+        r = requests.post(url, json={
+            "to": test_to, "subject": subject, "body": body,
+            "html_body": html_body, "from_name": get_cfg("SENDER_NAME", ""),
+        }, timeout=30)
         result = r.json() if r.text else {}
         if result.get("status") == "ok":
             return jsonify({"ok": True, "msg": f"Test sent to {test_to}", "subject": subject, "body": body})
@@ -1011,6 +912,188 @@ def api_sheet_memory_status():
             "ids_count": len(sheet_memory_ids),
             "emails_count": len(sheet_memory_emails),
         })
+
+# ── Email Analytics Endpoints ──────────────────────────────────────────────────
+@application.route("/api/track/open")
+def api_track_open():
+    """Tracking pixel endpoint — logs open event."""
+    tid = request.args.get("tid", "")
+    if not tid:
+        return "", 204
+    conn = get_db()
+    try:
+        conn.execute("""
+            UPDATE email_log SET
+                opened_count = opened_count + 1,
+                opened_at = COALESCE(opened_at, ?),
+                status = CASE WHEN status='sent' THEN 'opened' ELSE status END
+            WHERE tracking_id=?
+        """, (time.strftime("%Y-%m-%d %H:%M:%S"), tid))
+        conn.commit()
+    except Exception as e:
+        log.warning(f"track/open: {e}")
+    finally:
+        conn.close()
+    # 1x1 transparent GIF
+    return b"GIF89a\x01\x00\x01\x00\x80\x01\x00\xff\xff\xff\x00\x00\x00!\xf9\x04\x01\n\x00\x01\x00,\x00\x00\x00\x00\x01\x00\x01\x00\x00\x02\x02L\x01\x00;", 200, {"Content-Type": "image/gif"}
+
+@application.route("/api/unsubscribe")
+def api_unsubscribe():
+    """Handle unsubscribe link click."""
+    email = request.args.get("email", "")
+    token = request.args.get("token", "")
+    if not email or not token:
+        return "<html><body style='font-family:sans-serif;text-align:center;padding:60px 20px;background:#0a0a0f;color:#f0e6d0;'><h2>Invalid Link</h2><p>This unsubscribe link is invalid.</p></body></html>", 400
+    conn = get_db()
+    try:
+        conn.execute("UPDATE email_log SET unsubscribed=1, status='unsubscribed' WHERE email=? AND unsubscribe_token=?", (email, token))
+        conn.commit()
+    except Exception as e:
+        log.warning(f"unsubscribe: {e}")
+    finally:
+        conn.close()
+    return "<html><body style='font-family:sans-serif;text-align:center;padding:60px 20px;background:#0a0a0f;color:#f0e6d0;'><h2 style='color:#4ade80;'>✅ Unsubscribed</h2><p style='color:#8b8ba8;'>You have been unsubscribed from future emails.</p></body></html>"
+
+@application.route("/api/analytics/overview")
+def api_analytics_overview():
+    """Return aggregate email stats from SQLite."""
+    conn = get_db()
+    try:
+        cur = conn.execute("""
+            SELECT
+                COUNT(*) as total,
+                IFNULL(SUM(CASE WHEN status='sent' AND is_failed=0 THEN 1 ELSE 0 END), 0) as sent,
+                IFNULL(SUM(CASE WHEN status='opened' THEN 1 ELSE 0 END), 0) as opened,
+                IFNULL(SUM(CASE WHEN status='failed' OR is_failed=1 THEN 1 ELSE 0 END), 0) as failed,
+                IFNULL(SUM(CASE WHEN status='bounced' THEN 1 ELSE 0 END), 0) as bounced,
+                IFNULL(SUM(CASE WHEN status='spam' THEN 1 ELSE 0 END), 0) as spam,
+                IFNULL(SUM(CASE WHEN unsubscribed=1 THEN 1 ELSE 0 END), 0) as unsubscribed,
+                IFNULL(SUM(CASE WHEN status='sent' AND is_failed=0 AND opened_count=0 THEN 1 ELSE 0 END), 0) as pending_open
+            FROM email_log
+        """)
+        row = dict(cur.fetchone())
+        conn.close()
+        return jsonify({"ok": True, "data": row})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@application.route("/api/analytics/logs")
+def api_analytics_logs():
+    """Return filtered, paginated email logs."""
+    page = int(request.args.get("page", 1))
+    limit = int(request.args.get("limit", 50))
+    offset = (page - 1) * limit
+    status = request.args.get("status", "")
+    keyword = request.args.get("keyword", "")
+    category = request.args.get("category", "")
+    q = request.args.get("q", "")
+    date_from = request.args.get("date_from", "")
+    date_to = request.args.get("date_to", "")
+
+    where = []
+    params = []
+
+    if status and status != "all":
+        if status == "failed":
+            where.append("(is_failed=1 OR status=?)")
+            params.append("failed")
+        else:
+            where.append("status=?")
+            params.append(status)
+    if keyword:
+        where.append("keyword LIKE ?")
+        params.append(f"%{keyword}%")
+    if category:
+        where.append("category=?")
+        params.append(category)
+    if q:
+        where.append("(app_name LIKE ? OR email LIKE ? OR subject LIKE ?)")
+        params.extend([f"%{q}%", f"%{q}%", f"%{q}%"])
+    if date_from:
+        where.append("sent_at >= ?")
+        params.append(date_from)
+    if date_to:
+        where.append("sent_at <= ?")
+        params.append(date_to)
+
+    where_sql = " AND ".join(where) if where else "1=1"
+    fmt = request.args.get("format", "")
+
+    conn = get_db()
+    try:
+        if fmt == "csv":
+            cur = conn.execute(f"SELECT * FROM email_log WHERE {where_sql} ORDER BY id DESC", params)
+            rows = [dict(r) for r in cur.fetchall()]
+            conn.close()
+            import csv, io
+            out = io.StringIO()
+            w = csv.DictWriter(out, fieldnames=["id","tracking_id","app_id","app_name","developer","email","subject","status","sent_at","opened_at","opened_count","keyword","category","unsubscribed"])
+            w.writeheader()
+            for r in rows:
+                del r["body"]; del r["unsubscribe_token"]; del r["is_failed"]; del r["error_msg"]; del r["delivery_detail"]
+                w.writerow(r)
+            return out.getvalue(), 200, {"Content-Type": "text/csv", "Content-Disposition": "attachment; filename=email_log.csv"}
+
+        cur = conn.execute(f"SELECT COUNT(*) as cnt FROM email_log WHERE {where_sql}", params)
+        total = dict(cur.fetchone())["cnt"]
+
+        cur = conn.execute(f"""
+            SELECT id, tracking_id, app_name, email, subject, status,
+                   sent_at, opened_at, opened_count, unsubscribed, keyword, category
+            FROM email_log WHERE {where_sql}
+            ORDER BY id DESC LIMIT ? OFFSET ?
+        """, params + [limit, offset])
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return jsonify({"ok": True, "data": rows, "total": total, "page": page, "limit": limit})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@application.route("/api/analytics/email/<tracking_id>")
+def api_analytics_email(tracking_id):
+    """Return single email detail."""
+    conn = get_db()
+    try:
+        cur = conn.execute("SELECT * FROM email_log WHERE tracking_id=?", (tracking_id,))
+        row = cur.fetchone()
+        conn.close()
+        if not row:
+            return jsonify({"ok": False, "error": "Not found"}), 404
+        return jsonify({"ok": True, "data": dict(row)})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@application.route("/api/analytics/update_status", methods=["POST"])
+def api_analytics_update_status():
+    """Manually update email status (for user corrections)."""
+    data = request.get_json(silent=True) or {}
+    tid = data.get("tracking_id", "")
+    new_status = data.get("status", "")
+    if not tid or not new_status:
+        return jsonify({"ok": False, "error": "tracking_id and status required"}), 400
+    valid = {"sent", "opened", "failed", "bounced", "spam", "unsubscribed", "delivered"}
+    if new_status not in valid:
+        return jsonify({"ok": False, "error": f"Invalid status. Valid: {valid}"}), 400
+    conn = get_db()
+    try:
+        conn.execute("UPDATE email_log SET status=? WHERE tracking_id=?", (new_status, tid))
+        conn.commit()
+        conn.close()
+        return jsonify({"ok": True})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
+
+@application.route("/api/analytics/categories")
+def api_analytics_categories():
+    """Return email category breakdown from SQLite."""
+    conn = get_db()
+    try:
+        cur = conn.execute("SELECT category, COUNT(*) as cnt FROM email_log WHERE category != '' GROUP BY category ORDER BY cnt DESC")
+        rows = [dict(r) for r in cur.fetchall()]
+        conn.close()
+        return jsonify({"ok": True, "data": rows})
+    except Exception as e:
+        return jsonify({"ok": False, "error": str(e)}), 500
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
