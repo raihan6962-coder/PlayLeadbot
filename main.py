@@ -301,64 +301,10 @@ def ai_gen_keywords(original: str, used: list) -> list:
         push_log(f"AI keyword error: {e}")
         return []
 
-# ── AI email generation per lead ──────────────────────────────────────────────
+# ── Email generation (template only — no AI writing) ──────────────────────────
 def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, str]:
-    """Generate a natural, unique email that avoids spam filters."""
-    key = get_cfg("GROQ_API_KEY")
-    sender_name    = get_cfg("SENDER_NAME", "Your Name")
-    sender_company = get_cfg("SENDER_COMPANY", "Your Company")
-
-    if not key:
-        subject = fill_template(base_subject, lead)
-        body    = fill_template(base_body, lead)
-        return subject, body
-
-    client = Groq(api_key=key)
-    score_info   = f"{lead['score']:.1f} stars" if lead.get("score") else "no ratings yet (brand new)"
-    install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
-
-    prompt = f"""You are writing a short personal email from {sender_name} at {sender_company} to a mobile app developer. Write in a warm, natural, human tone — like a real person reaching out, NOT a sales pitch.
-
-CONTEXT ABOUT THE APP:
-- App Name: {lead.get('app_name', '')}
-- Developer: {lead.get('developer', '')}
-- Category: {lead.get('category', '')}
-- Installs: {install_info}
-- Rating: {score_info}
-- Play Store URL: {lead.get('url', '')}
-
-WRITING RULES:
-1. Write a SHORT email (3-4 short paragraphs max). First line goes in subject.
-2. Subject line: a simple friendly question — NO caps, NO exclamation, NO sales words
-3. Body: sound like a real curious human, not a marketing team. Mention the app naturally.
-4. DO NOT use these words EVER: "service", "recovery", "negative reviews", "reputation", "rating issues", "clean up", "protect", "professional", "solution", "help you"
-5. Do NOT talk about bad reviews or problems with their app. Be positive.
-6. Keep it casual — like "Hey, came across your app and had a thought I wanted to share..."
-7. End with a soft CTA like "Let me know if you're open to chatting sometime."
-8. Sign off with just: 
-{sender_name}
-{sender_company}
-9. Return ONLY JSON: {{"subject": "...", "body": "..."}}
-10. Every email MUST be unique — different opening, different angle, different phrasing.
-
-No markdown, no explanation, just the JSON object."""
-
-    try:
-        resp = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.9, max_tokens=500
-        )
-        raw = resp.choices[0].message.content.strip()
-        raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
-        data = json.loads(raw)
-        subject = data.get("subject") or fill_template(base_subject, lead)
-        body    = data.get("body")    or fill_template(base_body, lead)
-        body = body.replace("\\n", "\n")
-        return subject, body
-    except Exception as e:
-        push_log(f"  AI email error (using template fallback): {e}")
-        return fill_template(base_subject, lead), fill_template(base_body, lead)
+    """Use template directly — no AI rewriting."""
+    return fill_template(base_subject, lead), fill_template(base_body, lead)
 
 # ── Template fill ─────────────────────────────────────────────────────────────
 DEFAULT_EMAIL_SUBJECT = "Quick question about {{app_name}}"
