@@ -1005,7 +1005,15 @@ tbody tr:hover td { background: #13131c; }
             <div class="code-block" id="emailCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    GmailApp.sendEmail(data.to, data.subject, data.body);
+    var opts = {
+      htmlBody: data.html_body || data.body,
+      name: data.from_name || 'Your Name',
+      headers: {
+        'List-Unsubscribe': '&lt;' + (data.unsubscribe_url || '') + '&gt;',
+        'Precedence': 'bulk'
+      }
+    };
+    GmailApp.sendEmail(data.to, data.subject, data.body, opts);
     return ContentService
       .createTextOutput(JSON.stringify({status: "ok"}))
       .setMimeType(ContentService.MimeType.JSON);
@@ -1198,14 +1206,24 @@ const pgTitles = {
   spamtest:   '🧪 <span class="hi">Spam Test</span>',
   setup:      '⚙️ <span class="hi">Setup & Config</span>',
 };
+let anPollTmr = null;
 function showSec(name, el) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
   document.getElementById('sec-'+name).classList.add('active');
   el.classList.add('active');
   document.getElementById('pgTitle').innerHTML = pgTitles[name];
-  if(name==='analytics') renderAnalytics();
+  if(name==='analytics') { renderAnalytics(); startAnPoll(); }
+  else { stopAnPoll(); }
   if(name==='spamtest')  updateLivePreview();
+}
+function startAnPoll() {
+  stopAnPoll();
+  refreshEmailAnalytics();
+  anPollTmr = setInterval(refreshEmailAnalytics, 5000);
+}
+function stopAnPoll() {
+  if(anPollTmr) { clearInterval(anPollTmr); anPollTmr = null; }
 }
 
 // ════ HUNTER MODE ════

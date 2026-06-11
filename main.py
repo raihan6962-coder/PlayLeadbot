@@ -537,18 +537,62 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
     sheet_log_keyword(keyword, len(leads))
     return leads
 
+# ── HTML email body builder ─────────────────────────────────────────────────────
+def text_to_html(plain_text: str, unsubscribe_url: str = "") -> str:
+    """Convert plain text to clean HTML email with unsubscribe footer."""
+    import html as htmlmod
+    lines = plain_text.strip().split("\n")
+    paragraphs = []
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            paragraphs.append("")
+        else:
+            escaped = htmlmod.escape(stripped)
+            paragraphs.append(escaped)
+
+    body_html = "".join(f"<p style=\"margin:0 0 12px 0;font-size:14px;line-height:1.6;color:#333333;\">{p}</p>" if p else "<p style=\"margin:0 0 12px 0;\">&nbsp;</p>" for p in paragraphs)
+
+    footer = ""
+    if unsubscribe_url:
+        footer = f"""
+<hr style="border:none;border-top:1px solid #eeeeee;margin:24px 0 16px 0;">
+<p style="font-size:12px;color:#999999;margin:0;">
+  <a href="{htmlmod.escape(unsubscribe_url)}" style="color:#888888;text-decoration:underline;">Unsubscribe</a> from future emails.
+</p>"""
+
+    return f"""<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background-color:#f9f9f9;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="width:100%;"><tr><td align="center" style="padding:24px 12px;">
+<table role="presentation" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:6px;">
+<tr><td style="padding:32px 28px;font-family:Arial,Helvetica,sans-serif;">
+{body_html}
+{footer}
+</td></tr>
+<tr><td style="padding:16px 28px;background-color:#f5f5f5;border-radius:0 0 6px 6px;font-family:Arial,Helvetica,sans-serif;font-size:11px;color:#aaaaaa;text-align:center;">
+  This email was sent by {htmlmod.escape(get_cfg('SENDER_COMPANY', 'PlayLead'))}.<br>
+  If you no longer wish to receive these emails, <a href="{htmlmod.escape(unsubscribe_url)}" style="color:#888888;">unsubscribe here</a>.
+</td></tr>
+</table></td></tr></table>
+</body></html>"""
+
 # ── Email send ────────────────────────────────────────────────────────────────
-def send_email(lead: dict, subject: str, body: str) -> bool:
+def send_email(lead: dict, subject: str, body: str, html_body: str = "", unsubscribe_url: str = "") -> bool:
     url = get_cfg("EMAIL_SCRIPT_URL")
     if not url or not lead.get("email"):
         push_log("EMAIL_SCRIPT_URL not set or no email")
         return False
+    payload = {
+        "to":             lead["email"],
+        "subject":        subject,
+        "body":           body,
+        "from_name":      get_cfg("SENDER_NAME", "Your Name"),
+        "html_body":      html_body or body,
+        "unsubscribe_url": unsubscribe_url,
+    }
     try:
-        r = requests.post(url, json={
-            "to":      lead["email"],
-            "subject": subject,
-            "body":    body,
-        }, timeout=30)
+        r = requests.post(url, json=payload, timeout=30)
         result = r.json() if r.text else {}
         if result.get("status") == "ok":
             push_log(f"  📧 Sent: {lead['email']} ({lead['app_name']})")
@@ -588,7 +632,7 @@ def log_email_to_db(tracking_id, lead, subject, body, status="sent", error_msg="
         conn.close()
 
 def send_email_tracked(lead, subject, body, base_url="") -> bool:
-    """Send email with unsubscribe link and DB logging (no tracking pixel to avoid spam)."""
+    """Send HTML email with unsubscribe link, List-Unsubscribe header, and DB logging."""
     tracking_id = generate_tracking_id()
     token = generate_unsubscribe_token(tracking_id, lead.get("email", ""))
 
@@ -597,11 +641,13 @@ def send_email_tracked(lead, subject, body, base_url="") -> bool:
 
     uns_url = f"{base_url}/api/unsubscribe?email={lead.get('email','')}&token={token}"
     body = body.replace("{{unsubscribe_url}}", uns_url)
-    body_aug = body.rstrip() + f"\n\n---\nIf you don't want to receive further emails, unsubscribe here: {uns_url}"
+    body_aug = body.rstrip() + f"\n\n---\nTo unsubscribe, visit: {uns_url}"
+
+    html_body = text_to_html(body, uns_url)
 
     log_email_to_db(tracking_id, lead, subject, body_aug, "sent")
 
-    ok = send_email(lead, subject, body_aug)
+    ok = send_email(lead, subject, body_aug, html_body, uns_url)
 
     if not ok:
         conn = get_db()
