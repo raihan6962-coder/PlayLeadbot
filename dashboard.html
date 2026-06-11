@@ -1008,9 +1008,12 @@ tbody tr:hover td { background: #13131c; }
     var opts = {
       htmlBody: data.html_body || data.body,
       name: data.from_name || '',
+      replyTo: Session.getActiveUser().getEmail(),
       headers: {
         'List-Unsubscribe': '<' + (data.unsubscribe_url || '') + '>',
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click'
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
+        'X-Mailer': 'Mail',
+        'Precedence': 'bulk'
       }
     };
     GmailApp.sendEmail(data.to, data.subject, data.body, opts);
@@ -1066,19 +1069,17 @@ let cfg = {};
 
 const DEFAULT_SUBJECT = 'Quick question about {{app_name}}';
 const DEFAULT_BODY =
-`Hi {{developer}} team,
+`Hi {{developer}},
 
-I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
+I came across {{app_name}} on Play Store — looks like a really interesting project.
 
-I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
+I've been following apps in the {{category}} space and had a thought about something that might be useful for {{app_name}}.
 
-Would you be open to a quick 15-minute chat this week?
+Let me know if you have a few minutes to chat this week?
 
-Best regards,
+Best,
 {{sender_name}}
-{{sender_company}}
-
-App: {{url}}`;
+{{sender_company}}`;
 
 function loadCfg() {
   try { cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) { cfg={}; }

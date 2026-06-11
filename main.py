@@ -303,7 +303,7 @@ def ai_gen_keywords(original: str, used: list) -> list:
 
 # ── AI email generation per lead ──────────────────────────────────────────────
 def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, str]:
-    """Generate a personalized email keeping the template structure intact."""
+    """Generate a natural, unique email that avoids spam filters."""
     key = get_cfg("GROQ_API_KEY")
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
     sender_company = get_cfg("SENDER_COMPANY", "Your Company")
@@ -317,14 +317,9 @@ def ai_gen_email(lead: dict, base_subject: str, base_body: str) -> tuple[str, st
     score_info   = f"{lead['score']:.1f} stars" if lead.get("score") else "no ratings yet (brand new)"
     install_info = f"{lead['installs']:,} installs" if lead.get("installs") else "just launched"
 
-    prompt = f"""You are a cold email personalizer. Your only job is to fill in the base template with the real app details — keeping the structure and wording almost identical.
+    prompt = f"""You are writing a short personal email from {sender_name} at {sender_company} to a mobile app developer. Write in a warm, natural, human tone — like a real person reaching out, NOT a sales pitch.
 
-BASE TEMPLATE (follow this EXACTLY):
-Subject: {base_subject}
-Body:
-{base_body}
-
-APP DETAILS:
+CONTEXT ABOUT THE APP:
 - App Name: {lead.get('app_name', '')}
 - Developer: {lead.get('developer', '')}
 - Category: {lead.get('category', '')}
@@ -332,25 +327,27 @@ APP DETAILS:
 - Rating: {score_info}
 - Play Store URL: {lead.get('url', '')}
 
-SENDER:
-- Name: {sender_name}
-- Company: {sender_company}
+WRITING RULES:
+1. Write a SHORT email (3-4 short paragraphs max). First line goes in subject.
+2. Subject line: a simple friendly question — NO caps, NO exclamation, NO sales words
+3. Body: sound like a real curious human, not a marketing team. Mention the app naturally.
+4. DO NOT use these words EVER: "service", "recovery", "negative reviews", "reputation", "rating issues", "clean up", "protect", "professional", "solution", "help you"
+5. Do NOT talk about bad reviews or problems with their app. Be positive.
+6. Keep it casual — like "Hey, came across your app and had a thought I wanted to share..."
+7. End with a soft CTA like "Let me know if you're open to chatting sometime."
+8. Sign off with just: 
+{sender_name}
+{sender_company}
+9. Return ONLY JSON: {{"subject": "...", "body": "..."}}
+10. Every email MUST be unique — different opening, different angle, different phrasing.
 
-STRICT RULES:
-1. Copy the template EXACTLY — same structure, same sentences, same flow
-2. Only replace placeholder values (app name, developer name, installs, rating, url) with the real app details above
-3. You may change at most 2-3 words in the entire body to naturally fit this specific app — nothing more
-4. Do NOT rewrite sentences, do NOT add new sentences, do NOT remove any sentences
-5. Do NOT change the greeting format, CTA, or sign-off
-6. CRITICAL: Preserve every line break and blank line from the template exactly as-is. Each paragraph must stay as a separate paragraph. Use \\n for newlines inside the JSON string.
-7. Return ONLY valid JSON: {{"subject": "...", "body": "..."}}
 No markdown, no explanation, just the JSON object."""
 
     try:
         resp = client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[{"role": "user", "content": prompt}],
-            temperature=0.3, max_tokens=500
+            temperature=0.9, max_tokens=500
         )
         raw = resp.choices[0].message.content.strip()
         raw = re.sub(r"```[a-z]*", "", raw).replace("```", "").strip()
@@ -365,19 +362,17 @@ No markdown, no explanation, just the JSON object."""
 
 # ── Template fill ─────────────────────────────────────────────────────────────
 DEFAULT_EMAIL_SUBJECT = "Quick question about {{app_name}}"
-DEFAULT_EMAIL_BODY = """Hi {{developer}} team,
+DEFAULT_EMAIL_BODY = """Hi {{developer}},
 
-I came across {{app_name}} on Google Play and noticed it's getting some negative reviews lately — which is really common for newer apps still finding their audience.
+I came across {{app_name}} on Play Store — looks like a really interesting project.
 
-I run a Play Store review recovery service that helps developers like you quickly clean up rating issues, respond to bad reviews professionally, and protect your app's reputation.
+I've been following apps in the {{category}} space and had a thought about something that might be useful for {{app_name}}.
 
-Would you be open to a quick 15-minute chat this week?
+Let me know if you have a few minutes to chat this week?
 
-Best regards,
+Best,
 {{sender_name}}
-{{sender_company}}
-
-App: {{url}}"""
+{{sender_company}}"""
 
 def fill_template(tpl: str, lead: dict) -> str:
     sender_name    = get_cfg("SENDER_NAME", "Your Name")
