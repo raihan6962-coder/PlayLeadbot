@@ -282,9 +282,17 @@ def ai_gen_keywords(original: str, used: list) -> list:
         f"You are a Google Play Store keyword expert.\n"
         f"Original keyword: '{original}'\n"
         f"Already used: {', '.join(used) if used else 'none'}\n"
-        f"Generate 8 NEW semantically similar Play Store search keywords "
-        f"that would find small/new apps in the same niche. "
-        f"Return ONLY a JSON array of strings, nothing else."
+        f"Generate 8 NEW Play Store search keywords related to '{original}' "
+        f"that will find apps NEEDING user reviews and social proof. "
+        f"Target apps in these categories: social, communication, productivity, lifestyle, "
+        f"education, entertainment, health-fitness, business, tools, communities, content creation.\n\n"
+        f"AVOID keywords leading to apps that don't need reviews like: "
+        f"calculator, converter, scanner, keyboard, launcher, wallpaper, "
+        f"ringtone, flash, torch, weather widget, barcode, file manager, clock, notes.\n\n"
+        f"PREFER keywords that find: new app launches, social/community apps, "
+        f"content creation tools, niche communities, collaborative platforms, "
+        f"learning platforms, fitness trackers with community.\n\n"
+        f"Return ONLY a JSON array of 8 strings."
     )
     try:
         resp = client.chat.completions.create(
@@ -347,6 +355,35 @@ def extract_email(text):
         return ""
     m = EMAIL_RE.search(str(text))
     return m.group(0) if m else ""
+
+def verify_email(email: str) -> bool:
+    """Check if email is valid format + not disposable + domain resolves."""
+    if not email or not EMAIL_RE.match(email):
+        return False
+    domain = email.split("@")[-1].lower()
+    # Disposable / temporary email domains
+    disposable = {
+        "mailinator.com","guerrillamail.com","sharklasers.com","grr.la",
+        "temp-mail.org","tempmail.org","throwaway.email","yopmail.com",
+        "maildrop.cc","mailnesia.com","getairmail.com","10minutemail.com",
+        "mailcatch.com","spambox.us","trashmail.com","mailexpire.com",
+        "dispostable.com","mailsac.com","tempinbox.com","mailmetrash.com",
+        "emailondeck.com","inboxbear.com","mail-tester.com","burnermail.io",
+        "fakeinbox.com","guerrillamail.org","guerrillamail.net","guerrillamail.biz",
+        "emailtmp.com","mytemp.email","tempemail.net","fakemailgenerator.com",
+        "mailnator.com","maileater.com","mintemail.com","spamgourmet.com",
+        "throwaway.co.in","zippymail.info","mailz.info","thankyou2010.com",
+        "usermail.com","csemail.net","awdmail.com","trash2009.com",
+    }
+    if domain in disposable:
+        return False
+    # Check domain resolves (has some DNS records)
+    try:
+        import socket
+        socket.getaddrinfo(domain, 25, socket.AF_INET, socket.SOCK_STREAM)
+        return True
+    except Exception:
+        return False
 
 def passes_filter(installs: int, score, hunter: dict) -> bool:
     """
@@ -444,6 +481,12 @@ def scrape_keyword(keyword: str, hunter: dict = None) -> list:
             if email in global_seen_emails or is_duplicate_in_sheet("", email):
                 global_seen_ids.add(app_id)
                 push_log(f"  ⏭️  Skip (email dup): {email}")
+                continue
+
+            # ── Email verification (format + MX + not disposable) ──────────
+            if not verify_email(email):
+                global_seen_ids.add(app_id)
+                push_log(f"  🚫 Skip (invalid email): {email}")
                 continue
 
             lead = {
