@@ -24,7 +24,6 @@
   --red:    #f87171;
   --amber:  #fbbf24;
   --blue:   #60a5fa;
-  --purple: #a78bfa;
   --mono:   'DM Mono', monospace;
   --serif:  'Cormorant Garamond', serif;
   --sans:   'Inter', sans-serif;
@@ -80,7 +79,7 @@ body {
 .nav-item .icon { font-size: 14px; width: 18px; text-align: center; }
 .nav-sep { height: 1px; background: var(--border); margin: 10px 6px; }
 
-/* ── SEND PENDING ── */
+/* ── SEND PENDING BUTTON (sidebar, always visible) ── */
 .sidebar-send-pending {
   padding: 10px 12px;
   border-top: 1px solid var(--border);
@@ -134,6 +133,8 @@ body {
   background: var(--card); padding: 6px 14px;
   border-radius: 6px; border: 1px solid var(--border);
 }
+
+/* ── KEEPALIVE BADGE ── */
 .ping-badge {
   font-family: var(--mono); font-size: 10px;
   padding: 5px 10px; border-radius: 5px;
@@ -193,13 +194,10 @@ body {
 .c-green .stat-val { color: var(--green); }
 .c-blue .stat-val  { color: var(--blue); }
 .c-amber .stat-val { color: var(--amber); }
-.c-red .stat-val   { color: var(--red); }
-.c-purple .stat-val { color: var(--purple); }
 
 /* ── GRID ── */
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
 .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
-.grid-4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 14px; }
 
 /* ── PROGRESS ── */
 .prog-row { display: flex; align-items: center; gap: 12px; margin-bottom: 13px; }
@@ -210,8 +208,6 @@ body {
 .pf-green  { background: linear-gradient(90deg, #166534, var(--green)); }
 .pf-blue   { background: linear-gradient(90deg, #1e40af, var(--blue)); }
 .pf-amber  { background: linear-gradient(90deg, #92400e, var(--amber)); }
-.pf-red    { background: linear-gradient(90deg, #7f1d1d, var(--red)); }
-.pf-purple { background: linear-gradient(90deg, #4c1d95, var(--purple)); }
 .prog-pct  { font-family: var(--mono); font-size: 10px; color: var(--slate2); min-width: 36px; text-align: right; }
 
 /* ── PIPELINE ── */
@@ -352,9 +348,8 @@ thead th {
   font-size: 9px; font-weight: 600; letter-spacing: 1.5px;
   text-transform: uppercase; color: var(--slate2);
   background: #0d0d14; border-bottom: 1px solid var(--border);
-  white-space: nowrap; cursor: pointer; user-select: none;
+  white-space: nowrap;
 }
-thead th:hover { color: var(--gold); }
 tbody td {
   padding: 10px 14px; border-bottom: 1px solid #14141e;
   vertical-align: middle; white-space: nowrap;
@@ -369,8 +364,6 @@ tbody tr:hover td { background: #13131c; }
 .bdg-sent  { background: #0a160d; color: var(--green); border: 1px solid #166534; }
 .bdg-pend  { background: #161209; color: var(--gold); border: 1px solid #2a2215; }
 .bdg-cat   { background: #111128; color: var(--blue); border: 1px solid #1e3a8a; }
-.bdg-valid { background: #0a160d; color: var(--green); border: 1px solid #166534; }
-.bdg-invalid { background: #160a0a; color: var(--red); border: 1px solid #7f1d1d; }
 .email-a   { color: var(--gold); text-decoration: none; font-family: var(--mono); font-size: 10.5px; }
 .email-a:hover { text-decoration: underline; }
 .ext-a     { color: var(--slate2); font-size: 14px; text-decoration: none; transition: color .15s; }
@@ -411,7 +404,7 @@ tbody tr:hover td { background: #13131c; }
 }
 .pass-toggle:hover { color: var(--slate); }
 
-/* ── KEEP ALIVE ── */
+/* ── KEEP ALIVE SECTION ── */
 .keepalive-card {
   background: var(--card); border: 1px solid var(--border);
   border-radius: var(--r); padding: 22px; margin-bottom: 14px;
@@ -480,138 +473,14 @@ tbody tr:hover td { background: #13131c; }
 }
 .sheet-link-btn:hover { background: #1e180d; }
 
-/* ── ANALYTICS ADVANCED ── */
-.an-tabs {
-  display: flex; gap: 4px; margin-bottom: 20px;
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: 8px; padding: 5px;
-}
-.an-tab {
-  flex: 1; padding: 8px 14px; border-radius: 5px; cursor: pointer;
-  font-size: 11px; font-weight: 600; text-align: center;
-  color: var(--slate2); transition: all .15s; user-select: none;
-}
-.an-tab:hover { color: var(--cream); }
-.an-tab.active { background: #161209; color: var(--gold2); border: 1px solid #2a2215; }
-
-.an-filters {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 16px 20px; margin-bottom: 18px;
-}
-.an-filter-row {
-  display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end;
-}
-.an-filter-group { display: flex; flex-direction: column; gap: 5px; }
-.an-filter-label { font-size: 9px; letter-spacing: 1.5px; color: var(--slate2); text-transform: uppercase; }
-.an-filter-input {
-  background: #0d0d14; border: 1px solid var(--border);
-  color: var(--cream); font-family: var(--mono); font-size: 11px;
-  padding: 7px 12px; border-radius: 5px; outline: none;
-  transition: border .2s; height: 34px;
-}
-.an-filter-input:focus { border-color: var(--gold); }
-.an-filter-select {
-  background: #0d0d14; border: 1px solid var(--border);
-  color: var(--cream); font-family: var(--mono); font-size: 11px;
-  padding: 7px 10px; border-radius: 5px; outline: none;
-  cursor: pointer; height: 34px;
-}
-.an-filter-select:focus { border-color: var(--gold); }
-
-.an-big-stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px,1fr));
-  gap: 12px; margin-bottom: 18px;
-}
-.an-metric {
-  background: var(--card); border: 1px solid var(--border);
-  border-radius: var(--r); padding: 16px 18px;
-}
-.an-metric-label {
-  font-size: 8px; font-weight: 600; letter-spacing: 2px;
-  text-transform: uppercase; color: var(--slate2); margin-bottom: 8px;
-}
-.an-metric-val {
-  font-family: var(--serif);
-  font-size: 32px; font-weight: 700; line-height: 1;
-}
-.an-metric-sub { font-size: 9px; color: var(--slate2); margin-top: 5px; font-family: var(--mono); }
-.an-metric.m-gold .an-metric-val  { color: var(--gold2); }
-.an-metric.m-green .an-metric-val { color: var(--green); }
-.an-metric.m-blue .an-metric-val  { color: var(--blue); }
-.an-metric.m-red .an-metric-val   { color: var(--red); }
-.an-metric.m-amber .an-metric-val { color: var(--amber); }
-.an-metric.m-purple .an-metric-val { color: var(--purple); }
-.an-metric.m-slate .an-metric-val { color: var(--slate); }
-
-/* validation badge in analytics */
-.val-pill {
-  display: inline-flex; align-items: center; gap: 5px;
-  font-size: 9px; font-weight: 600; padding: 3px 9px; border-radius: 4px;
-}
-.val-pill.ok  { background: #0a160d; color: var(--green); border: 1px solid #166534; }
-.val-pill.bad { background: #160a0a; color: var(--red);   border: 1px solid #7f1d1d; }
-
-/* sort indicator */
-.sort-asc::after  { content: ' ↑'; color: var(--gold); }
-.sort-desc::after { content: ' ↓'; color: var(--gold); }
-
-/* chart bars */
-.mini-chart { display: flex; align-items: flex-end; gap: 4px; height: 60px; padding-top: 8px; }
-.mini-bar {
-  flex: 1; border-radius: 3px 3px 0 0;
-  background: linear-gradient(180deg, var(--gold2), #8b6914);
-  min-height: 4px; transition: height .4s ease;
-  cursor: pointer; position: relative;
-}
-.mini-bar:hover { filter: brightness(1.2); }
-.mini-bar-tip {
-  position: absolute; bottom: calc(100% + 4px); left: 50%; transform: translateX(-50%);
-  background: var(--card2); border: 1px solid var(--border);
-  padding: 3px 7px; border-radius: 4px; font-size: 9px; font-family: var(--mono);
-  color: var(--cream); white-space: nowrap; pointer-events: none;
-  opacity: 0; transition: opacity .15s;
-}
-.mini-bar:hover .mini-bar-tip { opacity: 1; }
-.mini-bar-lbl { font-size: 8px; color: var(--slate2); font-family: var(--mono); text-align: center; margin-top: 4px; }
-
-/* timeline chart row */
-.timeline-row { display: flex; flex-direction: column; gap: 6px; }
-.tl-day {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 10px; font-family: var(--mono);
-}
-.tl-date { color: var(--slate2); min-width: 80px; }
-.tl-track { flex: 1; height: 14px; background: #0d0d14; border-radius: 3px; overflow: hidden; }
-.tl-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg,#8b6914,var(--gold2)); }
-.tl-val { color: var(--gold); min-width: 28px; text-align: right; }
-
-/* rate pill */
-.rate-pill {
-  display: inline-block; padding: 2px 8px; border-radius: 10px;
-  font-size: 10px; font-family: var(--mono); font-weight: 600;
-}
-.rate-pill.good { background: #0a160d; color: var(--green); }
-.rate-pill.mid  { background: #161209; color: var(--amber); }
-.rate-pill.bad  { background: #160a0a; color: var(--red); }
-
-/* loading spinner */
-.spin {
-  display: inline-block; width: 14px; height: 14px;
-  border: 2px solid var(--border2); border-top-color: var(--gold);
-  border-radius: 50%; animation: spin .7s linear infinite;
-}
-@keyframes spin { to { transform: rotate(360deg); } }
-
 ::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 
 @media(max-width:900px){
   .sidebar{display:none;} .main{margin-left:0;}
-  .grid-2,.grid-3,.grid-4,.setup-grid,.form-row{grid-template-columns:1fr;}
+  .grid-2,.grid-3,.setup-grid,.form-row{grid-template-columns:1fr;}
   .stats-grid{grid-template-columns:repeat(2,1fr);}
-  .an-big-stats{grid-template-columns:repeat(2,1fr);}
 }
 </style>
 </head>
@@ -631,6 +500,7 @@ tbody tr:hover td { background: #13131c; }
     <div class="nav-item" onclick="showSec('setup',this)"><span class="icon">⚙️</span>Setup & Config</div>
   </nav>
 
+  <!-- ── ALWAYS-VISIBLE SEND PENDING BUTTON ── -->
   <div class="sidebar-send-pending">
     <button class="btn-send-pending" id="btnSendPending" onclick="sendPending()" title="Send emails to all unsent leads">
       <span>📬 Send Pending</span>
@@ -658,6 +528,7 @@ tbody tr:hover td { background: #13131c; }
 
   <!-- ══ AUTOMATION ══ -->
   <section class="section active" id="sec-automation">
+
     <div class="runner-card">
       <div class="card-head">
         Launch Automation
@@ -700,30 +571,6 @@ tbody tr:hover td { background: #13131c; }
       <div class="stat-card c-amber"><div class="stat-label">Delivery Rate</div><div class="stat-val" id="stRate">—</div><div class="stat-sub">email success %</div></div>
     </div>
 
-    <!-- Email Validation Live Stats -->
-    <div class="stats-grid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));margin-bottom:18px;">
-      <div class="stat-card c-green" style="padding:14px 16px;">
-        <div class="stat-label">Valid Emails</div>
-        <div class="stat-val" style="font-size:30px;" id="ev-valid">0</div>
-        <div class="stat-sub">passed validation</div>
-      </div>
-      <div class="stat-card c-red" style="padding:14px 16px;">
-        <div class="stat-label">Invalid Emails</div>
-        <div class="stat-val" style="font-size:30px;" id="ev-invalid">0</div>
-        <div class="stat-sub">blocked before save</div>
-      </div>
-      <div class="stat-card" style="padding:14px 16px;">
-        <div class="stat-label">Checked</div>
-        <div class="stat-val" style="font-size:30px;color:var(--slate);" id="ev-checked">0</div>
-        <div class="stat-sub">total emails validated</div>
-      </div>
-      <div class="stat-card" style="padding:14px 16px;">
-        <div class="stat-label">Valid Rate</div>
-        <div class="stat-val" style="font-size:30px;color:var(--blue);" id="ev-rate">—</div>
-        <div class="stat-sub">of checked emails</div>
-      </div>
-    </div>
-
     <div class="grid-2">
       <div class="card">
         <div class="card-head">Progress</div>
@@ -744,230 +591,27 @@ tbody tr:hover td { background: #13131c; }
 
   <!-- ══ ANALYTICS ══ -->
   <section class="section" id="sec-analytics">
-
-    <!-- Period tabs -->
-    <div class="an-tabs">
-      <div class="an-tab active" id="ant-session" onclick="setAnTab('session',this)">📍 Session</div>
-      <div class="an-tab" id="ant-daily"   onclick="setAnTab('daily',this)">📅 Daily</div>
-      <div class="an-tab" id="ant-weekly"  onclick="setAnTab('weekly',this)">📆 Weekly</div>
-      <div class="an-tab" id="ant-monthly" onclick="setAnTab('monthly',this)">🗓 Monthly</div>
-      <div class="an-tab" id="ant-custom"  onclick="setAnTab('custom',this)">🔎 Custom Range</div>
+    <div class="stats-grid">
+      <div class="stat-card c-gold"><div class="stat-label">Total Leads</div><div class="stat-val" id="an-l">0</div><div class="stat-sub">collected</div></div>
+      <div class="stat-card c-green"><div class="stat-label">Emails Sent</div><div class="stat-val" id="an-e">0</div><div class="stat-sub">outreach done</div></div>
+      <div class="stat-card c-blue"><div class="stat-label">Categories</div><div class="stat-val" id="an-c">—</div><div class="stat-sub">unique genres</div></div>
+      <div class="stat-card c-amber"><div class="stat-label">Avg Rating</div><div class="stat-val" id="an-s">—</div><div class="stat-sub">Play Store score</div></div>
     </div>
-
-    <!-- Filters -->
-    <div class="an-filters">
-      <div class="card-head" style="margin-bottom:14px;">Filters &amp; Sorting</div>
-      <div class="an-filter-row">
-        <div class="an-filter-group" id="fg-daterange" style="display:none;">
-          <div class="an-filter-label">Date From</div>
-          <input class="an-filter-input" id="an-date-from" type="date"/>
-        </div>
-        <div class="an-filter-group" id="fg-dateto" style="display:none;">
-          <div class="an-filter-label">Date To</div>
-          <input class="an-filter-input" id="an-date-to" type="date"/>
-        </div>
-        <div class="an-filter-group">
-          <div class="an-filter-label">Status</div>
-          <select class="an-filter-select" id="an-f-status">
-            <option value="">All</option>
-            <option value="sent">Sent</option>
-            <option value="pending">Pending</option>
-            <option value="failed">Failed</option>
-          </select>
-        </div>
-        <div class="an-filter-group">
-          <div class="an-filter-label">Email</div>
-          <select class="an-filter-select" id="an-f-email">
-            <option value="">All</option>
-            <option value="valid">Valid Email</option>
-            <option value="invalid">Invalid Email</option>
-          </select>
-        </div>
-        <div class="an-filter-group">
-          <div class="an-filter-label">Industry / Category</div>
-          <select class="an-filter-select" id="an-f-industry">
-            <option value="">All</option>
-          </select>
-        </div>
-        <div class="an-filter-group">
-          <div class="an-filter-label">Lead Source (Keyword)</div>
-          <select class="an-filter-select" id="an-f-kw">
-            <option value="">All</option>
-          </select>
-        </div>
-        <div class="an-filter-group">
-          <div class="an-filter-label">Sort By</div>
-          <select class="an-filter-select" id="an-sort-by">
-            <option value="installs">Installs</option>
-            <option value="score">Rating</option>
-            <option value="email_sent">Email Sent</option>
-            <option value="scraped_at">Scraped At</option>
-          </select>
-        </div>
-        <div class="an-filter-group">
-          <div class="an-filter-label">Order</div>
-          <select class="an-filter-select" id="an-sort-dir">
-            <option value="desc">Descending</option>
-            <option value="asc">Ascending</option>
-          </select>
-        </div>
-        <div class="an-filter-group" style="justify-content:flex-end;">
-          <button class="btn-ghost" onclick="applyAnFilters()" style="height:34px;">Apply Filters</button>
-        </div>
-        <div class="an-filter-group" style="justify-content:flex-end;">
-          <button class="btn-ghost" onclick="resetAnFilters()" style="height:34px;">Reset</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Big metrics row 1 -->
-    <div class="an-big-stats">
-      <div class="an-metric m-gold">
-        <div class="an-metric-label">Leads Generated</div>
-        <div class="an-metric-val" id="am-leads">0</div>
-        <div class="an-metric-sub">total scraped</div>
-      </div>
-      <div class="an-metric m-green">
-        <div class="an-metric-label">Qualified Leads</div>
-        <div class="an-metric-val" id="am-qualified">0</div>
-        <div class="an-metric-sub">passed all filters</div>
-      </div>
-      <div class="an-metric m-green">
-        <div class="an-metric-label">Valid Emails</div>
-        <div class="an-metric-val" id="am-valid-emails">0</div>
-        <div class="an-metric-sub">passed validation</div>
-      </div>
-      <div class="an-metric m-red">
-        <div class="an-metric-label">Invalid Emails</div>
-        <div class="an-metric-val" id="am-invalid-emails">0</div>
-        <div class="an-metric-sub">blocked &amp; skipped</div>
-      </div>
-      <div class="an-metric m-blue">
-        <div class="an-metric-label">Emails Sent</div>
-        <div class="an-metric-val" id="am-sent">0</div>
-        <div class="an-metric-sub">outreach done</div>
-      </div>
-      <div class="an-metric m-amber">
-        <div class="an-metric-label">Pending Emails</div>
-        <div class="an-metric-val" id="am-pending">0</div>
-        <div class="an-metric-sub">not yet sent</div>
-      </div>
-      <div class="an-metric m-red">
-        <div class="an-metric-label">Failed Emails</div>
-        <div class="an-metric-val" id="am-failed">0</div>
-        <div class="an-metric-sub">send errors</div>
-      </div>
-      <div class="an-metric m-purple">
-        <div class="an-metric-label">Skipped Leads</div>
-        <div class="an-metric-val" id="am-skipped">0</div>
-        <div class="an-metric-sub">invalid email / dup</div>
-      </div>
-    </div>
-
-    <!-- Email metrics row 2 -->
-    <div class="an-big-stats" style="margin-bottom:18px;">
-      <div class="an-metric m-blue">
-        <div class="an-metric-label">Delivered</div>
-        <div class="an-metric-val" id="am-delivered">0</div>
-        <div class="an-metric-sub">confirmed delivered</div>
-      </div>
-      <div class="an-metric m-green">
-        <div class="an-metric-label">Delivery Rate</div>
-        <div class="an-metric-val" id="am-delivery-rate">—</div>
-        <div class="an-metric-sub">delivered / sent</div>
-      </div>
-      <div class="an-metric m-amber">
-        <div class="an-metric-label">Emails Opened</div>
-        <div class="an-metric-val" id="am-opened">—</div>
-        <div class="an-metric-sub">tracked opens</div>
-      </div>
-      <div class="an-metric m-green">
-        <div class="an-metric-label">Open Rate</div>
-        <div class="an-metric-val" id="am-open-rate">—</div>
-        <div class="an-metric-sub">opens / delivered</div>
-      </div>
-      <div class="an-metric m-green">
-        <div class="an-metric-label">Replies</div>
-        <div class="an-metric-val" id="am-replies">—</div>
-        <div class="an-metric-sub">responses received</div>
-      </div>
-      <div class="an-metric m-blue">
-        <div class="an-metric-label">Reply Rate</div>
-        <div class="an-metric-val" id="am-reply-rate">—</div>
-        <div class="an-metric-sub">replies / sent</div>
-      </div>
-      <div class="an-metric m-red">
-        <div class="an-metric-label">Bounces</div>
-        <div class="an-metric-val" id="am-bounces">—</div>
-        <div class="an-metric-sub">hard + soft</div>
-      </div>
-      <div class="an-metric m-red">
-        <div class="an-metric-label">Bounce Rate</div>
-        <div class="an-metric-val" id="am-bounce-rate">—</div>
-        <div class="an-metric-sub">bounces / sent</div>
-      </div>
-      <div class="an-metric m-purple">
-        <div class="an-metric-label">Unsubscribes</div>
-        <div class="an-metric-val" id="am-unsubs">—</div>
-        <div class="an-metric-sub">opt-outs</div>
-      </div>
-      <div class="an-metric m-slate">
-        <div class="an-metric-label">Click Rate</div>
-        <div class="an-metric-val" id="am-click-rate">—</div>
-        <div class="an-metric-sub">link clicks / sent</div>
-      </div>
-      <div class="an-metric m-amber">
-        <div class="an-metric-label">Total Campaigns</div>
-        <div class="an-metric-val" id="am-total-campaigns">—</div>
-        <div class="an-metric-sub">all time</div>
-      </div>
-      <div class="an-metric m-green">
-        <div class="an-metric-label">Active Campaigns</div>
-        <div class="an-metric-val" id="am-active-campaigns">—</div>
-        <div class="an-metric-sub">currently running</div>
-      </div>
-    </div>
-
-    <!-- Charts row -->
-    <div class="grid-2" style="margin-bottom:18px;">
+    <div class="grid-2" style="margin-bottom:14px;">
       <div class="card">
         <div class="card-head">Conversion Funnel</div>
         <div class="funnel">
-          <div class="fn-step">
-            <div class="fn-lbl">Scraped</div>
-            <div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div>
-            <div class="fn-cnt" id="fn1c">0</div>
-          </div>
-          <div class="fn-step">
-            <div class="fn-lbl">Valid Email</div>
-            <div class="fn-bar-wrap"><div class="fn-bar" id="fn-valid" style="width:0%;background:linear-gradient(90deg,#166534,var(--green))">0</div></div>
-            <div class="fn-cnt" id="fn-validc">0</div>
-          </div>
-          <div class="fn-step">
-            <div class="fn-lbl">Has Email</div>
-            <div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div>
-            <div class="fn-cnt" id="fn2c">0</div>
-          </div>
-          <div class="fn-step">
-            <div class="fn-lbl">Email Sent</div>
-            <div class="fn-bar-wrap"><div class="fn-bar" id="fn3" style="width:0%;background:linear-gradient(90deg,#7c3aed,var(--purple))">0</div></div>
-            <div class="fn-cnt" id="fn3c">0</div>
-          </div>
+          <div class="fn-step"><div class="fn-lbl">Scraped</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn1" style="width:100%;background:linear-gradient(90deg,#8b6914,var(--gold2))">0</div></div><div class="fn-cnt" id="fn1c">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">Has Email</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn2" style="width:0%;background:linear-gradient(90deg,#1e40af,var(--blue))">0</div></div><div class="fn-cnt" id="fn2c">0</div></div>
+          <div class="fn-step"><div class="fn-lbl">Email Sent</div><div class="fn-bar-wrap"><div class="fn-bar" id="fn3" style="width:0%;background:linear-gradient(90deg,#166534,var(--green))">0</div></div><div class="fn-cnt" id="fn3c">0</div></div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-head">Email Validation Breakdown</div>
-        <div id="evBreak">
-          <div style="font-size:11px;color:var(--slate2);text-align:center;padding:20px;">Run automation to see validation data</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid-3" style="margin-bottom:18px;">
       <div class="card">
         <div class="card-head">Top Categories</div>
         <div id="catBreak"><div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div></div>
       </div>
+    </div>
+    <div class="grid-3">
       <div class="card">
         <div class="card-head">Install Distribution</div>
         <div id="installBreak"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
@@ -975,16 +619,6 @@ tbody tr:hover td { background: #13131c; }
       <div class="card">
         <div class="card-head">Keyword Performance</div>
         <div id="kwPerf"><div class="empty-st" style="padding:16px;font-size:11px;">—</div></div>
-      </div>
-    </div>
-
-    <!-- Timeline / daily breakdown -->
-    <div class="grid-2" style="margin-bottom:18px;">
-      <div class="card">
-        <div class="card-head">Leads Per Day <span style="font-size:9px;color:var(--slate2);text-transform:none;letter-spacing:0;">(session data)</span></div>
-        <div id="dailyChart" style="padding:4px 0;">
-          <div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div>
-        </div>
       </div>
       <div class="card">
         <div class="card-head">Session Summary</div>
@@ -994,35 +628,8 @@ tbody tr:hover td { background: #13131c; }
           Phase: <span id="ss-phase" style="color:var(--gold)">—</span><br>
           AI calls: <span id="ss-ai" style="color:var(--blue)">0</span><br>
           Sheet: <span id="ss-sheet" style="color:var(--green)">—</span><br>
-          Status: <span id="ss-st" style="color:var(--slate)">Idle</span><br>
-          Emails validated: <span id="ss-ev" style="color:var(--green)">0 checked</span>
+          Status: <span id="ss-st" style="color:var(--slate)">Idle</span>
         </div>
-      </div>
-    </div>
-
-    <!-- Filtered Leads Table -->
-    <div class="card">
-      <div class="card-head" style="justify-content:space-between;">
-        Filtered Leads <span id="an-table-count" style="font-family:var(--mono);font-size:10px;color:var(--gold);margin-left:auto;text-transform:none;letter-spacing:0;">0 leads</span>
-        <button class="btn-ghost" onclick="exportFilteredCSV()" style="font-size:10px;padding:5px 12px;">⬇ Export CSV</button>
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th onclick="sortAnTable('app_name')">App</th>
-              <th onclick="sortAnTable('developer')">Developer</th>
-              <th>Email</th>
-              <th onclick="sortAnTable('category')">Category</th>
-              <th onclick="sortAnTable('installs')">Installs</th>
-              <th onclick="sortAnTable('score')">Rating</th>
-              <th onclick="sortAnTable('keyword')">Keyword</th>
-              <th onclick="sortAnTable('email_sent')">Status</th>
-              <th>Email Valid</th>
-            </tr>
-          </thead>
-          <tbody id="anTableBody"></tbody>
-        </table>
       </div>
     </div>
   </section>
@@ -1031,19 +638,19 @@ tbody tr:hover td { background: #13131c; }
   <section class="section" id="sec-database">
     <div class="card">
       <div class="card-head" style="justify-content:space-between;">
-        All Leads
-        <div style="display:flex;gap:8px;align-items:center;margin-left:auto;">
-          <span id="dbCnt" style="font-family:var(--mono);font-size:11px;color:var(--gold);">0</span> leads
-          <div id="sheetLinkWrap"></div>
-          <button class="btn-ghost" onclick="exportCSV()" style="font-size:10px;padding:5px 12px;">⬇ CSV</button>
+        <span>All Leads &nbsp;<span id="dbCnt" style="color:var(--gold2);font-family:var(--serif);font-size:18px;letter-spacing:0;font-weight:700">0</span></span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <span id="sheetLinkWrap"></span>
+          <button class="btn-clear" onclick="clearHistory()">🗑 Clear History</button>
+          <button class="btn-ghost" onclick="exportCSV()">⬇ Export CSV</button>
         </div>
       </div>
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th>#</th><th>App Name</th><th>Developer</th><th>Email</th>
-            <th>Category</th><th>Installs</th><th>Rating</th><th>Keyword</th>
-            <th>Email Sent</th><th>Link</th>
+            <th>Category</th><th>Installs</th><th>Score</th>
+            <th>Keyword</th><th>Status</th><th>Link</th>
           </tr></thead>
           <tbody id="dbBody"><tr><td colspan="10"><div class="empty-st"><span class="empty-ico">🗄️</span>No leads yet.</div></td></tr></tbody>
         </table>
@@ -1054,131 +661,150 @@ tbody tr:hover td { background: #13131c; }
   <!-- ══ SPAM TEST ══ -->
   <section class="section" id="sec-spamtest">
     <div class="spam-card">
-      <div class="card-head">Send Test Email</div>
-      <div class="form-row" style="margin-bottom:12px;">
-        <div class="form-group">
+      <div class="card-head">🧪 Spam Test — Email Preview</div>
+      <p style="font-size:12px;color:var(--slate);margin-bottom:18px;line-height:1.7;">
+        AI তোমার template দেখে একটা unique email বানাবে এবং এই test email এ পাঠাবে।
+        Inbox এ আসলে ✅, Spam এ গেলে template টা আরো improve করো।
+      </p>
+      <div class="form-row" style="margin-bottom:14px;">
+        <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Your Test Email</label>
-          <input class="form-input" id="spamTestEmail" type="email" placeholder="you@example.com"/>
+          <input class="form-input" id="spamTestEmail" type="email" placeholder="yourname@gmail.com"/>
         </div>
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Sample App Name</label>
-          <input class="form-input" id="spamSampleApp" placeholder="MyApp Pro"/>
+          <input class="form-input" id="spamSampleApp" type="text" placeholder="MyApp Pro"/>
         </div>
       </div>
       <div class="form-row" style="margin-bottom:18px;">
-        <div class="form-group">
+        <div class="form-group" style="margin-bottom:0;">
           <label class="form-label">Sample Developer</label>
-          <input class="form-input" id="spamSampleDev" placeholder="John Dev"/>
+          <input class="form-input" id="spamSampleDev" type="text" placeholder="John Dev"/>
         </div>
-        <div class="form-group">
-          <label class="form-label">Sample Score</label>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">Sample Rating</label>
           <input class="form-input" id="spamSampleScore" type="number" step="0.1" placeholder="2.1" value="2.1"/>
         </div>
       </div>
-      <button class="btn-primary" id="btnSpamTest" onclick="runSpamTest()">📤 Send Test Email</button>
-      <div class="spam-result" id="spamResult"></div>
+      <button class="btn-primary" onclick="runSpamTest()" id="btnSpamTest">📤 Send Test Email</button>
+      <div id="spamResult" class="spam-result"></div>
     </div>
     <div class="card">
-      <div class="card-head">Live Email Preview</div>
-      <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Subject</div>
-      <div id="liveSubject" style="font-size:13px;color:var(--cream);margin-bottom:18px;padding:10px 14px;background:#0d0d14;border-radius:6px;border:1px solid var(--border);"></div>
-      <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;letter-spacing:1px;text-transform:uppercase;">Body</div>
-      <div id="liveBody" style="font-size:12px;color:var(--slate);white-space:pre-wrap;line-height:1.9;padding:14px 16px;background:#0d0d14;border-radius:6px;border:1px solid var(--border);max-height:360px;overflow-y:auto;"></div>
-      <div style="margin-top:12px;padding:12px 16px;background:#0a0d0a;border:1px solid #1a3a1a;border-radius:6px;">
-        <div style="font-size:9px;color:var(--slate2);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">Unsubscribe Footer (auto-appended)</div>
-        <div style="font-size:10px;color:var(--slate);font-family:var(--mono);">— — —<br>To unsubscribe from future emails, click here: [unsubscribe link]</div>
+      <div class="card-head">Email Template Preview (sample data)</div>
+      <div style="font-size:11px;color:var(--slate2);margin-bottom:12px;">AI will rewrite this uniquely per lead — this is just the base structure:</div>
+      <div style="background:#0d0d14;border:1px solid var(--border);border-radius:7px;padding:16px;">
+        <div style="font-size:10px;color:var(--gold);font-family:var(--mono);margin-bottom:8px;">Subject: <span id="liveSubject" style="color:var(--slate);">—</span></div>
+        <pre id="liveBody" style="font-size:11.5px;color:var(--slate);white-space:pre-wrap;font-family:var(--mono);line-height:1.7;">—</pre>
       </div>
     </div>
   </section>
 
   <!-- ══ SETUP ══ -->
   <section class="section" id="sec-setup">
-    <div class="keepalive-card">
-      <div class="card-head">Keep-Alive</div>
-      <div class="ka-row">
-        <div class="form-group" style="flex:1;margin-bottom:0;">
-          <label class="form-label">App URL</label>
-          <input class="form-input" id="cfg-keepalive-url" placeholder="https://your-app.onrender.com"/>
-        </div>
-        <div class="form-group" style="margin-bottom:0;">
-          <label class="form-label">Interval (sec)</label>
-          <input class="form-input" id="cfg-keepalive-interval" type="number" placeholder="25" value="25" style="width:100px;"/>
-        </div>
-        <button class="btn-gold" id="btnKaStart" onclick="startKeepAlive()">▶ Start</button>
-        <button class="btn-clear" id="btnKaStop" onclick="stopKeepAlive()" style="display:none;">⏹ Stop</button>
-      </div>
-      <div class="ka-status" id="kaStatus">Keep-Alive: OFF — server may sleep after 15 minutes</div>
-    </div>
-
     <div class="setup-grid">
-      <div class="card">
-        <div class="card-head">API Keys</div>
-        <div class="form-group">
-          <label class="form-label">Groq API Key</label>
-          <div class="pass-wrap">
-            <input class="form-input" id="cfg-groq" type="password" placeholder="gsk_…"/>
-            <button class="pass-toggle" onclick="togglePass('cfg-groq',this)">👁</button>
-          </div>
-          <div class="form-hint">For AI keyword generation &amp; email personalization</div>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Lead Target</label>
-          <input class="form-input" id="cfg-target" type="number" placeholder="300" value="300"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Sender Name</label>
-          <input class="form-input" id="cfg-sender-name" placeholder="John Smith"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Sender Company</label>
-          <input class="form-input" id="cfg-sender-company" placeholder="Acme Inc"/>
-        </div>
-      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;">
 
-      <div class="card">
-        <div class="card-head">Email Template</div>
-        <div class="form-group">
-          <label class="form-label">Subject</label>
-          <input class="form-input" id="cfg-email-subject" onchange="updateLivePreview()" oninput="updateLivePreview()"/>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Body</label>
-          <textarea class="form-input" id="cfg-email-body" rows="10" style="resize:vertical;" onchange="updateLivePreview()" oninput="updateLivePreview()"></textarea>
-        </div>
-        <button class="btn-ghost" onclick="resetTemplate()">↺ Reset to Default</button>
-      </div>
-    </div>
-
-    <div class="card" style="margin-bottom:14px;">
-      <div class="card-head">Google Sheet Integration</div>
-      <div class="setup-grid">
-        <div>
+        <div class="card">
+          <div class="card-head">API Credentials</div>
           <div class="form-group">
-            <label class="form-label">Sheet URL (for viewing)</label>
-            <input class="form-input" id="cfg-sheeturl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…"/>
-            <div id="sheetLinkRowSetup" style="margin-top:6px;"></div>
+            <label class="form-label">Groq API Key</label>
+            <div class="pass-wrap">
+              <input class="form-input" id="cfg-groq" type="password" placeholder="gsk_…"/>
+              <button class="pass-toggle" onclick="togglePass('cfg-groq',this)">👁</button>
+            </div>
+            <div class="form-hint">From <strong style="color:var(--gold)">console.groq.com</strong> — free tier available. Used for AI keywords AND AI email writing.</div>
           </div>
           <div class="form-group">
-            <label class="form-label">Lead Apps Script URL</label>
-            <input class="form-input" id="cfg-appsscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
-            <div class="form-hint">Leads sheet এ data লেখার জন্য</div>
+            <label class="form-label">Target Leads</label>
+            <input class="form-input" id="cfg-target" type="number" placeholder="300" value="300" min="10" max="2000"/>
           </div>
-          <div style="background:#0a160d;border:1px solid #166534;border-radius:6px;padding:12px;margin-top:8px;">
-            <div style="font-size:9px;color:var(--green);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:6px;">📊 Sheet Tabs Created by Apps Script</div>
-            <div style="font-size:10.5px;color:var(--slate);line-height:1.9;">
-              • <strong style="color:var(--gold)">All Leads</strong> — every lead found<br>
-              • <strong style="color:var(--gold)">Qualified Leads</strong> — filtered leads<br>
-              • <strong style="color:var(--gold)">Email Sent</strong> — outreach log<br>
-              • <strong style="color:var(--gold)">Keyword Log</strong> — keyword stats<br>
-              • <strong style="color:var(--green)">Analytics Events</strong> — <em>NEW: all event tracking</em><br>
-              • <strong style="color:var(--green)">Campaign Summary</strong> — <em>NEW: per-campaign stats</em><br>
-              • <strong style="color:var(--green)">Unsubscribes</strong> — <em>NEW: opt-out list</em>
+        </div>
+
+        <div class="card">
+          <div class="card-head">Sender Identity</div>
+          <div class="form-row">
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Your Name</label>
+              <input class="form-input" id="cfg-sender-name" type="text" placeholder="Abu Raihan"/>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label class="form-label">Your Company</label>
+              <input class="form-input" id="cfg-sender-company" type="text" placeholder="ReviewBoost BD"/>
             </div>
           </div>
         </div>
-        <div class="as-box">
-          <h4>📋 Lead Sheet Apps Script (7 tabs auto-created)</h4>
-          <div class="code-block" id="asCode">function doPost(e) {
+
+        <div class="card">
+          <div class="card-head">Email Template (AI Base)</div>
+          <div style="font-size:10px;color:var(--slate2);margin-bottom:10px;line-height:1.7;">
+            AI এই template এর <strong style="color:var(--gold)">value proposition</strong> রেখে প্রতিটা lead এর জন্য unique subject + body লিখবে।
+            Template টা যত ভালো হবে, AI output তত ভালো হবে।
+          </div>
+          <div class="form-group">
+            <label class="form-label">Subject Line Template</label>
+            <input class="form-input" id="cfg-email-subject" type="text" placeholder="Quick question about {{app_name}}"/>
+          </div>
+          <div style="font-size:10px;color:var(--slate2);margin-bottom:8px;">
+            Variables: <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{app_name}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{developer}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{category}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{score}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{installs}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_name}}</code>
+            <code style="background:#0d0d14;padding:1px 5px;border-radius:3px;color:var(--gold)">{{sender_company}}</code>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email Body Template</label>
+            <textarea class="form-input" id="cfg-email-body" rows="10" style="resize:vertical;line-height:1.7;font-size:11.5px;" oninput="updateLivePreview()"></textarea>
+          </div>
+          <button class="btn-ghost" onclick="resetTemplate()">↺ Reset to default</button>
+        </div>
+
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:14px;">
+
+        <!-- KEEP ALIVE -->
+        <div class="keepalive-card">
+          <div class="card-head">⚡ Keep-Alive (Anti-Sleep)</div>
+          <div style="font-size:11px;color:var(--slate);margin-bottom:14px;line-height:1.8;">
+            Render free plan এ server 15 min পরে sleep হয়। নিচে তোমার <strong style="color:var(--gold)">deployed app এর URL</strong> দাও — এই page নিজেই নির্দিষ্ট সময় পর ping করে server কে জাগিয়ে রাখবে।
+          </div>
+          <div class="ka-row">
+            <div class="form-group" style="flex:1;margin-bottom:0;">
+              <label class="form-label">Your App URL</label>
+              <input class="form-input" id="cfg-keepalive-url" type="url" placeholder="https://your-app.onrender.com"/>
+            </div>
+            <div class="form-group" style="min-width:130px;margin-bottom:0;">
+              <label class="form-label">Interval (seconds)</label>
+              <input class="form-input" id="cfg-keepalive-interval" type="number" placeholder="25" value="25" min="10" max="60"/>
+            </div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn-primary" onclick="startKeepAlive()" id="btnKaStart" style="font-size:11.5px;padding:9px 20px;">▶ Start Keep-Alive</button>
+            <button class="btn-clear" onclick="stopKeepAlive()" id="btnKaStop" style="display:none;padding:9px 16px;">⏹ Stop</button>
+          </div>
+          <div class="ka-status off" id="kaStatus" style="margin-top:10px;">Keep-Alive: OFF — server may sleep after 15 minutes</div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">Google Sheet Database</div>
+          <div class="form-group">
+            <label class="form-label">Google Sheet URL</label>
+            <input class="form-input" id="cfg-sheeturl" type="url" placeholder="https://docs.google.com/spreadsheets/d/…"/>
+            <div id="sheetLinkRowSetup" style="margin-top:8px;"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Lead Sheet Apps Script URL</label>
+            <input class="form-input" id="cfg-appsscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
+            <div class="form-hint">Leads sheet এ data লেখার জন্য</div>
+          </div>
+          <div class="as-box">
+            <h4>📋 Lead Sheet Apps Script (4 tabs auto-created)</h4>
+            <div style="font-size:10px;color:var(--slate2);line-height:1.9;margin-bottom:10px;">
+              Tabs: <strong style="color:var(--gold)">All Leads</strong> | <strong style="color:var(--gold)">Qualified Leads</strong> | <strong style="color:var(--gold)">Email Sent</strong> | <strong style="color:var(--gold)">Keyword Log</strong> | <strong style="color:var(--gold)">Analytics</strong> (new — tracking, never overwritten)
+            </div>
+            <div class="code-block" id="asCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1195,6 +821,7 @@ tbody tr:hover td { background: #13131c; }
       sheet.appendRow(Object.values(row));
 
     } else if (action === "mark_sent") {
+      // Mark in All Leads tab
       var allSheet = ss.getSheetByName("All Leads");
       if (allSheet) {
         var appId = data.app_id;
@@ -1207,17 +834,20 @@ tbody tr:hover td { background: #13131c; }
           }
         }
       }
+      // Mark in Qualified Leads tab
       var qSheet = ss.getSheetByName("Qualified Leads");
       if (qSheet) {
-        var vals2 = qSheet.getDataRange().getValues();
-        for (var j = 1; j < vals2.length; j++) {
-          if (String(vals2[j][vals2[j].length - 1]) === data.app_id) {
-            var sCol = vals2[0].indexOf("Email Sent") + 1;
-            if (sCol > 0) qSheet.getRange(j+1, sCol).setValue("Yes");
+        var appId = data.app_id;
+        var vals = qSheet.getDataRange().getValues();
+        for (var i = 1; i < vals.length; i++) {
+          if (String(vals[i][vals[i].length - 1]) === appId) {
+            var sentCol = vals[0].indexOf("Email Sent") + 1;
+            if (sentCol > 0) qSheet.getRange(i+1, sentCol).setValue("Yes");
             break;
           }
         }
       }
+      // Append to Email Sent tab
       var sentSheet = ss.getSheetByName("Email Sent");
       if (!sentSheet) sentSheet = ss.insertSheet("Email Sent");
       if (sentSheet.getLastRow() === 0) {
@@ -1225,12 +855,44 @@ tbody tr:hover td { background: #13131c; }
       }
       sentSheet.appendRow([data.app_id, data.app_name||"", data.email||"", new Date().toLocaleString()]);
 
+    } else if (action === "get_all") {
+      var tabName = data.tab || "All Leads";
+      var tSheet = ss.getSheetByName(tabName);
+      if (!tSheet) {
+        return ContentService
+          .createTextOutput(JSON.stringify({status:"ok", records:[]}))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      var tVals = tSheet.getDataRange().getValues();
+      var records = [];
+      if (tVals.length > 1) {
+        var hdrs = tVals[0];
+        for (var r = 1; r < tVals.length; r++) {
+          var obj = {};
+          for (var c = 0; c < hdrs.length; c++) { obj[hdrs[c]] = tVals[r][c]; }
+          records.push(obj);
+        }
+      }
+      return ContentService
+        .createTextOutput(JSON.stringify({status:"ok", records:records}))
+        .setMimeType(ContentService.MimeType.JSON);
+
     } else if (action === "get_pending") {
+      // Return all rows from All Leads where Email Sent = No
       var allSheet = ss.getSheetByName("All Leads");
-      if (!allSheet) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
+      if (!allSheet) {
+        return ContentService
+          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
       var vals = allSheet.getDataRange().getValues();
-      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:[]})).setMimeType(ContentService.MimeType.JSON);
-      var headers = vals[0]; var colIdx = {};
+      if (vals.length < 2) {
+        return ContentService
+          .createTextOutput(JSON.stringify({status:"ok", leads:[]}))
+          .setMimeType(ContentService.MimeType.JSON);
+      }
+      var headers = vals[0];
+      var colIdx = {};
       headers.forEach(function(h, i) { colIdx[h] = i; });
       var leads = [];
       for (var i = 1; i < vals.length; i++) {
@@ -1238,85 +900,46 @@ tbody tr:hover td { background: #13131c; }
         var emailSent = String(row[colIdx["Email Sent"]] || "").trim().toLowerCase();
         if (emailSent === "no" || emailSent === "") {
           leads.push({
-            app_id: String(row[colIdx["App ID"]]||""),
-            app_name: String(row[colIdx["App Name"]]||""),
-            developer: String(row[colIdx["Developer"]]||""),
-            email: String(row[colIdx["Email"]]||""),
-            category: String(row[colIdx["Category"]]||""),
-            installs: Number(row[colIdx["Installs"]]||0),
-            score: row[colIdx["Score"]] ? Number(row[colIdx["Score"]]) : null,
-            url: String(row[colIdx["URL"]]||""),
-            keyword: String(row[colIdx["Keyword"]]||""),
+            app_id:    String(row[colIdx["App ID"]]    || ""),
+            app_name:  String(row[colIdx["App Name"]]  || ""),
+            developer: String(row[colIdx["Developer"]] || ""),
+            email:     String(row[colIdx["Email"]]     || ""),
+            category:  String(row[colIdx["Category"]]  || ""),
+            installs:  Number(row[colIdx["Installs"]]  || 0),
+            score:     row[colIdx["Score"]] ? Number(row[colIdx["Score"]]) : null,
+            url:       String(row[colIdx["URL"]]       || ""),
+            keyword:   String(row[colIdx["Keyword"]]   || ""),
           });
         }
       }
-      return ContentService.createTextOutput(JSON.stringify({status:"ok",leads:leads})).setMimeType(ContentService.MimeType.JSON);
-
-    } else if (action === "get_all") {
-      var tab = data.tab || "All Leads";
-      var sheet = ss.getSheetByName(tab);
-      if (!sheet) return ContentService.createTextOutput(JSON.stringify({status:"ok",records:[]})).setMimeType(ContentService.MimeType.JSON);
-      var vals = sheet.getDataRange().getValues();
-      if (vals.length < 2) return ContentService.createTextOutput(JSON.stringify({status:"ok",records:[]})).setMimeType(ContentService.MimeType.JSON);
-      var headers = vals[0]; var records = [];
-      for (var i = 1; i < vals.length; i++) {
-        var rec = {};
-        headers.forEach(function(h, j) { rec[h] = String(vals[i][j]||""); });
-        records.push(rec);
-      }
-      return ContentService.createTextOutput(JSON.stringify({status:"ok",records:records})).setMimeType(ContentService.MimeType.JSON);
-
-    } else if (action === "get_analytics") {
-      var evSheet = ss.getSheetByName("Analytics Events");
-      var camSheet = ss.getSheetByName("Campaign Summary");
-      var evRecords = [], camRecords = [];
-      if (evSheet && evSheet.getLastRow() > 1) {
-        var evVals = evSheet.getDataRange().getValues();
-        var evHdr = evVals[0];
-        for (var i = 1; i < evVals.length; i++) {
-          var rec = {};
-          evHdr.forEach(function(h,j){ rec[h] = String(evVals[i][j]||""); });
-          evRecords.push(rec);
-        }
-      }
-      if (camSheet && camSheet.getLastRow() > 1) {
-        var camVals = camSheet.getDataRange().getValues();
-        var camHdr = camVals[0];
-        for (var i = 1; i < camVals.length; i++) {
-          var rec2 = {};
-          camHdr.forEach(function(h,j){ rec2[h] = String(camVals[i][j]||""); });
-          camRecords.push(rec2);
-        }
-      }
-      return ContentService.createTextOutput(JSON.stringify({status:"ok",events:evRecords,campaigns:camRecords})).setMimeType(ContentService.MimeType.JSON);
-
-    } else if (action === "unsubscribe") {
-      var unsubSheet = ss.getSheetByName("Unsubscribes");
-      if (!unsubSheet) unsubSheet = ss.insertSheet("Unsubscribes");
-      if (unsubSheet.getLastRow() === 0) unsubSheet.appendRow(["Email","App ID","Unsubscribed At"]);
-      unsubSheet.appendRow([data.email||"", data.app_id||"", new Date().toLocaleString()]);
+      return ContentService
+        .createTextOutput(JSON.stringify({status:"ok", leads:leads}))
+        .setMimeType(ContentService.MimeType.JSON);
     }
 
-    return ContentService.createTextOutput(JSON.stringify({status:"ok"})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"ok"}))
+      .setMimeType(ContentService.MimeType.JSON);
   } catch(err) {
-    return ContentService.createTextOutput(JSON.stringify({status:"error",msg:err.toString()})).setMimeType(ContentService.MimeType.JSON);
+    return ContentService
+      .createTextOutput(JSON.stringify({status:"error",msg:err.toString()}))
+      .setMimeType(ContentService.MimeType.JSON);
   }
 }</div>
-          <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('asCode')">📋 Copy Lead Script</button>
+            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('asCode')">📋 Copy Lead Script</button>
+          </div>
         </div>
-      </div>
-    </div>
 
-    <div class="card" style="margin-bottom:14px;">
-      <div class="card-head">Email Apps Script</div>
-      <div class="form-group">
-        <label class="form-label">Email Apps Script URL</label>
-        <input class="form-input" id="cfg-emailscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
-        <div class="form-hint">Gmail দিয়ে email পাঠানোর জন্য — আলাদা Script deploy করো</div>
-      </div>
-      <div class="as-box">
-        <h4>📧 Email Apps Script Code</h4>
-        <div class="code-block" id="emailCode">function doPost(e) {
+        <div class="card">
+          <div class="card-head">Email Apps Script</div>
+          <div class="form-group">
+            <label class="form-label">Email Apps Script URL</label>
+            <input class="form-input" id="cfg-emailscript" type="url" placeholder="https://script.google.com/macros/s/…/exec"/>
+            <div class="form-hint">Gmail দিয়ে email পাঠানোর জন্য — আলাদা Script deploy করো</div>
+          </div>
+          <div class="as-box">
+            <h4>📧 Email Apps Script Code</h4>
+            <div class="code-block" id="emailCode">function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
     GmailApp.sendEmail(data.to, data.subject, data.body);
@@ -1329,7 +952,10 @@ tbody tr:hover td { background: #13131c; }
       .setMimeType(ContentService.MimeType.JSON);
   }
 }</div>
-        <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('emailCode')">📋 Copy Email Script</button>
+            <button class="btn-ghost" style="margin-top:10px;" onclick="copyCode('emailCode')">📋 Copy Email Script</button>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -1505,7 +1131,7 @@ function showSec(name, el) {
   document.getElementById('sec-'+name).classList.add('active');
   el.classList.add('active');
   document.getElementById('pgTitle').innerHTML = pgTitles[name];
-  if(name==='analytics') { populateFilterDropdowns(); renderAnalytics(); }
+  if(name==='analytics') renderAnalytics();
   if(name==='spamtest')  updateLivePreview();
 }
 
@@ -1517,17 +1143,22 @@ function toggleHunter() {
   document.getElementById('hunterFields').classList.toggle('show', hunterActive);
 }
 
-// ════ UPDATE PENDING BADGE ════
+// ════ UPDATE PENDING BADGE — fetches from Sheet ════
 async function refreshSheetPending() {
   const sheetUrl = cfg.appsscript;
-  if (!sheetUrl) { updatePendingBadge(0, false); return; }
+  if (!sheetUrl) {
+    updatePendingBadge(0, false);
+    return;
+  }
   try {
     const r = await fetch('/api/sheet_pending', {
       method: 'POST', headers: {'Content-Type': 'application/json'},
       body: JSON.stringify({ sheet_url: sheetUrl })
     });
     const d = await r.json();
-    if (d.ok) updatePendingBadge(d.count, false);
+    if (d.ok) {
+      updatePendingBadge(d.count, false);
+    }
   } catch(e) {}
 }
 
@@ -1535,7 +1166,11 @@ function updatePendingBadge(count, running) {
   const badge = document.getElementById('pendingBadge');
   const btn   = document.getElementById('btnSendPending');
   badge.textContent = count;
-  badge.classList.toggle('zero', count === 0);
+  if(count > 0) {
+    badge.classList.remove('zero');
+  } else {
+    badge.classList.add('zero');
+  }
   btn.disabled = running;
 }
 
@@ -1546,8 +1181,7 @@ async function clearHistory() {
     const r = await fetch('/api/clear', {method:'POST'});
     const d = await r.json();
     if(!r.ok) { alert(d.error||'Cannot clear while running'); return; }
-    allLeads = []; filteredLeads = []; lastLogLen = 0; startTime = null; aiCalls = 0;
-    anSortKey = ''; anSortDir = 'desc';
+    allLeads = []; lastLogLen = 0; startTime = null; aiCalls = 0;
     renderDB([]);
     document.getElementById('actFeed').innerHTML = '<div class="empty-st"><span class="empty-ico">📡</span>Waiting…</div>';
     document.getElementById('kwChips').innerHTML = '<span style="color:var(--slate2);font-size:11px;">None yet</span>';
@@ -1560,19 +1194,12 @@ async function clearHistory() {
     ['pp-scrape','pp-ai','pp-leads','pp-email','pp-done'].forEach(id=>{
       const e=document.getElementById(id); if(e) e.className='pipe-step';
     });
-    // reset ev stats
-    ['ev-valid','ev-invalid','ev-checked'].forEach(id=>setText(id,'0'));
-    setText('ev-rate','—');
     alert('✅ History cleared!');
   } catch(e) { alert('Error: '+e.message); }
 }
 
 // ════ AUTOMATION ════
 let pollTmr = null, lastLogLen = 0, startTime = null, allLeads = [], aiCalls = 0;
-let filteredLeads = [];
-let anSortKey = '', anSortDir = 'desc';
-let currentAnTab = 'session';
-let evPollTmr = null;
 
 async function startAuto() {
   const kw = document.getElementById('kwInput').value.trim();
@@ -1604,9 +1231,6 @@ async function startAuto() {
     document.getElementById('btnStart').disabled = true;
     document.getElementById('btnStop').classList.add('show');
     startPoll();
-    // Start polling email validation stats
-    if(evPollTmr) clearInterval(evPollTmr);
-    evPollTmr = setInterval(fetchEvStats, 3000);
   } catch(e) { alert('Cannot reach server: '+e.message); }
 }
 
@@ -1617,6 +1241,8 @@ async function stopAuto() {
 async function sendPending() {
   const sheetUrl = cfg.appsscript;
   if (!sheetUrl) { alert('Sheet URL not set in Setup & Config!'); return; }
+
+  // Step 1: fetch pending leads from Sheet
   let pending = [];
   try {
     const r = await fetch('/api/sheet_pending', {
@@ -1627,8 +1253,11 @@ async function sendPending() {
     if (!r.ok || !d.ok) { alert('Error fetching from sheet: ' + (d.error||'unknown')); return; }
     pending = d.leads || [];
   } catch(e) { alert('Network error: ' + e.message); return; }
+
   if (!pending.length) { alert('✅ No pending leads in sheet — all already sent!'); return; }
   if (!confirm(`📬 Sheet এ ${pending.length}টা pending lead আছে। সবগুলোতে email পাঠাবো?`)) return;
+
+  // Step 2: send
   try {
     const r = await fetch('/api/send_pending', {
       method:'POST', headers:{'Content-Type':'application/json'},
@@ -1659,21 +1288,6 @@ async function fetchSt() {
   try { const r = await fetch('/api/status'); const d = await r.json(); renderSt(d); } catch(e) {}
 }
 
-// ════ Email Validation Stats Polling ════
-async function fetchEvStats() {
-  try {
-    const r = await fetch('/api/email_validation_stats');
-    const d = await r.json();
-    setText('ev-checked', d.checked||0);
-    setText('ev-valid',   d.valid||0);
-    setText('ev-invalid', d.invalid||0);
-    setText('ev-rate', d.valid_rate_pct ? d.valid_rate_pct+'%' : '—');
-    // also update analytics summary line
-    const ss = document.getElementById('ss-ev');
-    if(ss) ss.textContent = `${d.checked} checked, ${d.valid} valid (${d.valid_rate_pct}%)`;
-  } catch(e) {}
-}
-
 function renderSt(d) {
   const running = d.running, phase = d.phase||'idle';
   const leads = d.leads_found||0, emails = d.emails_sent||0;
@@ -1689,6 +1303,8 @@ function renderSt(d) {
 
   document.getElementById('btnStart').disabled = running;
   document.getElementById('btnStop').classList.toggle('show', running);
+
+  // Badge: disable during run, but count comes from refreshSheetPending
   document.getElementById('btnSendPending').disabled = running;
 
   setText('stLeads', leads);
@@ -1714,6 +1330,12 @@ function renderSt(d) {
   const logs = d.logs||[];
   if(logs.length!==lastLogLen) { lastLogLen=logs.length; renderFeed(logs); }
 
+  setText('an-l', leads); setText('an-e', emails);
+  const cats = [...new Set(allLeads.map(l=>l.category).filter(Boolean))];
+  document.getElementById('an-c').textContent = cats.length||'—';
+  const sc = allLeads.map(l=>l.score).filter(x=>x!==null&&x!==undefined);
+  document.getElementById('an-s').textContent = sc.length ? (sc.reduce((a,b)=>a+b,0)/sc.length).toFixed(1) : '—';
+
   if(startTime) {
     document.getElementById('ss-start').textContent = startTime.toLocaleTimeString();
     document.getElementById('ss-dur').textContent = fmtDur(Math.floor((Date.now()-startTime)/1000));
@@ -1728,8 +1350,6 @@ function renderSt(d) {
     document.getElementById('btnStart').disabled = false;
     document.getElementById('btnStop').classList.remove('show');
     if(pollTmr) { clearInterval(pollTmr); pollTmr=null; }
-    if(evPollTmr) { clearInterval(evPollTmr); evPollTmr=null; }
-    fetchEvStats();
   }
 }
 
@@ -1779,294 +1399,44 @@ function renderDB(leads) {
     </tr>`).join('');
 }
 
-// ════ ANALYTICS TAB SYSTEM ════
-function setAnTab(tab, el) {
-  currentAnTab = tab;
-  document.querySelectorAll('.an-tab').forEach(t=>t.classList.remove('active'));
-  el.classList.add('active');
-  // Show/hide date range fields
-  const showDR = (tab === 'custom');
-  document.getElementById('fg-daterange').style.display = showDR ? 'flex' : 'none';
-  document.getElementById('fg-dateto').style.display    = showDR ? 'flex' : 'none';
-  renderAnalytics();
-}
-
-function populateFilterDropdowns() {
-  const cats = [...new Set(allLeads.map(l=>l.category).filter(Boolean))].sort();
-  const kws  = [...new Set(allLeads.map(l=>l.keyword).filter(Boolean))].sort();
-  const catSel = document.getElementById('an-f-industry');
-  const kwSel  = document.getElementById('an-f-kw');
-  const curCat = catSel.value, curKw = kwSel.value;
-  catSel.innerHTML = '<option value="">All</option>' + cats.map(c=>`<option value="${esc(c)}" ${c===curCat?'selected':''}>${esc(c)}</option>`).join('');
-  kwSel.innerHTML  = '<option value="">All</option>' + kws.map(k=>`<option value="${esc(k)}" ${k===curKw?'selected':''}>${esc(k)}</option>`).join('');
-}
-
-function applyAnFilters() { renderAnalytics(); }
-function resetAnFilters() {
-  document.getElementById('an-f-status').value   = '';
-  document.getElementById('an-f-email').value    = '';
-  document.getElementById('an-f-industry').value = '';
-  document.getElementById('an-f-kw').value       = '';
-  document.getElementById('an-sort-by').value    = 'installs';
-  document.getElementById('an-sort-dir').value   = 'desc';
-  document.getElementById('an-date-from').value  = '';
-  document.getElementById('an-date-to').value    = '';
-  anSortKey = ''; anSortDir = 'desc';
-  renderAnalytics();
-}
-
-function getDateRange() {
-  const now = new Date();
-  if(currentAnTab === 'daily') {
-    const d = now.toISOString().slice(0,10);
-    return { from: d, to: d };
-  }
-  if(currentAnTab === 'weekly') {
-    const d1 = new Date(now); d1.setDate(d1.getDate()-6);
-    return { from: d1.toISOString().slice(0,10), to: now.toISOString().slice(0,10) };
-  }
-  if(currentAnTab === 'monthly') {
-    const d1 = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { from: d1.toISOString().slice(0,10), to: now.toISOString().slice(0,10) };
-  }
-  if(currentAnTab === 'custom') {
-    return {
-      from: document.getElementById('an-date-from').value || '',
-      to:   document.getElementById('an-date-to').value   || '',
-    };
-  }
-  return { from: '', to: '' }; // session = all
-}
-
-function filterLeads(leads) {
-  let result = [...leads];
-  const dr    = getDateRange();
-  const fSt   = document.getElementById('an-f-status').value;
-  const fEmail = document.getElementById('an-f-email').value;
-  const fInd  = document.getElementById('an-f-industry').value;
-  const fKw   = document.getElementById('an-f-kw').value;
-  const sortBy = anSortKey || document.getElementById('an-sort-by').value;
-  const sortDir= anSortDir  || document.getElementById('an-sort-dir').value;
-
-  // Date filter
-  if(dr.from || dr.to) {
-    result = result.filter(l => {
-      if(!l.scraped_at) return true;
-      const d = l.scraped_at.slice(0,10);
-      if(dr.from && d < dr.from) return false;
-      if(dr.to   && d > dr.to)   return false;
-      return true;
-    });
-  }
-  // Status filter
-  if(fSt==='sent')    result = result.filter(l=>l.email_sent);
-  if(fSt==='pending') result = result.filter(l=>!l.email_sent && l.email);
-  if(fSt==='failed')  result = result.filter(l=>l.email_sent===false && !l.email);
-  // Email validity filter
-  if(fEmail==='valid')   result = result.filter(l=>l.email && l.email_valid_score > 0);
-  if(fEmail==='invalid') result = result.filter(l=>!l.email || !l.email_valid_score);
-  // Industry / category
-  if(fInd) result = result.filter(l=>(l.category||'')===fInd);
-  // Keyword
-  if(fKw)  result = result.filter(l=>(l.keyword||'')===fKw);
-  // Sort
-  result.sort((a,b)=>{
-    let av = a[sortBy], bv = b[sortBy];
-    if(typeof av === 'string') av = av.toLowerCase();
-    if(typeof bv === 'string') bv = bv.toLowerCase();
-    if(sortDir==='asc') return av > bv ? 1 : -1;
-    return av < bv ? 1 : -1;
-  });
-  return result;
-}
-
+// ════ ANALYTICS ════
 function renderAnalytics() {
   const leads = allLeads;
-  filteredLeads = filterLeads(leads);
-  const fl = filteredLeads;
-  const total = fl.length;
-  const withEmail = fl.filter(l=>l.email).length;
-  const sent  = fl.filter(l=>l.email_sent).length;
-  const pending = fl.filter(l=>!l.email_sent && l.email).length;
-  const failed = fl.filter(l=>l.email_sent===false).length;
-  const validEmail = fl.filter(l=>l.email && (l.email_valid_score||0) > 0).length;
-  const invalidEmail = fl.filter(l=>!l.email || (l.email_valid_score===0 && l.email_valid_score!==undefined)).length;
-  const skipped = leads.length - total;
-
-  // Delivery rate (sent = delivered in this context)
-  const deliveryRate = withEmail > 0 ? Math.round((sent/withEmail)*100) + '%' : '—';
-
-  // Set all metrics
-  setText('am-leads',          total);
-  setText('am-qualified',      withEmail);
-  setText('am-valid-emails',   validEmail);
-  setText('am-invalid-emails', invalidEmail);
-  setText('am-sent',           sent);
-  setText('am-pending',        pending);
-  setText('am-failed',         failed);
-  setText('am-skipped',        leads.length - total);
-  setText('am-delivered',      sent);
-  setText('am-delivery-rate',  deliveryRate);
-  // These require tracking pixel / reply tracking (not available without 3rd party)
-  setText('am-opened',     '—');
-  setText('am-open-rate',  '—');
-  setText('am-replies',    '—');
-  setText('am-reply-rate', '—');
-  setText('am-bounces',    '—');
-  setText('am-bounce-rate','—');
-  setText('am-unsubs',     '—');
-  setText('am-click-rate', '—');
-  setText('am-total-campaigns',   '—');
-  setText('am-active-campaigns',  leads.length > 0 ? '1' : '0');
-
-  // Filtered table count
-  setText('an-table-count', fl.length + ' leads');
-
-  // Funnel
-  setText('fn1', total); setText('fn1c', total);
-  const pValid = total>0 ? Math.round((validEmail/total)*100) : 0;
-  document.getElementById('fn-valid').style.width = pValid+'%'; setText('fn-valid', validEmail); setText('fn-validc', validEmail);
-  const p2 = total>0 ? Math.round((withEmail/total)*100) : 0;
-  document.getElementById('fn2').style.width = p2+'%'; setText('fn2', withEmail); setText('fn2c', withEmail);
-  const p3 = withEmail>0 ? Math.round((sent/withEmail)*100) : 0;
-  document.getElementById('fn3').style.width = p3+'%'; setText('fn3', sent); setText('fn3c', sent);
-
-  // Email Validation Breakdown
-  renderEvBreakdown();
-
-  // Top categories
-  const catMap = {};
-  fl.forEach(l=>{ if(l.category) catMap[l.category]=(catMap[l.category]||0)+1; });
-  const catS = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
-  const cMax = catS[0]?catS[0][1]:1;
-  document.getElementById('catBreak').innerHTML = catS.map(([c,n])=>`
+  if(!leads.length) return;
+  const total=leads.length, withEmail=leads.filter(l=>l.email).length, sent=leads.filter(l=>l.email_sent).length;
+  setText('fn1',total); setText('fn1c',total);
+  const p2=total>0?Math.round((withEmail/total)*100):0;
+  document.getElementById('fn2').style.width=p2+'%'; setText('fn2',withEmail); setText('fn2c',withEmail);
+  const p3=withEmail>0?Math.round((sent/withEmail)*100):0;
+  document.getElementById('fn3').style.width=p3+'%'; setText('fn3',sent); setText('fn3c',sent);
+  const catMap={};
+  leads.forEach(l=>{ if(l.category) catMap[l.category]=(catMap[l.category]||0)+1; });
+  const catS=Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,6);
+  const cMax=catS[0]?catS[0][1]:1;
+  document.getElementById('catBreak').innerHTML=catS.map(([c,n])=>`
     <div class="prog-row" style="margin-bottom:10px;">
       <div class="prog-lbl" style="font-size:10px;min-width:100px;overflow:hidden;text-overflow:ellipsis">${esc(c)}</div>
       <div class="prog-track"><div class="prog-fill pf-gold" style="width:${Math.round((n/cMax)*100)}%"></div></div>
       <div class="prog-pct">${n}</div>
-    </div>`).join('') || '<div class="empty-st" style="padding:12px">No data</div>';
-
-  // Install distribution
-  const ir = {'0–1K':0,'1K–5K':0,'5K+':0};
-  fl.forEach(l=>{ const i=l.installs||0; if(i<1000)ir['0–1K']++; else if(i<=5000)ir['1K–5K']++; else ir['5K+']++; });
-  document.getElementById('installBreak').innerHTML = Object.entries(ir).map(([k,v])=>`
+    </div>`).join('')||'<div class="empty-st" style="padding:12px">No data</div>';
+  const ir={'0–1K':0,'1K–5K':0,'5K+':0};
+  leads.forEach(l=>{ const i=l.installs||0; if(i<1000)ir['0–1K']++; else if(i<=5000)ir['1K–5K']++; else ir['5K+']++; });
+  document.getElementById('installBreak').innerHTML=Object.entries(ir).map(([k,v])=>`
     <div class="prog-row" style="margin-bottom:10px;">
       <div class="prog-lbl" style="font-size:10px;min-width:60px">${k}</div>
       <div class="prog-track"><div class="prog-fill pf-blue" style="width:${total>0?Math.round((v/total)*100):0}%"></div></div>
       <div class="prog-pct">${v}</div>
     </div>`).join('');
-
-  // Keyword performance
-  const kwM = {};
-  fl.forEach(l=>{ if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1; });
-  const kwS = Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
-  const kwMax = kwS[0]?kwS[0][1]:1;
-  document.getElementById('kwPerf').innerHTML = kwS.map(([k,v])=>`
+  const kwM={};
+  leads.forEach(l=>{ if(l.keyword) kwM[l.keyword]=(kwM[l.keyword]||0)+1; });
+  const kwS=Object.entries(kwM).sort((a,b)=>b[1]-a[1]);
+  const kwMax=kwS[0]?kwS[0][1]:1;
+  document.getElementById('kwPerf').innerHTML=kwS.map(([k,v])=>`
     <div class="prog-row" style="margin-bottom:8px;">
       <div class="prog-lbl" style="font-size:10px;min-width:80px;overflow:hidden;text-overflow:ellipsis">${esc(k)}</div>
       <div class="prog-track"><div class="prog-fill pf-amber" style="width:${Math.round((v/kwMax)*100)}%"></div></div>
       <div class="prog-pct">${v}</div>
-    </div>`).join('') || '<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
-
-  // Daily chart
-  renderDailyChart(fl);
-
-  // Filtered table
-  renderAnTable(fl);
-}
-
-function renderEvBreakdown() {
-  const evValid   = parseInt(document.getElementById('ev-valid').textContent)   || 0;
-  const evInvalid = parseInt(document.getElementById('ev-invalid').textContent) || 0;
-  const evChecked = parseInt(document.getElementById('ev-checked').textContent) || 0;
-  const mx = Math.max(evValid, evInvalid, 1);
-
-  const rows = [
-    { label: 'Valid', val: evValid,   cls: 'pf-green' },
-    { label: 'Invalid — Syntax',      val: 0, cls: 'pf-red' },
-    { label: 'Invalid — No MX',       val: 0, cls: 'pf-red' },
-    { label: 'Invalid — Disposable',  val: 0, cls: 'pf-red' },
-    { label: 'Invalid — Bad Domain',  val: 0, cls: 'pf-red' },
-  ];
-  // Distribute invalids proportionally (we show totals from API)
-  const invalidRows = rows.slice(1);
-  invalidRows.forEach((r,i)=>{ r.val = i===0 ? evInvalid : 0; });
-
-  if(evChecked === 0) {
-    document.getElementById('evBreak').innerHTML = '<div style="font-size:11px;color:var(--slate2);text-align:center;padding:20px;">Run automation to see validation data</div>';
-    return;
-  }
-
-  document.getElementById('evBreak').innerHTML = `
-    <div class="prog-row"><div class="prog-lbl" style="font-size:10px;min-width:120px">✅ Valid</div>
-      <div class="prog-track"><div class="prog-fill pf-green" style="width:${Math.round((evValid/mx)*100)}%"></div></div>
-      <div class="prog-pct" style="color:var(--green)">${evValid}</div></div>
-    <div class="prog-row"><div class="prog-lbl" style="font-size:10px;min-width:120px">❌ Invalid</div>
-      <div class="prog-track"><div class="prog-fill pf-red" style="width:${Math.round((evInvalid/mx)*100)}%"></div></div>
-      <div class="prog-pct" style="color:var(--red)">${evInvalid}</div></div>
-    <div style="margin-top:12px;font-size:10px;color:var(--slate2);">Total checked: <span style="color:var(--slate);font-family:var(--mono)">${evChecked}</span> &nbsp;|&nbsp; Valid rate: <span style="color:var(--green);font-family:var(--mono)">${evChecked>0?Math.round(evValid/evChecked*100):0}%</span></div>`;
-}
-
-function renderDailyChart(leads) {
-  if(!leads.length) {
-    document.getElementById('dailyChart').innerHTML = '<div class="empty-st" style="padding:20px;font-size:11px;">No data yet</div>';
-    return;
-  }
-  const dayMap = {};
-  leads.forEach(l=>{
-    const d = (l.scraped_at||'').slice(0,10);
-    if(d) dayMap[d]=(dayMap[d]||0)+1;
-  });
-  const days = Object.entries(dayMap).sort((a,b)=>a[0]>b[0]?1:-1).slice(-14);
-  if(!days.length) return;
-  const mx = Math.max(...days.map(d=>d[1]),1);
-  document.getElementById('dailyChart').innerHTML = days.map(([d,v])=>`
-    <div class="tl-day">
-      <div class="tl-date">${d.slice(5)}</div>
-      <div class="tl-track"><div class="tl-fill" style="width:${Math.round(v/mx*100)}%"></div></div>
-      <div class="tl-val">${v}</div>
-    </div>`).join('');
-}
-
-function renderAnTable(leads) {
-  const tbody = document.getElementById('anTableBody');
-  if(!leads.length) {
-    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-st" style="padding:20px;font-size:11px;">No leads match the current filters.</div></td></tr>`;
-    return;
-  }
-  tbody.innerHTML = leads.map(l=>`
-    <tr>
-      <td style="font-weight:600;color:var(--cream);max-width:140px;overflow:hidden;text-overflow:ellipsis">${esc(l.app_name||'')}</td>
-      <td style="color:var(--slate);font-size:10.5px;max-width:110px;overflow:hidden;text-overflow:ellipsis">${esc(l.developer||'')}</td>
-      <td><a class="email-a" href="mailto:${esc(l.email)}">${esc(l.email)}</a></td>
-      <td><span class="bdg bdg-cat">${esc(l.category||'—')}</span></td>
-      <td style="font-family:var(--mono);font-size:10.5px">${(l.installs||0).toLocaleString()}</td>
-      <td style="font-family:var(--mono);font-size:10.5px">${l.score!=null?Number(l.score).toFixed(1):'new'}</td>
-      <td style="color:var(--gold);font-size:10.5px">${esc(l.keyword||'')}</td>
-      <td>${l.email_sent?'<span class="bdg bdg-sent">✓ Sent</span>':'<span class="bdg bdg-pend">Pending</span>'}</td>
-      <td>${(l.email_valid_score||0)>0?'<span class="val-pill ok">✓ Valid</span>':'<span class="val-pill bad">✗ —</span>'}</td>
-    </tr>`).join('');
-}
-
-function sortAnTable(key) {
-  if(anSortKey === key) {
-    anSortDir = anSortDir === 'desc' ? 'asc' : 'desc';
-  } else {
-    anSortKey = key; anSortDir = 'desc';
-  }
-  renderAnalytics();
-}
-
-function exportFilteredCSV() {
-  const leads = filteredLeads.length ? filteredLeads : allLeads;
-  if(!leads.length) { alert('No leads to export.'); return; }
-  const h = ['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent','Email Valid'];
-  const rows = leads.map(l=>[l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent,(l.email_valid_score||0)>0?'Yes':'No']
-    .map(v=>'\"'+String(v||'').replace(/"/g,'""')+'\"'));
-  const csv = [h,...rows].map(r=>r.join(',')).join('\n');
-  const a = document.createElement('a');
-  a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
-  a.download = 'playleads_analytics_'+Date.now()+'.csv'; a.click();
+    </div>`).join('')||'<div style="color:var(--slate2);font-size:11px;padding:8px">—</div>';
 }
 
 // ════ SPAM TEST ════
@@ -2134,12 +1504,12 @@ function updateLivePreview() {
   if(lb) lb.textContent = fillTpl(getVal('cfg-email-body')||DEFAULT_BODY, sample);
 }
 
-// ════ CSV (database tab) ════
+// ════ CSV ════
 function exportCSV() {
   if(!allLeads.length) { alert('No leads to export.'); return; }
   const h = ['App Name','Developer','Email','Category','Installs','Score','URL','Keyword','Scraped At','Email Sent'];
   const rows = allLeads.map(l=>[l.app_name,l.developer,l.email,l.category,l.installs,l.score,l.url,l.keyword,l.scraped_at,l.email_sent]
-    .map(v=>'\"'+String(v||'').replace(/"/g,'""')+'\"'));
+    .map(v=>'"'+String(v||'').replace(/"/g,'""')+'"'));
   const csv = [h,...rows].map(r=>r.join(',')).join('\n');
   const a = document.createElement('a');
   a.href = 'data:text/csv;charset=utf-8,'+encodeURIComponent(csv);
@@ -2167,9 +1537,8 @@ setInterval(()=>{ document.getElementById('clk').textContent=new Date().toLocale
 window.addEventListener('load', ()=>{
   loadCfg(); checkWarn(); fetchSt(); startPoll();
   refreshSheetPending();
+  // Refresh sheet pending count every 30s
   setInterval(refreshSheetPending, 30000);
-  fetchEvStats();
-  setInterval(fetchEvStats, 10000);
 });
 </script>
 </body>
