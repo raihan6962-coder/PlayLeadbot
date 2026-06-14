@@ -592,11 +592,13 @@ def send_email_tracked(lead, subject, body, base_url="") -> bool:
     esc_body = htmlmod.escape(body.rstrip())
     html_lines = esc_body.replace("\n", "<br>")
     btn = f'<a href="{htmlmod.escape(uns_url)}" style="display:inline-block;padding:7px 16px;background:#f2f2f2;border:1px solid #ccc;border-radius:4px;color:#333;text-decoration:none;font-size:12px;">Unsubscribe</a>'
+    pixel_url = f"{base_url}/api/track/open?tid={tracking_id}"
     html_body = f"""<!DOCTYPE html>
 <html><body style="font-family:Arial,sans-serif;font-size:14px;color:#333;line-height:1.5;white-space:pre-wrap;margin:0;padding:0;">
 {html_lines}
 <br><br>
 {btn}
+<img src="{pixel_url}" width="1" height="1" alt="" />
 </body></html>"""
 
     log_email_to_db(tracking_id, lead, subject, body_aug, "sent")
